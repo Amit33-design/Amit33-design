@@ -13,7 +13,11 @@
 
 ## About Me
 
-Network Development Engineer II at **Amazon Web Services**, designing and securing hyperscale cloud infrastructure at **petabit-scale** (~1,000 Tbps annual capacity delivery). 13+ years spanning hyperscale cloud, AI/GPU cluster networking, data center fabric engineering, and enterprise security across AWS, Carnival Cruise Lines, British Telecom, and IBM.
+Senior Network & Security Engineer with 13+ years of experience designing, securing, and automating hyperscale cloud, data center, and enterprise networks. Currently at AWS operating multi-region production infrastructure at petabit-scale, delivering ~1000 Tbps of annual capacity.
+
+ 
+
+Deep expertise across BGP/OSPF routing, VXLAN/EVPN overlay fabrics (BGP Type-2/5 routes, distributed anycast gateway, multi-tenant segmentation), RoCEv2/RDMA lossless GPU cluster networking (PFC/ECN tuning, OFED/mlx5, GPUDirect RDMA), Juniper SRX/vSRX and Palo Alto NGFW security, Zero Trust Architecture, and Python/Ansible automation.
 
 ```text
 Focus Areas  →  BGP/EVPN fabric · RoCEv2/RDMA GPU networking · Zero Trust · Network Automation
