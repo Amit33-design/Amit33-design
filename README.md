@@ -15,8 +15,6 @@
 
 Senior Network & Security Engineer with 13+ years of experience designing, securing, and automating hyperscale cloud, data center, and enterprise networks. Currently at AWS operating multi-region production infrastructure at petabit-scale, delivering ~1000 Tbps of annual capacity.
 
- 
-
 Deep expertise across BGP/OSPF routing, VXLAN/EVPN overlay fabrics (BGP Type-2/5 routes, distributed anycast gateway, multi-tenant segmentation), RoCEv2/RDMA lossless GPU cluster networking (PFC/ECN tuning, OFED/mlx5, GPUDirect RDMA), Juniper SRX/vSRX and Palo Alto NGFW security, Zero Trust Architecture, and Python/Ansible automation.
 
 ```text
