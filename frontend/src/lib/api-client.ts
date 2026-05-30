@@ -2,6 +2,7 @@ import { API_BASE } from "./constants";
 import {
   DEMO_USER_ID, demoSummary, demoMacros, demoMealPlan, demoTodayWorkout,
   demoWorkoutPlan, demoLifestyle, demoProgressHistory, getDemoChatResponse,
+  getDemoMealPlan,
 } from "./demo-data";
 
 // Demo mode: static GitHub Pages build has no backend. Set at build time.
@@ -44,8 +45,21 @@ export const api = {
   getUserSummary: (userId: string) =>
     DEMO_MODE ? Promise.resolve(demoSummary) : apiFetch(`/users/${userId}/summary`),
 
-  getMealPlan: (userId: string, date?: string) =>
-    DEMO_MODE ? Promise.resolve(demoMealPlan) : apiFetch(`/nutrition/${userId}/plan${date ? `?plan_date=${date}` : ""}`),
+  getMealPlan: (userId: string, date?: string) => {
+    if (DEMO_MODE) {
+      try {
+        const stored = localStorage.getItem("health-copilot-onboarding");
+        const state = stored ? JSON.parse(stored)?.state : {};
+        const goalType = state?.goals?.[0]?.goal_type || "weight_loss";
+        const cuisineType = state?.diet?.cuisine_type || "indian";
+        const proteinPref = state?.diet?.protein_preference || "vegetarian";
+        return Promise.resolve(getDemoMealPlan(goalType, cuisineType, proteinPref));
+      } catch {
+        return Promise.resolve(demoMealPlan);
+      }
+    }
+    return apiFetch(`/nutrition/${userId}/plan${date ? `?plan_date=${date}` : ""}`);
+  },
 
   getMacros: (userId: string) =>
     DEMO_MODE ? Promise.resolve(demoMacros) : apiFetch(`/nutrition/${userId}/macros`),

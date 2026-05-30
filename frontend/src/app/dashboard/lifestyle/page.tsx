@@ -27,6 +27,7 @@ export default function LifestylePage() {
   const sleep = recs?.sleep as Record<string, unknown> | undefined;
   const stress = recs?.stress as Record<string, unknown> | undefined;
   const conditionNotes = (recs?.condition_specific as unknown[]) || [];
+  const meditation = recs?.meditation as Record<string, unknown> | undefined;
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6 animate-fade-in">
@@ -134,6 +135,55 @@ export default function LifestylePage() {
                     <div className="text-sm text-gray-600 mt-0.5">{String(t.description)}</div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Meditation & Mindfulness */}
+      {meditation && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center text-xl">🧘</div>
+            <div>
+              <div className="font-bold text-gray-900">Meditation & Mindfulness</div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                {String((meditation as Record<string, unknown>).recommended_minutes)} min/day · Best time: {String((meditation as Record<string, unknown>).best_time)}
+              </div>
+            </div>
+          </div>
+          {!!(meditation as Record<string, unknown>).clinical_note && (
+            <div className="p-3 bg-violet-50 border border-violet-200 rounded-xl mb-4 text-sm text-violet-800">
+              🩺 {String((meditation as Record<string, unknown>).clinical_note)}
+            </div>
+          )}
+          <div className="grid md:grid-cols-2 gap-3 mb-4">
+            {(((meditation as Record<string, unknown>).practices as unknown[]) || []).map((p: unknown, i: number) => {
+              const practice = p as Record<string, unknown>;
+              return (
+                <div key={i} className="flex gap-3 p-4 bg-violet-50 rounded-xl border border-violet-100">
+                  <div className="text-2xl flex-shrink-0">{String(practice.icon)}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-semibold text-gray-900 text-sm">{String(practice.name)}</span>
+                      <span className="text-xs px-2 py-0.5 bg-violet-200 text-violet-700 rounded-full">{String(practice.duration)}</span>
+                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{String(practice.level)}</span>
+                    </div>
+                    <div className="text-xs text-gray-600 leading-relaxed">{String(practice.description)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-gray-500">Recommended apps:</span>
+            {(((meditation as Record<string, unknown>).apps as unknown[]) || []).map((a: unknown, i: number) => {
+              const app = a as Record<string, unknown>;
+              return (
+                <span key={i} className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full">
+                  {String(app.name)} <span className="text-gray-400">— {String(app.note)}</span>
+                </span>
               );
             })}
           </div>
