@@ -87,20 +87,28 @@ const weightLossIndianVegPlan = {
       ],
     },
     {
-      slot: "mid_morning", slot_calories: 95, slot_protein_g: 1,
-      items: [mealItem("m1", "Guava", "Amrood", 140, 95, 2, 20, 1, ["Low GI", "High Fiber", "Vitamin C"], 12)],
-    },
-    {
-      slot: "lunch", slot_calories: 620, slot_protein_g: 42,
+      slot: "mid_morning", slot_calories: 145, slot_protein_g: 5,
       items: [
-        mealItem("l1", "Brown Rice", null, 150, 215, 5, 45, 2, ["Low GI", "High Fiber"], 50),
-        mealItem("l2", "Masoor Dal", "Masoor", 200, 230, 18, 40, 1, ["Low GI", "High Fiber", "Plant Protein"], 29),
-        mealItem("l3", "Bitter Gourd Sabzi", "Karela", 100, 80, 4, 7, 4, ["Diabetes Friendly", "Low Sodium"], 18),
+        mealItem("m1", "Guava", "Amrood", 100, 68, 1, 14, 1, ["Low GI", "High Fiber", "Vitamin C"], 12),
+        mealItem("m2", "Mixed Berries (Blueberry + Strawberry)", null, 80, 45, 1, 11, 2, ["Antioxidant", "Anti-Inflammatory", "Low GI"], 25),
+        mealItem("m3", "Chia Seeds", null, 10, 49, 2, 4, 3, ["Omega-3", "High Fiber", "Hydrophilic"]),
       ],
     },
     {
-      slot: "evening_snack", slot_calories: 130, slot_protein_g: 8,
-      items: [mealItem("e1", "Buttermilk", "Chaas", 240, 98, 8, 12, 2, ["Probiotic", "Hydrating"], 35)],
+      slot: "lunch", slot_calories: 720, slot_protein_g: 52,
+      items: [
+        mealItem("l1", "Brown Rice", null, 150, 215, 5, 45, 2, ["Low GI", "High Fiber"], 50),
+        mealItem("l2", "Masoor Dal", "Masoor", 200, 230, 18, 40, 1, ["Low GI", "High Fiber", "Plant Protein"], 29),
+        mealItem("l3", "Chickpea Salad", "Kala Chana", 100, 164, 9, 27, 8, ["High Fiber", "Plant Protein", "Diabetes Friendly"], 28),
+        mealItem("l4", "Bitter Gourd Sabzi", "Karela", 80, 64, 3, 6, 3, ["Diabetes Friendly", "Low Sodium"], 18),
+      ],
+    },
+    {
+      slot: "evening_snack", slot_calories: 155, slot_protein_g: 12,
+      items: [
+        mealItem("e1", "Buttermilk", "Chaas", 200, 82, 6, 10, 2, ["Probiotic", "Hydrating"], 35),
+        mealItem("e2", "Moong Sprouts", "Ankurit Moong", 60, 60, 5, 8, 2, ["Plant Protein", "Digestive Enzymes", "High Fiber"]),
+      ],
     },
     {
       slot: "dinner", slot_calories: 510, slot_protein_g: 38,
@@ -135,25 +143,28 @@ const muscleGainIndianNonVegPlan = {
       ],
     },
     {
-      slot: "mid_morning", slot_calories: 240, slot_protein_g: 6,
+      slot: "mid_morning", slot_calories: 280, slot_protein_g: 10,
       items: [
-        mealItem("mg-m1", "Banana", "Kela", 150, 135, 2, 35, 0, ["Pre-workout Fuel", "Potassium"], 51),
+        mealItem("mg-m1", "Banana", "Kela", 120, 107, 1, 27, 0, ["Pre-workout Fuel", "Potassium"], 51),
         mealItem("mg-m2", "Almonds", "Badam", 25, 145, 5, 5, 13, ["Healthy Fats", "Vitamin E"]),
+        mealItem("mg-m3", "Mixed Berries", null, 80, 45, 1, 11, 2, ["Antioxidant", "Anti-Inflammatory", "Low GI"], 25),
       ],
     },
     {
-      slot: "lunch", slot_calories: 780, slot_protein_g: 62,
+      slot: "lunch", slot_calories: 840, slot_protein_g: 68,
       items: [
         mealItem("mg-l1", "Chicken Breast (grilled)", "Murgh", 180, 297, 56, 0, 6, ["Lean Protein", "Muscle Gain", "Low Sodium"]),
         mealItem("mg-l2", "Brown Rice", null, 150, 215, 5, 45, 2, ["Low GI", "Complex Carbs"], 50),
         mealItem("mg-l3", "Moong Dal", "Moong", 150, 175, 12, 30, 1, ["Plant Protein", "Digestive Health"], 25),
+        mealItem("mg-l4", "Chickpea & Cucumber Salad", "Kala Chana Salad", 80, 130, 7, 22, 6, ["High Fiber", "Plant Protein", "Hydrating"], 28),
       ],
     },
     {
-      slot: "evening_snack", slot_calories: 190, slot_protein_g: 22,
+      slot: "evening_snack", slot_calories: 220, slot_protein_g: 25,
       items: [
         mealItem("mg-e1", "Boiled Eggs (2)", "Uble Ande", 100, 155, 13, 1, 11, ["Complete Protein", "Post-workout"]),
-        mealItem("mg-e2", "Green Tea", "Hari Chai", 240, 2, 0, 0, 0, ["Antioxidant", "Metabolism"]),
+        mealItem("mg-e2", "Edamame (steamed)", null, 80, 94, 9, 7, 4, ["Complete Amino", "High Protein", "High Fiber"]),
+        mealItem("mg-e3", "Green Tea", "Hari Chai", 240, 2, 0, 0, 0, ["Antioxidant", "Metabolism"]),
       ],
     },
     {
@@ -189,25 +200,28 @@ const muscleGainIndianVegPlan = {
       ],
     },
     {
-      slot: "mid_morning", slot_calories: 210, slot_protein_g: 12,
+      slot: "mid_morning", slot_calories: 250, slot_protein_g: 15,
       items: [
         mealItem("mgv-m1", "Greek Yogurt (Hung Curd)", "Chakka Dahi", 150, 132, 12, 8, 4, ["High Protein", "Probiotic"], 14),
-        mealItem("mgv-m2", "Banana", "Kela", 100, 89, 1, 23, 0, ["Pre-workout Fuel", "Potassium"], 51),
+        mealItem("mgv-m2", "Mixed Berries + Flaxseeds", null, 90, 60, 2, 14, 3, ["Antioxidant", "Omega-3", "Low GI"], 25),
+        mealItem("mgv-m3", "Pumpkin Seeds", "Kaddu Beej", 15, 83, 4, 3, 7, ["Zinc", "Magnesium", "Muscle Recovery"]),
       ],
     },
     {
-      slot: "lunch", slot_calories: 740, slot_protein_g: 52,
+      slot: "lunch", slot_calories: 820, slot_protein_g: 62,
       items: [
         mealItem("mgv-l1", "Soya Chunks Curry", "Soya Chaap", 100, 345, 35, 33, 1, ["Complete Protein", "Muscle Gain", "High Fiber"]),
         mealItem("mgv-l2", "Brown Rice", null, 150, 215, 5, 45, 2, ["Low GI", "Complex Carbs"], 50),
-        mealItem("mgv-l3", "Rajma (Kidney Beans)", "Rajma", 150, 175, 12, 31, 1, ["Plant Protein", "Fiber", "Iron"], 24),
+        mealItem("mgv-l3", "Rajma (Kidney Beans)", "Rajma", 120, 140, 10, 25, 1, ["Plant Protein", "Fiber", "Iron"], 24),
+        mealItem("mgv-l4", "Tofu & Spinach Stir-fry", "Tofu Palak", 80, 88, 10, 4, 5, ["Plant Protein", "Iron", "Calcium"]),
       ],
     },
     {
-      slot: "evening_snack", slot_calories: 180, slot_protein_g: 18,
+      slot: "evening_snack", slot_calories: 200, slot_protein_g: 20,
       items: [
-        mealItem("mgv-e1", "Roasted Chana + Peanuts", "Bhuna Chana", 60, 220, 11, 22, 8, ["Plant Protein", "Fiber", "Post-workout"]),
-        mealItem("mgv-e2", "Low-Fat Milk", "Doodh", 200, 100, 7, 10, 2, ["Casein Protein", "Calcium"]),
+        mealItem("mgv-e1", "Roasted Chana", "Bhuna Chana", 40, 145, 8, 15, 5, ["Plant Protein", "Fiber", "Post-workout"]),
+        mealItem("mgv-e2", "Edamame (steamed)", null, 80, 94, 9, 7, 4, ["Complete Amino", "High Protein", "High Fiber"]),
+        mealItem("mgv-e3", "Low-Fat Milk", "Doodh", 150, 75, 5, 8, 2, ["Casein Protein", "Calcium"]),
       ],
     },
     {
@@ -243,22 +257,28 @@ const healthyAgingIndianVegPlan = {
       ],
     },
     {
-      slot: "mid_morning", slot_calories: 80, slot_protein_g: 1,
-      items: [mealItem("ha-m1", "Amla (Indian Gooseberry)", "Amla", 80, 44, 1, 10, 0, ["Vitamin C", "Antioxidant", "Immunity"], 20)],
-    },
-    {
-      slot: "lunch", slot_calories: 590, slot_protein_g: 32,
+      slot: "mid_morning", slot_calories: 130, slot_protein_g: 4,
       items: [
-        mealItem("ha-l1", "Moong Dal Khichdi", "Khichdi", 250, 290, 14, 50, 3, ["Digestive Ease", "Complete Protein", "Joint Friendly"], 35),
-        mealItem("ha-l2", "Seasonal Vegetable Sabzi", null, 150, 90, 3, 14, 3, ["Antioxidant", "Fiber", "Low Sodium"]),
-        mealItem("ha-l3", "Low-Fat Dahi", "Dahi", 100, 61, 5, 7, 2, ["Probiotic", "Calcium", "Bone Health"], 35),
+        mealItem("ha-m1", "Amla (Indian Gooseberry)", "Amla", 60, 33, 1, 8, 0, ["Vitamin C", "Antioxidant", "Immunity"], 20),
+        mealItem("ha-m2", "Mixed Berries", null, 80, 45, 1, 11, 2, ["Antioxidant", "Anti-Inflammatory", "Brain Health"], 25),
+        mealItem("ha-m3", "Chia Seeds in Water", null, 10, 49, 2, 4, 3, ["Omega-3", "High Fiber", "Joint Health"]),
       ],
     },
     {
-      slot: "evening_snack", slot_calories: 120, slot_protein_g: 4,
+      slot: "lunch", slot_calories: 660, slot_protein_g: 42,
       items: [
-        mealItem("ha-e1", "Walnuts + Almonds Mix", "Dry Fruits", 25, 163, 4, 5, 15, ["Brain Health", "Omega-3", "Healthy Fats"]),
-        mealItem("ha-e2", "Tulsi Ginger Tea", "Kadha", 200, 8, 0, 2, 0, ["Anti-Inflammatory", "Immunity", "Digestive"]),
+        mealItem("ha-l1", "Moong Dal Khichdi", "Khichdi", 200, 235, 11, 40, 3, ["Digestive Ease", "Complete Protein", "Joint Friendly"], 35),
+        mealItem("ha-l2", "Chickpea & Spinach Curry", "Chole Palak", 120, 196, 10, 33, 10, ["High Fiber", "Plant Protein", "Iron", "Anti-Inflammatory"], 28),
+        mealItem("ha-l3", "Seasonal Vegetable Sabzi", null, 100, 60, 2, 9, 2, ["Antioxidant", "Fiber", "Low Sodium"]),
+        mealItem("ha-l4", "Low-Fat Dahi", "Dahi", 100, 61, 5, 7, 2, ["Probiotic", "Calcium", "Bone Health"], 35),
+      ],
+    },
+    {
+      slot: "evening_snack", slot_calories: 140, slot_protein_g: 6,
+      items: [
+        mealItem("ha-e1", "Walnuts + Almonds Mix", "Dry Fruits", 20, 131, 4, 4, 12, ["Brain Health", "Omega-3", "Healthy Fats"]),
+        mealItem("ha-e2", "Roasted Pumpkin Seeds", "Kaddu Beej", 15, 83, 4, 3, 7, ["Zinc", "Bone Health", "Anti-Inflammatory"]),
+        mealItem("ha-e3", "Tulsi Ginger Tea", "Kadha", 200, 8, 0, 2, 0, ["Anti-Inflammatory", "Immunity", "Digestive"]),
       ],
     },
     {
@@ -301,18 +321,20 @@ const weightLossWesternNonVegPlan = {
       ],
     },
     {
-      slot: "lunch", slot_calories: 620, slot_protein_g: 52,
+      slot: "lunch", slot_calories: 730, slot_protein_g: 60,
       items: [
-        mealItem("ww-l1", "Grilled Chicken Breast", null, 180, 297, 56, 0, 6, ["Lean Protein", "Low Sodium", "Muscle Preservation"]),
-        mealItem("ww-l2", "Quinoa", null, 100, 222, 8, 39, 3, ["Complete Protein", "Low GI", "Gluten Free"], 53),
-        mealItem("ww-l3", "Roasted Broccoli & Peppers", null, 150, 65, 4, 12, 1, ["Antioxidant", "Low Carb", "Vitamin C"]),
+        mealItem("ww-l1", "Grilled Chicken Breast", null, 150, 248, 47, 0, 5, ["Lean Protein", "Low Sodium", "Muscle Preservation"]),
+        mealItem("ww-l2", "Chickpea & Tofu Salad", null, 120, 196, 14, 22, 7, ["High Fiber", "Plant Protein", "Complete Amino", "Diabetes Friendly"], 28),
+        mealItem("ww-l3", "Quinoa", null, 80, 178, 6, 31, 3, ["Complete Protein", "Low GI", "Gluten Free"], 53),
+        mealItem("ww-l4", "Roasted Broccoli & Peppers", null, 100, 43, 3, 8, 1, ["Antioxidant", "Low Carb", "Vitamin C"]),
       ],
     },
     {
-      slot: "evening_snack", slot_calories: 100, slot_protein_g: 14,
+      slot: "evening_snack", slot_calories: 130, slot_protein_g: 16,
       items: [
         mealItem("ww-e1", "Hard-Boiled Egg", null, 50, 78, 6, 1, 5, ["Complete Protein", "Low Calorie"]),
-        mealItem("ww-e2", "Celery Sticks", null, 80, 13, 1, 3, 1, ["Negative Calorie", "Hydrating", "Low Sodium"]),
+        mealItem("ww-e2", "Mixed Berries", null, 100, 57, 1, 14, 2, ["Antioxidant", "Low GI", "Vitamin C"], 25),
+        mealItem("ww-e3", "Celery + Hummus", null, 60, 62, 3, 7, 3, ["High Fiber", "Plant Protein", "Hydrating"]),
       ],
     },
     {
@@ -325,6 +347,65 @@ const weightLossWesternNonVegPlan = {
     },
   ],
   macro_targets: { calories: 1920, protein_g: 155, carbs_g: 185, fat_g: 60, fiber_g: 30, protein_g_per_kg: 1.89 },
+};
+
+// ─── Plan: Weight Loss · Mediterranean · Vegetarian ──────────────────────────
+const mediterraneanVegPlan = {
+  id: "demo-plan-med",
+  plan_date: new Date().toISOString().slice(0, 10),
+  total_calories: 1940,
+  total_protein_g: 132,
+  total_carbs_g: 198,
+  total_fat_g: 70,
+  total_fiber_g: 38,
+  ai_summary:
+    "The Mediterranean diet is one of the most clinically validated eating patterns for cardiovascular health and blood sugar management. Today's plan centres on chickpeas, tofu, berries, olive oil, and omega-3-rich walnuts. The diet's naturally high fiber (38 g) and polyphenol content directly support DASH protocol for Hypertension and glycemic control for Type 2 Diabetes. Olive oil replaces saturated fats, and legumes replace refined carbohydrates — a proven combination for reducing LDL and systolic blood pressure.",
+  meals: [
+    {
+      slot: "breakfast", slot_calories: 410, slot_protein_g: 24,
+      items: [
+        mealItem("med-b1", "Greek Yogurt Parfait", null, 180, 180, 18, 10, 4, ["High Protein", "Probiotic", "Calcium"], 14),
+        mealItem("med-b2", "Mixed Berries (Blueberry, Strawberry, Raspberry)", null, 120, 68, 1, 16, 4, ["Antioxidant", "Anti-Inflammatory", "Low GI"], 25),
+        mealItem("med-b3", "Walnuts", null, 20, 131, 3, 3, 13, ["Omega-3", "Brain Health", "Heart Healthy"]),
+        mealItem("med-b4", "Whole Grain Toast", null, 30, 82, 3, 15, 2, ["Complex Carbs", "High Fiber"], 51),
+      ],
+    },
+    {
+      slot: "mid_morning", slot_calories: 155, slot_protein_g: 8,
+      items: [
+        mealItem("med-m1", "Hummus", null, 60, 107, 5, 12, 6, ["Plant Protein", "High Fiber", "Healthy Fats"]),
+        mealItem("med-m2", "Whole Grain Crackers", null, 20, 80, 2, 14, 1, ["Complex Carbs", "Fiber"], 50),
+        mealItem("med-m3", "Cherry Tomatoes + Cucumber", null, 100, 28, 1, 6, 1, ["Lycopene", "Hydrating", "Low Calorie"]),
+      ],
+    },
+    {
+      slot: "lunch", slot_calories: 650, slot_protein_g: 40,
+      items: [
+        mealItem("med-l1", "Chickpea & Tofu Salad", null, 150, 246, 18, 28, 9, ["Plant Protein", "High Fiber", "Complete Amino", "Diabetes Friendly"], 28),
+        mealItem("med-l2", "Quinoa", null, 90, 200, 7, 35, 3, ["Complete Protein", "Low GI", "Gluten Free"], 53),
+        mealItem("med-l3", "Roasted Eggplant & Zucchini (Olive Oil)", null, 150, 95, 3, 14, 5, ["Antioxidant", "Heart Healthy", "Low Sodium"]),
+        mealItem("med-l4", "Lemon Tahini Dressing", null, 20, 60, 2, 2, 5, ["Calcium", "Healthy Fats", "Sesame"]),
+      ],
+    },
+    {
+      slot: "evening_snack", slot_calories: 140, slot_protein_g: 8,
+      items: [
+        mealItem("med-e1", "Mixed Nuts (Almond, Pistachio, Cashew)", null, 25, 145, 5, 6, 12, ["Healthy Fats", "Plant Protein", "Heart Healthy"]),
+        mealItem("med-e2", "Fresh Figs or Dates (1–2)", null, 40, 47, 1, 12, 1, ["Natural Sweetness", "Fiber", "Iron"]),
+        mealItem("med-e3", "Herbal Tea", null, 240, 4, 0, 1, 0, ["Antioxidant", "Anti-Inflammatory"]),
+      ],
+    },
+    {
+      slot: "dinner", slot_calories: 540, slot_protein_g: 36,
+      items: [
+        mealItem("med-d1", "Baked Sea Bass with Herbs", null, 150, 180, 30, 0, 6, ["Omega-3", "Lean Protein", "Heart Healthy"]),
+        mealItem("med-d2", "Lentil Soup (Red Lentils)", null, 200, 175, 13, 30, 8, ["High Fiber", "Plant Protein", "Iron"], 21),
+        mealItem("med-d3", "Greek Salad (Tomato, Olive, Cucumber, Herbs)", null, 120, 75, 2, 8, 5, ["Antioxidant", "Lycopene", "Low Sodium"]),
+        mealItem("med-d4", "Whole Grain Pita (½)", null, 30, 83, 3, 16, 2, ["Complex Carbs", "Fiber"], 55),
+      ],
+    },
+  ],
+  macro_targets: { calories: 1940, protein_g: 132, carbs_g: 198, fat_g: 70, fiber_g: 38, protein_g_per_kg: 1.61 },
 };
 
 // ─── Selector ──────────────────────────────────────────────────────────────────
@@ -340,6 +421,7 @@ export function getDemoMealPlan(
   if (goalType === "healthy_aging" || goalType === "cardiovascular") {
     return healthyAgingIndianVegPlan;
   }
+  if (cuisineType === "mediterranean") return mediterraneanVegPlan;
   if (cuisineType === "western" && (proteinPref === "non_vegetarian" || proteinPref === "pescatarian")) {
     return weightLossWesternNonVegPlan;
   }
