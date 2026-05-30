@@ -1,14 +1,57 @@
 import { API_BASE } from "./constants";
 import {
-  DEMO_USER_ID, demoSummary, demoMacros, demoMealPlan, demoTodayWorkout,
-  demoWorkoutPlan, demoLifestyle, demoProgressHistory, getDemoChatResponse,
-  getDemoMealPlan,
+  DEMO_USER_ID, demoProgressHistory, getDemoChatResponse,
 } from "./demo-data";
+import {
+  OnboardingInput, buildUserSummary, computeMacros, generateMealPlan,
+  generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
+} from "./recommendation-engine";
 
 // Demo mode: static GitHub Pages build has no backend. Set at build time.
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Reads the persisted Zustand onboarding state from localStorage and maps it
+ * to the engine's OnboardingInput. Sensible defaults are used for any field the
+ * user hasn't filled in, so the demo never crashes on a fresh profile.
+ */
+function getOnboardingInput(): OnboardingInput {
+  const fallback: OnboardingInput = {
+    age: 40, gender: "male", weight_kg: 75, height_cm: 172,
+    activity_level: "moderate", goal_type: "weight_loss", conditions: [],
+    cuisine: "indian", protein_pref: "vegetarian", name: "You",
+    lifestyle: { sleep_hours: 6.5, stress_level: "medium", water_liters_day: 2.0 },
+  };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const stored = localStorage.getItem("health-copilot-onboarding");
+    if (!stored) return fallback;
+    const s = JSON.parse(stored)?.state || {};
+    const p = s.profile || {};
+    const num = (v: unknown, d: number) => (v === "" || v == null ? d : Number(v));
+    return {
+      age: num(p.age, fallback.age),
+      gender: p.gender || fallback.gender,
+      weight_kg: num(p.weight_kg, fallback.weight_kg),
+      height_cm: num(p.height_cm, fallback.height_cm),
+      activity_level: s.activity?.activity_level || fallback.activity_level,
+      goal_type: s.goals?.[0]?.goal_type || fallback.goal_type,
+      conditions: (s.conditions || []).map((c: { condition_code: string }) => c.condition_code).filter(Boolean),
+      cuisine: s.diet?.cuisine_type || fallback.cuisine,
+      protein_pref: s.diet?.protein_preference || fallback.protein_pref,
+      name: p.name || fallback.name,
+      lifestyle: {
+        sleep_hours: num(s.lifestyle?.sleep_hours, 6.5),
+        stress_level: s.lifestyle?.stress_level || "medium",
+        water_liters_day: num(s.lifestyle?.water_liters_day, 2.0),
+      },
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 /** Returns the active user id. In demo mode, always the demo user. */
 export function resolveUserId(): string | null {
@@ -40,29 +83,18 @@ export const api = {
   },
 
   getUser: (userId: string) =>
-    DEMO_MODE ? Promise.resolve(demoSummary) : apiFetch(`/users/${userId}`),
+    DEMO_MODE ? Promise.resolve(buildUserSummary(getOnboardingInput(), userId)) : apiFetch(`/users/${userId}`),
 
   getUserSummary: (userId: string) =>
-    DEMO_MODE ? Promise.resolve(demoSummary) : apiFetch(`/users/${userId}/summary`),
+    DEMO_MODE ? Promise.resolve(buildUserSummary(getOnboardingInput(), userId)) : apiFetch(`/users/${userId}/summary`),
 
-  getMealPlan: (userId: string, date?: string) => {
-    if (DEMO_MODE) {
-      try {
-        const stored = localStorage.getItem("health-copilot-onboarding");
-        const state = stored ? JSON.parse(stored)?.state : {};
-        const goalType = state?.goals?.[0]?.goal_type || "weight_loss";
-        const cuisineType = state?.diet?.cuisine_type || "indian";
-        const proteinPref = state?.diet?.protein_preference || "vegetarian";
-        return Promise.resolve(getDemoMealPlan(goalType, cuisineType, proteinPref));
-      } catch {
-        return Promise.resolve(demoMealPlan);
-      }
-    }
-    return apiFetch(`/nutrition/${userId}/plan${date ? `?plan_date=${date}` : ""}`);
-  },
+  getMealPlan: (userId: string, date?: string) =>
+    DEMO_MODE
+      ? Promise.resolve(generateMealPlan(getOnboardingInput()))
+      : apiFetch(`/nutrition/${userId}/plan${date ? `?plan_date=${date}` : ""}`),
 
   getMacros: (userId: string) =>
-    DEMO_MODE ? Promise.resolve(demoMacros) : apiFetch(`/nutrition/${userId}/macros`),
+    DEMO_MODE ? Promise.resolve(computeMacros(getOnboardingInput())) : apiFetch(`/nutrition/${userId}/macros`),
 
   regeneratePlan: (userId: string) =>
     DEMO_MODE ? Promise.resolve({ message: "demo", plan_id: "demo-plan" }) : apiFetch(`/nutrition/${userId}/plan/regenerate`, { method: "POST" }),
@@ -74,13 +106,13 @@ export const api = {
     DEMO_MODE ? Promise.resolve({ foods: [], total: 0 }) : apiFetch(`/nutrition/foods/search?q=${encodeURIComponent(q)}${userId ? `&user_id=${userId}` : ""}`),
 
   getWorkoutPlan: (userId: string) =>
-    DEMO_MODE ? Promise.resolve(demoWorkoutPlan) : apiFetch(`/workouts/${userId}/plan`),
+    DEMO_MODE ? Promise.resolve(generateWorkoutPlan(getOnboardingInput())) : apiFetch(`/workouts/${userId}/plan`),
 
   getTodayWorkout: (userId: string) =>
-    DEMO_MODE ? Promise.resolve(demoTodayWorkout) : apiFetch(`/workouts/${userId}/today`),
+    DEMO_MODE ? Promise.resolve(generateTodayWorkout(getOnboardingInput())) : apiFetch(`/workouts/${userId}/today`),
 
   getLifestyleRecs: (userId: string) =>
-    DEMO_MODE ? Promise.resolve(demoLifestyle) : apiFetch(`/lifestyle/${userId}/recommendations`),
+    DEMO_MODE ? Promise.resolve(generateLifestyle(getOnboardingInput())) : apiFetch(`/lifestyle/${userId}/recommendations`),
 
   logProgress: async (userId: string, data: unknown) => {
     if (DEMO_MODE) { await delay(400); return { id: "demo", ...(data as object) }; }
@@ -102,7 +134,7 @@ export const api = {
   },
 
   explainPlan: (userId: string, planId: string) =>
-    DEMO_MODE ? Promise.resolve({ explanation: demoMealPlan.ai_summary }) : apiFetch(`/ai/${userId}/explain/meal/${planId}`, { method: "POST" }),
+    DEMO_MODE ? Promise.resolve({ explanation: generateMealPlan(getOnboardingInput()).ai_summary }) : apiFetch(`/ai/${userId}/explain/meal/${planId}`, { method: "POST" }),
 
   explainFood: (userId: string, foodId: string) =>
     DEMO_MODE ? Promise.resolve({ food_name: "", explanation: "Demo mode", reason_tags: [] }) : apiFetch(`/ai/${userId}/explain/food/${foodId}`, { method: "POST" }),

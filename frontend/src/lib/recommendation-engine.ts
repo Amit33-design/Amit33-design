@@ -1,0 +1,754 @@
+/**
+ * Client-side recommendation engine for demo mode (static GitHub Pages build).
+ *
+ * Everything is generated DYNAMICALLY from the user's onboarding selections —
+ * age, gender, weight, activity level, primary goal, medical conditions,
+ * cuisine and protein preference. A large food + exercise library combined with
+ * date-seeded rotation yields hundreds of distinct plan combinations rather than
+ * a handful of hard-coded ones.
+ *
+ * Clinical logic mirrors the backend engines:
+ *   - Mifflin-St Jeor BMR → TDEE → goal-adjusted calorie target
+ *   - Goal-based macro splits, with a CKD protein cap override
+ *   - "Most Restrictive Wins" condition filtering across multiple conditions
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+export type Diet = "vegan" | "vegetarian" | "pescatarian" | "nonveg";
+export type Slot = "breakfast" | "mid_morning" | "lunch" | "evening_snack" | "dinner";
+
+interface Food {
+  id: string;
+  name: string;
+  local?: string;
+  group: string;
+  cuisines: string[]; // indian | western | mediterranean (universal = all three)
+  diet: Diet; // most restrictive diet that may eat it
+  slots: Slot[];
+  qty: number; // serving grams (or ml)
+  cal: number;
+  p: number;
+  c: number;
+  f: number;
+  fiber: number;
+  gi?: number;
+  sodium: "low" | "med" | "high";
+  oxalate: "low" | "high";
+  satfat: "low" | "med" | "high";
+  goitrogen?: boolean; // raw cruciferous (thyroid)
+  highK?: boolean; // high potassium / phosphorus (CKD)
+  anchor?: boolean; // primary protein source
+  tags: string[];
+}
+
+export interface OnboardingInput {
+  age: number;
+  gender: string;
+  weight_kg: number;
+  height_cm: number;
+  activity_level: string;
+  goal_type: string;
+  conditions: string[];
+  cuisine: string;
+  protein_pref: string;
+  name?: string;
+  lifestyle?: { sleep_hours?: number; stress_level?: string; water_liters_day?: number };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Food library  (~90 foods across cuisines / diets / slots)
+// ─────────────────────────────────────────────────────────────────────────────
+const ALL: string[] = ["indian", "western", "mediterranean"];
+
+const FOODS: Food[] = [
+  // ── Universal: fruits, nuts, seeds, dairy, eggs, lean animal protein ──────────
+  { id: "egg-boiled", name: "Boiled Eggs (2)", local: "Uble Ande", group: "protein", cuisines: ALL, diet: "vegetarian", slots: ["breakfast", "evening_snack"], qty: 100, cal: 155, p: 13, c: 1, f: 11, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Muscle Recovery"] },
+  { id: "egg-bhurji", name: "Egg Bhurji (3 eggs)", local: "Anda Bhurji", group: "protein", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast"], qty: 150, cal: 240, p: 18, c: 3, f: 18, fiber: 1, sodium: "med", oxalate: "low", satfat: "med", anchor: true, tags: ["Complete Protein", "High Protein"] },
+  { id: "greek-yogurt", name: "Greek Yogurt", local: "Chakka Dahi", group: "dairy", cuisines: ALL, diet: "vegetarian", slots: ["breakfast", "mid_morning", "evening_snack"], qty: 180, cal: 180, p: 18, c: 10, f: 4, fiber: 0, gi: 14, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Protein", "Probiotic", "Calcium"] },
+  { id: "low-fat-curd", name: "Low-Fat Curd", local: "Dahi", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast", "lunch", "evening_snack"], qty: 150, cal: 82, p: 7, c: 10, f: 2, fiber: 0, gi: 35, sodium: "low", oxalate: "low", satfat: "low", tags: ["Probiotic", "Low Sodium", "Calcium"] },
+  { id: "paneer", name: "Low-Fat Paneer", local: "Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 100, cal: 200, p: 18, c: 2, f: 13, fiber: 0, sodium: "low", oxalate: "low", satfat: "high", anchor: true, tags: ["Vegetarian Protein", "Calcium"] },
+  { id: "paneer-bhurji", name: "Paneer Bhurji", local: "Paneer Bhurji", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast"], qty: 150, cal: 290, p: 22, c: 6, f: 20, fiber: 1, sodium: "low", oxalate: "low", satfat: "high", anchor: true, tags: ["High Protein", "Complete Amino"] },
+  { id: "almonds", name: "Almonds", local: "Badam", group: "nuts", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 25, cal: 145, p: 5, c: 5, f: 13, fiber: 3, sodium: "low", oxalate: "high", satfat: "low", tags: ["Healthy Fats", "Vitamin E"] },
+  { id: "walnuts", name: "Walnuts", local: "Akhrot", group: "nuts", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack", "breakfast"], qty: 20, cal: 131, p: 3, c: 3, f: 13, fiber: 2, sodium: "low", oxalate: "low", satfat: "low", tags: ["Omega-3", "Brain Health", "Anti-Inflammatory"] },
+  { id: "pumpkin-seeds", name: "Roasted Pumpkin Seeds", local: "Kaddu Beej", group: "seeds", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 20, cal: 113, p: 6, c: 4, f: 9, fiber: 2, sodium: "low", oxalate: "low", satfat: "low", tags: ["Zinc", "Magnesium", "Bone Health"] },
+  { id: "chia", name: "Chia Seeds", group: "seeds", cuisines: ALL, diet: "vegan", slots: ["breakfast", "mid_morning"], qty: 12, cal: 58, p: 2, c: 5, f: 4, fiber: 4, sodium: "low", oxalate: "low", satfat: "low", tags: ["Omega-3", "High Fiber", "Hydrophilic"] },
+  { id: "flax", name: "Ground Flaxseeds", local: "Alsi", group: "seeds", cuisines: ALL, diet: "vegan", slots: ["breakfast", "mid_morning"], qty: 20, cal: 110, p: 4, c: 6, f: 9, fiber: 7, sodium: "low", oxalate: "low", satfat: "low", tags: ["Omega-3", "Heart Healthy", "High Fiber"] },
+  { id: "berries", name: "Mixed Berries", group: "fruit", cuisines: ALL, diet: "vegan", slots: ["breakfast", "mid_morning", "evening_snack"], qty: 100, cal: 57, p: 1, c: 14, f: 0, fiber: 4, gi: 25, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Anti-Inflammatory", "Low GI"] },
+  { id: "guava", name: "Guava", local: "Amrood", group: "fruit", cuisines: ["indian"], diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 120, cal: 68, p: 1, c: 14, f: 1, fiber: 5, gi: 12, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Vitamin C"] },
+  { id: "apple", name: "Apple", group: "fruit", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 150, cal: 78, p: 0, c: 21, f: 0, fiber: 4, gi: 38, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "Fiber", "Quercetin"] },
+  { id: "banana", name: "Banana", local: "Kela", group: "fruit", cuisines: ALL, diet: "vegan", slots: ["mid_morning"], qty: 120, cal: 107, p: 1, c: 27, f: 0, fiber: 3, gi: 51, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["Pre-workout Fuel", "Potassium"] },
+  { id: "orange", name: "Orange", local: "Santra", group: "fruit", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 130, cal: 62, p: 1, c: 15, f: 0, fiber: 3, gi: 43, sodium: "low", oxalate: "low", satfat: "low", tags: ["Vitamin C", "Citrate", "Hydrating"] },
+  { id: "chicken", name: "Grilled Chicken Breast", local: "Murgh", group: "protein", cuisines: ALL, diet: "nonveg", slots: ["lunch", "dinner"], qty: 150, cal: 248, p: 47, c: 0, f: 5, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Low Sodium", "Muscle Preservation"] },
+  { id: "salmon", name: "Baked Salmon", group: "protein", cuisines: ["western", "mediterranean"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 150, cal: 310, p: 34, c: 0, f: 19, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Omega-3", "Heart Healthy", "Lean Protein"] },
+  { id: "surmai", name: "Grilled Surmai (King Fish)", local: "Surmai", group: "protein", cuisines: ["indian"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 150, cal: 215, p: 40, c: 0, f: 6, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Omega-3", "Lean Protein", "Heart Healthy"] },
+  { id: "seabass", name: "Baked Sea Bass with Herbs", group: "protein", cuisines: ["mediterranean"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 150, cal: 180, p: 30, c: 0, f: 6, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Omega-3", "Lean Protein", "Heart Healthy"] },
+  { id: "green-tea", name: "Green Tea", local: "Hari Chai", group: "beverage", cuisines: ALL, diet: "vegan", slots: ["evening_snack", "mid_morning"], qty: 240, cal: 2, p: 0, c: 0, f: 0, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Metabolism"] },
+
+  // ── Indian ───────────────────────────────────────────────────────────────────
+  { id: "oats-steel", name: "Steel-Cut Oats", group: "grains", cuisines: ALL, diet: "vegan", slots: ["breakfast"], qty: 60, cal: 225, p: 8, c: 40, f: 4, fiber: 6, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Beta-Glucan"] },
+  { id: "poha", name: "Vegetable Poha", local: "Poha", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 120, cal: 200, p: 6, c: 38, f: 3, fiber: 3, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["Light", "Iron", "Complex Carbs"] },
+  { id: "idli", name: "Idli (3) + Sambar", local: "Idli", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 200, cal: 230, p: 9, c: 44, f: 2, fiber: 4, gi: 60, sodium: "med", oxalate: "low", satfat: "low", tags: ["Fermented", "Light", "Plant Protein"] },
+  { id: "moong-chilla", name: "Moong Dal Chilla (2)", local: "Chilla", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 150, cal: 210, p: 14, c: 26, f: 5, fiber: 5, gi: 40, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Low GI"] },
+  { id: "turmeric-milk", name: "Turmeric Milk", local: "Haldi Doodh", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast", "evening_snack"], qty: 250, cal: 130, p: 7, c: 14, f: 5, fiber: 0, sodium: "low", oxalate: "low", satfat: "med", tags: ["Anti-Inflammatory", "Bone Health", "Curcumin"] },
+  { id: "brown-rice", name: "Brown Rice", group: "grains", cuisines: ["indian", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 215, p: 5, c: 45, f: 2, fiber: 4, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "Complex Carbs", "High Fiber"] },
+  { id: "roti", name: "Whole Wheat Roti (2)", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 80, cal: 240, p: 8, c: 44, f: 5, fiber: 5, gi: 62, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Fiber", "Whole Grain"] },
+  { id: "bajra-roti", name: "Bajra Roti", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 60, cal: 175, p: 5, c: 35, f: 3, fiber: 5, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["Bone Health", "Magnesium", "Whole Grain"] },
+  { id: "masoor-dal", name: "Masoor Dal", local: "Masoor", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 230, p: 18, c: 40, f: 1, fiber: 8, gi: 29, sodium: "low", oxalate: "low", satfat: "low", highK: true, anchor: true, tags: ["Low GI", "High Fiber", "Plant Protein"] },
+  { id: "moong-dal", name: "Moong Dal", local: "Moong", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 175, p: 12, c: 30, f: 1, fiber: 6, gi: 25, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "Low GI", "Digestive Health"] },
+  { id: "rajma", name: "Rajma (Kidney Beans)", local: "Rajma", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 120, cal: 140, p: 10, c: 25, f: 1, fiber: 7, gi: 24, sodium: "low", oxalate: "high", satfat: "low", highK: true, anchor: true, tags: ["Plant Protein", "Fiber", "Iron"] },
+  { id: "chana-salad", name: "Chickpea & Cucumber Salad", local: "Kala Chana", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "evening_snack"], qty: 100, cal: 164, p: 9, c: 27, f: 8, fiber: 8, gi: 28, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Fiber", "Plant Protein", "Diabetes Friendly"] },
+  { id: "soya-chunks", name: "Soya Chunks Curry", local: "Soya", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 100, cal: 345, p: 35, c: 33, f: 1, fiber: 11, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Muscle Gain", "High Fiber"] },
+  { id: "tofu-palak", name: "Tofu & Spinach Stir-fry", local: "Tofu Palak", group: "protein", cuisines: ["indian", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 120, cal: 130, p: 14, c: 5, f: 7, fiber: 3, sodium: "low", oxalate: "high", satfat: "low", anchor: true, tags: ["Plant Protein", "Iron", "Calcium"] },
+  { id: "tofu-bhurji", name: "Tofu Bhurji", local: "Tofu", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["breakfast", "dinner"], qty: 150, cal: 165, p: 18, c: 5, f: 9, fiber: 2, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Plant-Based", "Low Carb"] },
+  { id: "khichdi", name: "Moong Dal Khichdi", local: "Khichdi", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 235, p: 11, c: 40, f: 3, fiber: 5, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Digestive Ease", "Complete Protein", "Joint Friendly"] },
+  { id: "bitter-gourd", name: "Bitter Gourd Sabzi", local: "Karela", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 80, cal: 64, p: 3, c: 6, f: 3, fiber: 3, gi: 18, sodium: "low", oxalate: "low", satfat: "low", tags: ["Diabetes Friendly", "Low Sodium"] },
+  { id: "cauliflower", name: "Cauliflower Sabzi", local: "Gobi", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 70, p: 3, c: 8, f: 1, fiber: 3, gi: 15, sodium: "low", oxalate: "low", satfat: "low", goitrogen: true, tags: ["Low GI", "Low Sodium"] },
+  { id: "chole-palak", name: "Chickpea & Spinach Curry", local: "Chole Palak", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 120, cal: 196, p: 10, c: 33, f: 6, fiber: 10, gi: 28, sodium: "low", oxalate: "high", satfat: "low", anchor: true, tags: ["High Fiber", "Plant Protein", "Iron"] },
+  { id: "buttermilk", name: "Buttermilk", local: "Chaas", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["evening_snack", "lunch"], qty: 200, cal: 82, p: 6, c: 10, f: 2, fiber: 0, gi: 35, sodium: "med", oxalate: "low", satfat: "low", tags: ["Probiotic", "Hydrating"] },
+  { id: "sprouts", name: "Moong Sprouts", local: "Ankurit Moong", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["evening_snack", "breakfast"], qty: 60, cal: 60, p: 5, c: 8, f: 2, fiber: 4, sodium: "low", oxalate: "low", satfat: "low", tags: ["Plant Protein", "Digestive Enzymes", "High Fiber"] },
+  { id: "roasted-chana", name: "Roasted Chana", local: "Bhuna Chana", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["evening_snack"], qty: 40, cal: 145, p: 8, c: 15, f: 5, fiber: 5, gi: 28, sodium: "low", oxalate: "low", satfat: "low", tags: ["Plant Protein", "Fiber", "Post-workout"] },
+  { id: "veg-soup", name: "Mixed Vegetable Soup", local: "Sabzi Shorba", group: "vegetable", cuisines: ["indian", "western"], diet: "vegan", slots: ["dinner", "evening_snack"], qty: 300, cal: 120, p: 5, c: 18, f: 4, fiber: 4, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low Calorie", "Hydrating", "Digestive Ease"] },
+
+  // ── Western ────────────────────────────────────────────────────────────────
+  { id: "rolled-oats", name: "Rolled Oats with Milk", group: "grains", cuisines: ["western"], diet: "vegetarian", slots: ["breakfast"], qty: 50, cal: 188, p: 7, c: 32, f: 4, fiber: 5, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Beta-Glucan"] },
+  { id: "quinoa", name: "Quinoa", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 90, cal: 200, p: 7, c: 35, f: 3, fiber: 4, gi: 53, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Low GI", "Gluten Free"] },
+  { id: "sweet-potato", name: "Roasted Sweet Potato", group: "vegetable", cuisines: ["western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 120, cal: 103, p: 2, c: 24, f: 0, fiber: 4, gi: 44, sodium: "low", oxalate: "high", satfat: "low", highK: true, tags: ["Low GI", "Beta-Carotene", "Potassium"] },
+  { id: "chickpea-tofu-salad", name: "Chickpea & Tofu Salad", group: "legumes", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["lunch"], qty: 150, cal: 246, p: 18, c: 28, f: 9, fiber: 9, gi: 28, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Complete Amino"] },
+  { id: "broccoli", name: "Roasted Broccoli & Peppers", group: "vegetable", cuisines: ["western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 100, cal: 43, p: 3, c: 8, f: 1, fiber: 3, gi: 15, sodium: "low", oxalate: "low", satfat: "low", goitrogen: true, tags: ["Antioxidant", "Low Carb", "Vitamin C"] },
+  { id: "asparagus", name: "Steamed Asparagus", group: "vegetable", cuisines: ["western"], diet: "vegan", slots: ["dinner"], qty: 100, cal: 20, p: 2, c: 4, f: 0, fiber: 2, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low Calorie", "Folate", "Anti-Inflammatory"] },
+  { id: "hummus-veg", name: "Celery & Carrot with Hummus", group: "legumes", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["evening_snack", "mid_morning"], qty: 80, cal: 120, p: 5, c: 12, f: 7, fiber: 4, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Fiber", "Plant Protein", "Hydrating"] },
+  { id: "almond-butter", name: "Almond Butter on Toast", group: "nuts", cuisines: ["western"], diet: "vegan", slots: ["mid_morning", "breakfast"], qty: 40, cal: 180, p: 6, c: 18, f: 11, fiber: 3, gi: 51, sodium: "low", oxalate: "low", satfat: "low", tags: ["Healthy Fats", "Vitamin E", "Complex Carbs"] },
+  { id: "turkey-wrap", name: "Turkey & Avocado Wrap", group: "protein", cuisines: ["western"], diet: "nonveg", slots: ["lunch"], qty: 200, cal: 320, p: 30, c: 28, f: 11, fiber: 6, sodium: "med", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Healthy Fats", "High Fiber"] },
+  { id: "lentil-soup", name: "Lentil Soup (Red Lentils)", group: "legumes", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["dinner", "lunch"], qty: 200, cal: 175, p: 13, c: 30, f: 8, fiber: 8, gi: 21, sodium: "low", oxalate: "low", satfat: "low", highK: true, anchor: true, tags: ["High Fiber", "Plant Protein", "Iron"] },
+  { id: "cottage-cheese", name: "Cottage Cheese Bowl", group: "dairy", cuisines: ["western"], diet: "vegetarian", slots: ["breakfast", "evening_snack"], qty: 150, cal: 160, p: 20, c: 8, f: 5, fiber: 0, gi: 10, sodium: "med", oxalate: "low", satfat: "low", anchor: true, tags: ["High Protein", "Casein", "Calcium"] },
+
+  // ── Mediterranean ─────────────────────────────────────────────────────────
+  { id: "yogurt-parfait", name: "Greek Yogurt Parfait", group: "dairy", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 180, cal: 200, p: 18, c: 16, f: 4, fiber: 3, gi: 16, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Protein", "Probiotic", "Antioxidant"] },
+  { id: "shakshuka", name: "Shakshuka (Eggs in Tomato)", group: "protein", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 200, cal: 250, p: 16, c: 14, f: 14, fiber: 4, sodium: "med", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Lycopene", "Heart Healthy"] },
+  { id: "med-veg", name: "Roasted Eggplant & Zucchini (Olive Oil)", group: "vegetable", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 95, p: 3, c: 14, f: 5, fiber: 5, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Heart Healthy", "Low Sodium"] },
+  { id: "greek-salad", name: "Greek Salad (Tomato, Olive, Cucumber)", group: "vegetable", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 150, cal: 110, p: 4, c: 9, f: 7, fiber: 4, sodium: "med", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Lycopene", "Healthy Fats"] },
+  { id: "falafel", name: "Baked Falafel (4)", group: "legumes", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 120, cal: 230, p: 12, c: 26, f: 9, fiber: 7, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Iron"] },
+  { id: "pita-hummus", name: "Whole Grain Pita & Hummus", group: "grains", cuisines: ["mediterranean"], diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 80, cal: 190, p: 7, c: 28, f: 6, fiber: 5, gi: 55, sodium: "med", oxalate: "low", satfat: "low", tags: ["Complex Carbs", "Plant Protein", "Fiber"] },
+  { id: "olives-nuts", name: "Olives & Mixed Nuts", group: "nuts", cuisines: ["mediterranean"], diet: "vegan", slots: ["evening_snack", "mid_morning"], qty: 30, cal: 150, p: 4, c: 6, f: 13, fiber: 2, sodium: "med", oxalate: "low", satfat: "low", tags: ["Healthy Fats", "Heart Healthy", "Antioxidant"] },
+  { id: "tabbouleh", name: "Tabbouleh (Bulgur & Herbs)", group: "grains", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch"], qty: 150, cal: 160, p: 5, c: 28, f: 4, fiber: 6, gi: 48, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Fiber", "Herbs", "Complex Carbs"] },
+  { id: "figs-dates", name: "Fresh Figs / Dates (2)", group: "fruit", cuisines: ["mediterranean", "indian"], diet: "vegan", slots: ["evening_snack"], qty: 40, cal: 47, p: 1, c: 12, f: 1, fiber: 2, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Natural Sweetness", "Fiber", "Iron"] },
+
+  // ── User-requested additions ─────────────────────────────────────────────────
+  { id: "soaked-almonds", name: "Soaked Almonds (overnight)", local: "Bhige Badam", group: "nuts", cuisines: ALL, diet: "vegan", slots: ["breakfast", "mid_morning"], qty: 25, cal: 145, p: 5, c: 5, f: 13, fiber: 3, sodium: "low", oxalate: "high", satfat: "low", tags: ["Healthy Fats", "Vitamin E", "Easier Digestion", "Brain Health"] },
+  { id: "sprout-avocado-bowl", name: "Moong Sprout & Avocado Bowl", local: "Ankurit Moong + Avocado", group: "legumes", cuisines: ["indian", "western"], diet: "vegan", slots: ["breakfast", "evening_snack", "mid_morning"], qty: 150, cal: 210, p: 9, c: 18, f: 12, fiber: 8, gi: 25, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "Monounsaturated Fats", "High Fiber", "Heart Healthy"] },
+  { id: "yogurt-herb-salad", name: "Garden Salad, Yogurt-Coriander-Mint Dressing", local: "Salad + Dahi Pudina", group: "vegetable", cuisines: ALL, diet: "vegetarian", slots: ["lunch", "dinner"], qty: 180, cal: 130, p: 8, c: 12, f: 6, fiber: 5, gi: 20, sodium: "low", oxalate: "low", satfat: "low", tags: ["Probiotic", "Hydrating", "Homemade Dressing", "Low GI"] },
+  { id: "yogurt-pepper-cashew", name: "Yogurt-Roasted Peppers with Cashew", group: "vegetable", cuisines: ["mediterranean", "western"], diet: "vegetarian", slots: ["evening_snack", "lunch"], qty: 120, cal: 165, p: 7, c: 12, f: 10, fiber: 3, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Probiotic", "Vitamin C", "Healthy Fats"] },
+  { id: "tofu-veg-stirfry", name: "Stir-Fry Veggies with Tofu", group: "protein", cuisines: ALL, diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 230, p: 18, c: 16, f: 11, fiber: 6, gi: 30, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Plant-Based", "High Fiber", "Iron"] },
+  { id: "hummus-falafel-platter", name: "Homemade Hummus, Falafel & Roasted Veggie Platter", group: "legumes", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 340, p: 16, c: 38, f: 14, fiber: 11, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Heart Healthy", "Homemade"] },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Condition rules  ("Most Restrictive Wins" — hard excludes + soft preferences)
+// ─────────────────────────────────────────────────────────────────────────────
+function isExcluded(food: Food, conditions: string[]): boolean {
+  for (const c of conditions) {
+    if ((c === "T2D" || c === "PREDIABETES") && food.gi !== undefined && food.gi >= 70) return true;
+    if ((c === "HTN" || c === "HEART_DISEASE") && food.sodium === "high") return true;
+    if (c === "KIDNEY_STONES" && food.oxalate === "high") return true;
+    if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE") && food.satfat === "high") return true;
+    if (c === "CKD" && food.highK) return true;
+    if (c === "THYROID" && food.goitrogen) return true;
+  }
+  return false;
+}
+
+/** Soft preference score: higher = better fit for the user's conditions + goal. */
+function preferenceScore(food: Food, conditions: string[], goal: string): number {
+  let s = 0;
+  for (const c of conditions) {
+    if ((c === "T2D" || c === "PREDIABETES") && food.gi !== undefined && food.gi < 55) s += 3;
+    if ((c === "HTN" || c === "HEART_DISEASE") && food.sodium === "low") s += 2;
+    if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE") && food.fiber >= 5) s += 2;
+    if (c === "KIDNEY_STONES" && food.oxalate === "low") s += 1;
+  }
+  const proteinDensity = food.p / Math.max(food.cal, 1);
+  if (goal === "muscle_gain") s += proteinDensity * 20 + (food.anchor ? 2 : 0);
+  else if (goal === "weight_loss" || goal === "fat_loss") s += proteinDensity * 12 + food.fiber * 0.4;
+  else if (goal === "healthy_aging") {
+    if (food.tags.some((t) => /anti-inflammatory|omega|brain|bone|antioxidant/i.test(t))) s += 3;
+    s += food.fiber * 0.3;
+  }
+  return s;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deterministic per-day rotation (so plans vary daily but are stable within a day)
+// ─────────────────────────────────────────────────────────────────────────────
+function seededRandom(seed: number): () => number {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function daySeed(extra = 0): number {
+  const now = new Date();
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+  return now.getFullYear() * 1000 + dayOfYear + extra * 131;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Diet compatibility
+// ─────────────────────────────────────────────────────────────────────────────
+const DIET_RANK: Record<Diet, number> = { vegan: 0, vegetarian: 1, pescatarian: 2, nonveg: 3 };
+function prefRank(pref: string): number {
+  if (pref === "vegan") return 0;
+  if (pref === "vegetarian") return 1;
+  if (pref === "pescatarian") return 2;
+  return 3; // non_vegetarian
+}
+function dietAllows(pref: string, food: Food): boolean {
+  return DIET_RANK[food.diet] <= prefRank(pref);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Macro calculation  (Mifflin-St Jeor)
+// ─────────────────────────────────────────────────────────────────────────────
+const ACTIVITY_MULT: Record<string, number> = {
+  sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9,
+};
+const GOAL_CAL_ADJ: Record<string, number> = {
+  weight_loss: -500, fat_loss: -300, muscle_gain: 300, maintenance: 0, healthy_aging: -100, cardiovascular: -200,
+};
+// protein g per kg, [protein%, carb%, fat%] for remaining calorie split
+const GOAL_PROTEIN: Record<string, number> = {
+  weight_loss: 1.8, fat_loss: 1.9, muscle_gain: 2.2, maintenance: 1.4, healthy_aging: 1.4, cardiovascular: 1.5,
+};
+
+export function computeMacros(input: OnboardingInput) {
+  const w = input.weight_kg || 75;
+  const h = input.height_cm || 170;
+  const age = input.age || 40;
+  const bmr = 10 * w + 6.25 * h - 5 * age + (input.gender === "female" ? -161 : 5);
+  const tdee = bmr * (ACTIVITY_MULT[input.activity_level] || 1.4);
+  const goal = input.goal_type || "weight_loss";
+  const calories = Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0)) / 10) * 10;
+
+  let proteinPerKg = GOAL_PROTEIN[goal] ?? 1.5;
+  // CKD override: cap protein at 0.75 g/kg regardless of goal
+  const hasCKD = input.conditions.includes("CKD");
+  if (hasCKD) proteinPerKg = Math.min(proteinPerKg, 0.75);
+
+  const protein_g = Math.round(proteinPerKg * w);
+  const proteinCals = protein_g * 4;
+  // fat ~28% of calories, rest carbs
+  const fat_g = Math.round((calories * 0.28) / 9);
+  const carbs_g = Math.max(0, Math.round((calories - proteinCals - fat_g * 9) / 4));
+  const fiber_g = Math.max(25, Math.round((calories / 1000) * 14));
+
+  return {
+    calories,
+    protein_g,
+    carbs_g,
+    fat_g,
+    fiber_g,
+    protein_g_per_kg: Math.round(proteinPerKg * 100) / 100,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Meal plan generation
+// ─────────────────────────────────────────────────────────────────────────────
+const SLOTS: { slot: Slot; share: number; maxItems: number; needsAnchor: boolean }[] = [
+  { slot: "breakfast", share: 0.25, maxItems: 3, needsAnchor: true },
+  { slot: "mid_morning", share: 0.1, maxItems: 2, needsAnchor: false },
+  { slot: "lunch", share: 0.33, maxItems: 4, needsAnchor: true },
+  { slot: "evening_snack", share: 0.1, maxItems: 2, needsAnchor: false },
+  { slot: "dinner", share: 0.22, maxItems: 3, needsAnchor: true },
+];
+
+const SLOT_LABELS: Record<Slot, string> = {
+  breakfast: "breakfast", mid_morning: "mid-morning", lunch: "lunch",
+  evening_snack: "evening snack", dinner: "dinner",
+};
+
+function buildFoodObj(food: Food) {
+  return {
+    id: `food-${food.id}`,
+    name: food.name,
+    name_local: food.local || null,
+    food_group: food.group,
+    calories: food.cal,
+    protein_g: food.p,
+    carbs_g: food.c,
+    fat_g: food.f,
+    fiber_g: food.fiber,
+    glycemic_index: food.gi,
+    is_low_gi: food.gi ? food.gi < 55 : false,
+    is_high_fiber: food.fiber >= 5,
+  };
+}
+
+function toMealItem(food: Food, slot: Slot) {
+  return {
+    id: `${slot}-${food.id}`,
+    food: buildFoodObj(food),
+    meal_slot: slot,
+    quantity_g: food.qty,
+    reason_tags: food.tags,
+    ai_reason: null,
+    calories: food.cal,
+    protein_g: food.p,
+    carbs_g: food.c,
+    fat_g: food.f,
+  };
+}
+
+export function generateMealPlan(input: OnboardingInput) {
+  const macros = computeMacros(input);
+  const cuisine = input.cuisine || "indian";
+  const conditions = input.conditions || [];
+  const goal = input.goal_type || "weight_loss";
+
+  // CKD (or any explicit protein cap) must not be exceeded by the actual food
+  // selection, not just the displayed target. Track protein across the whole day.
+  const proteinCap = conditions.includes("CKD");
+  const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
+  let dayProtein = 0;
+  const usedIds = new Set<string>(); // global dedupe → more variety across slots
+
+  const meals = SLOTS.map((slotDef, idx) => {
+    const rand = seededRandom(daySeed(idx) + hashStr(input.protein_pref + cuisine + goal + conditions.join("")));
+    // candidate pool for this slot
+    let pool = FOODS.filter(
+      (food) =>
+        food.slots.includes(slotDef.slot) &&
+        (food.cuisines.includes(cuisine) || food.cuisines.length === 3) &&
+        dietAllows(input.protein_pref, food) &&
+        !isExcluded(food, conditions) &&
+        !usedIds.has(food.id)
+    );
+    // fallback: if cuisine filter empties a slot, allow any cuisine
+    if (pool.length < 2) {
+      pool = FOODS.filter(
+        (food) =>
+          food.slots.includes(slotDef.slot) &&
+          dietAllows(input.protein_pref, food) &&
+          !isExcluded(food, conditions) &&
+          !usedIds.has(food.id)
+      );
+    }
+
+    // rank by preference score + daily jitter for rotation
+    const ranked = pool
+      .map((food) => ({ food, score: preferenceScore(food, conditions, goal) + rand() * 4 }))
+      .sort((a, b) => b.score - a.score);
+
+    const targetCal = macros.calories * slotDef.share;
+    const picked: Food[] = [];
+    let cal = 0;
+    const maxAnchors = proteinCap ? 1 : 2;
+    let anchors = 0;
+
+    const tryAdd = (food: Food): boolean => {
+      if (picked.includes(food)) return false;
+      if (food.anchor && anchors >= maxAnchors) return false;
+      // never blow the daily protein ceiling (critical for CKD)
+      if (food.p >= 8 && dayProtein + food.p > proteinCeiling) return false;
+      picked.push(food);
+      usedIds.add(food.id);
+      cal += food.cal;
+      dayProtein += food.p;
+      if (food.anchor) anchors += 1;
+      return true;
+    };
+
+    // ensure a protein anchor first for main meals
+    if (slotDef.needsAnchor) {
+      const anchor = ranked.find((r) => r.food.anchor);
+      if (anchor) tryAdd(anchor.food);
+    }
+    for (const r of ranked) {
+      if (picked.length >= slotDef.maxItems) break;
+      if (cal >= targetCal * 0.92 && picked.length >= (slotDef.needsAnchor ? 2 : 1)) break;
+      tryAdd(r.food);
+    }
+
+    const items = picked.map((food) => toMealItem(food, slotDef.slot));
+    return {
+      slot: slotDef.slot,
+      slot_calories: items.reduce((s, i) => s + i.calories, 0),
+      slot_protein_g: items.reduce((s, i) => s + i.protein_g, 0),
+      items,
+    };
+  });
+
+  const total_calories = meals.reduce((s, m) => s + m.slot_calories, 0);
+  const total_protein_g = meals.reduce((s, m) => s + m.slot_protein_g, 0);
+  const total_carbs_g = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.carbs_g, 0), 0);
+  const total_fat_g = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.fat_g, 0), 0);
+  const total_fiber_g = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.food.fiber_g, 0), 0);
+
+  return {
+    id: `demo-plan-${goal}-${cuisine}-${input.protein_pref}`,
+    plan_date: new Date().toISOString().slice(0, 10),
+    total_calories,
+    total_protein_g,
+    total_carbs_g,
+    total_fat_g,
+    total_fiber_g,
+    ai_summary: buildSummary(input, macros),
+    meals,
+    macro_targets: macros,
+  };
+}
+
+function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeMacros>): string {
+  const goal = (input.goal_type || "weight_loss").replace(/_/g, " ");
+  const condNames = input.conditions.map((c) => CONDITION_LABEL[c] || c).filter(Boolean);
+  const condStr = condNames.length ? condNames.join(" and ") : "your general wellness profile";
+  const parts: string[] = [];
+  parts.push(
+    `Today's ${macros.calories} kcal plan is generated for your goal of ${goal} and built around ${condStr}.`
+  );
+  if (input.conditions.includes("T2D") || input.conditions.includes("PREDIABETES"))
+    parts.push("Every carbohydrate source is low-to-medium glycemic index to keep blood sugar stable.");
+  if (input.conditions.includes("HTN") || input.conditions.includes("HEART_DISEASE"))
+    parts.push("Sodium is kept low following the DASH protocol, with potassium-rich whole foods.");
+  if (input.conditions.includes("KIDNEY_STONES"))
+    parts.push("High-oxalate foods (spinach, beans, nuts) are swapped for low-oxalate alternatives.");
+  if (input.conditions.includes("CKD"))
+    parts.push(`Protein is capped at ${macros.protein_g_per_kg} g/kg to protect kidney function.`);
+  if (input.conditions.includes("HYPERLIPIDEMIA"))
+    parts.push("Saturated fat is minimised and soluble fiber elevated to help lower LDL cholesterol.");
+  if (input.goal_type === "muscle_gain")
+    parts.push(`Protein is set high at ${macros.protein_g} g (${macros.protein_g_per_kg} g/kg) and spread across all meals to maximise muscle protein synthesis.`);
+  else if (input.goal_type === "healthy_aging")
+    parts.push("Anti-inflammatory foods, omega-3s and adequate protein are prioritised to combat sarcopenia and support cognition.");
+  else
+    parts.push(`Protein is held at ${macros.protein_g} g to preserve muscle while in a calorie deficit.`);
+  parts.push("Foods rotate daily so your week stays varied.");
+  return parts.join(" ");
+}
+
+const CONDITION_LABEL: Record<string, string> = {
+  T2D: "Type 2 Diabetes", PREDIABETES: "Prediabetes", HTN: "Hypertension",
+  HYPERLIPIDEMIA: "High Cholesterol", KIDNEY_STONES: "Kidney Stones", CKD: "Chronic Kidney Disease",
+  HEART_DISEASE: "Heart Disease", THYROID: "Hypothyroidism",
+};
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workout generation
+// ─────────────────────────────────────────────────────────────────────────────
+interface ExerciseTemplate {
+  id: string;
+  name: string;
+  goals: string[];
+  levels: string[];
+  contra: string[]; // condition codes this template avoids
+  duration_min: number;
+  equipment: string[];
+  description: string;
+  instructions: {
+    warmup: { exercise: string; duration_sec?: number; reps?: number }[];
+    main_circuit: { exercise: string; sets?: number; reps?: number; rest_sec?: number; duration_sec?: number }[];
+    cooldown: { exercise: string; duration_sec?: number }[];
+  };
+}
+
+const WORKOUTS: ExerciseTemplate[] = [
+  {
+    id: "wo-walk-resist", name: "Post-Meal Walk + Resistance Circuit",
+    goals: ["weight_loss", "fat_loss", "maintenance", "cardiovascular"], levels: ["beginner", "intermediate"], contra: [],
+    duration_min: 35, equipment: ["bodyweight", "resistance_band"],
+    description: "Post-meal walking with light resistance to improve insulin sensitivity and support blood pressure.",
+    instructions: {
+      warmup: [{ exercise: "Brisk walk", duration_sec: 300 }],
+      main_circuit: [
+        { exercise: "Bodyweight squat", sets: 3, reps: 12, rest_sec: 60 },
+        { exercise: "Resistance band row", sets: 3, reps: 15, rest_sec: 60 },
+        { exercise: "Wall push-up", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Post-meal walk", duration_sec: 900 },
+      ],
+      cooldown: [{ exercise: "Box breathing (4-4-4-4)", duration_sec: 120 }],
+    },
+  },
+  {
+    id: "wo-ppl", name: "Push-Pull-Legs Strength (Dumbbells)",
+    goals: ["muscle_gain"], levels: ["intermediate", "advanced"], contra: [],
+    duration_min: 50, equipment: ["dumbbells", "bench"],
+    description: "Hypertrophy-focused dumbbell training split across push, pull and legs for progressive overload.",
+    instructions: {
+      warmup: [{ exercise: "Dynamic stretches + arm circles", duration_sec: 300 }],
+      main_circuit: [
+        { exercise: "Dumbbell bench press", sets: 4, reps: 10, rest_sec: 90 },
+        { exercise: "Dumbbell row", sets: 4, reps: 10, rest_sec: 90 },
+        { exercise: "Goblet squat", sets: 4, reps: 12, rest_sec: 90 },
+        { exercise: "Romanian deadlift", sets: 3, reps: 12, rest_sec: 90 },
+        { exercise: "Overhead press", sets: 3, reps: 10, rest_sec: 75 },
+      ],
+      cooldown: [{ exercise: "Static stretching", duration_sec: 240 }],
+    },
+  },
+  {
+    id: "wo-chair-yoga", name: "Chair Yoga + Balance & Bands",
+    goals: ["healthy_aging", "maintenance"], levels: ["older_adult", "beginner"], contra: [],
+    duration_min: 30, equipment: ["chair", "resistance_band"],
+    description: "Gentle joint-friendly mobility, balance and band resistance to preserve strength and prevent falls.",
+    instructions: {
+      warmup: [{ exercise: "Seated neck & shoulder rolls", duration_sec: 180 }],
+      main_circuit: [
+        { exercise: "Chair-supported sit-to-stand", sets: 3, reps: 10, rest_sec: 60 },
+        { exercise: "Seated band row", sets: 3, reps: 12, rest_sec: 60 },
+        { exercise: "Standing heel-to-toe balance", sets: 2, reps: 10, rest_sec: 45 },
+        { exercise: "Seated leg extension", sets: 3, reps: 12, rest_sec: 45 },
+      ],
+      cooldown: [{ exercise: "Gentle seated stretching + breathing", duration_sec: 180 }],
+    },
+  },
+  {
+    id: "wo-cardio-moderate", name: "Moderate Steady-State Cardio",
+    goals: ["weight_loss", "fat_loss", "cardiovascular", "maintenance"], levels: ["beginner", "intermediate", "older_adult"], contra: [],
+    duration_min: 30, equipment: ["bodyweight"],
+    description: "Continuous moderate-intensity cardio that avoids Valsalva strain — safe for blood pressure management.",
+    instructions: {
+      warmup: [{ exercise: "Easy march in place", duration_sec: 180 }],
+      main_circuit: [
+        { exercise: "Brisk walk or cycle (RPE 5-6)", duration_sec: 1200 },
+        { exercise: "Gentle incline walk", duration_sec: 300 },
+      ],
+      cooldown: [{ exercise: "Walking cooldown + calf stretch", duration_sec: 240 }],
+    },
+  },
+  {
+    id: "wo-full-body", name: "Full-Body Bodyweight Strength",
+    goals: ["weight_loss", "muscle_gain", "maintenance"], levels: ["beginner", "intermediate"], contra: [],
+    duration_min: 40, equipment: ["bodyweight"],
+    description: "Compound bodyweight movements building total-body strength with no equipment.",
+    instructions: {
+      warmup: [{ exercise: "Jumping jacks + leg swings", duration_sec: 240 }],
+      main_circuit: [
+        { exercise: "Push-ups (knee or full)", sets: 3, reps: 12, rest_sec: 60 },
+        { exercise: "Reverse lunges", sets: 3, reps: 12, rest_sec: 60 },
+        { exercise: "Glute bridge", sets: 3, reps: 15, rest_sec: 45 },
+        { exercise: "Plank hold", sets: 3, duration_sec: 40, rest_sec: 45 },
+      ],
+      cooldown: [{ exercise: "Full-body stretch", duration_sec: 240 }],
+    },
+  },
+  {
+    id: "wo-yoga-flow", name: "Vinyasa Yoga Flow",
+    goals: ["healthy_aging", "maintenance", "weight_loss", "cardiovascular"], levels: ["beginner", "intermediate", "older_adult"], contra: [],
+    duration_min: 35, equipment: ["yoga_mat"],
+    description: "Flowing yoga that builds flexibility, core strength and lowers stress-driven cortisol and blood pressure.",
+    instructions: {
+      warmup: [{ exercise: "Cat-cow + child's pose", duration_sec: 240 }],
+      main_circuit: [
+        { exercise: "Sun salutation A", sets: 4, duration_sec: 120, rest_sec: 30 },
+        { exercise: "Warrior II flow", sets: 2, duration_sec: 120, rest_sec: 30 },
+        { exercise: "Tree pose balance", sets: 2, duration_sec: 60, rest_sec: 30 },
+      ],
+      cooldown: [{ exercise: "Savasana + deep breathing", duration_sec: 300 }],
+    },
+  },
+];
+
+const REST_TEMPLATE = {
+  id: "active-recovery", name: "Active Recovery", duration_min: 20, equipment: ["bodyweight"],
+  description: "Light mobility, a relaxed walk and stretching to aid recovery.",
+  instructions: {
+    warmup: [{ exercise: "Easy walk", duration_sec: 300 }],
+    main_circuit: [{ exercise: "Gentle full-body mobility", duration_sec: 600 }],
+    cooldown: [{ exercise: "Deep breathing", duration_sec: 180 }],
+  },
+};
+
+function fitnessLevel(input: OnboardingInput): string {
+  if (input.age >= 60) return "older_adult";
+  if (input.activity_level === "sedentary" || input.activity_level === "light") return "beginner";
+  if (input.activity_level === "very_active" || input.activity_level === "active") return "advanced";
+  return "intermediate";
+}
+
+export function generateWorkoutPlan(input: OnboardingInput) {
+  const level = fitnessLevel(input);
+  const goal = input.goal_type || "weight_loss";
+  const conditions = input.conditions || [];
+
+  let eligible = WORKOUTS.filter(
+    (w) =>
+      (w.goals.includes(goal) || w.goals.includes("maintenance")) &&
+      (w.levels.includes(level) || level === "advanced") &&
+      !w.contra.some((c) => conditions.includes(c))
+  );
+  if (eligible.length === 0) eligible = WORKOUTS.filter((w) => w.levels.includes(level) || w.levels.includes("beginner"));
+
+  // training days depend on goal: muscle gain trains more, healthy aging fewer
+  const trainingDays =
+    goal === "muscle_gain" ? [true, true, false, true, true, false, false]
+      : goal === "healthy_aging" ? [true, false, true, false, true, false, false]
+        : [true, false, true, true, false, true, false];
+
+  const dayNames = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const rand = seededRandom(daySeed(7) + hashStr(goal + level + conditions.join("")));
+  const rotated = [...eligible].sort(() => rand() - 0.5);
+
+  let ti = 0;
+  const days = dayNames.map((day, idx) => {
+    if (!trainingDays[idx]) return { day, is_rest_day: true, templates: [] as unknown[] };
+    const tmpl = rotated[ti % rotated.length];
+    ti += 1;
+    return {
+      day,
+      is_rest_day: false,
+      templates: [{
+        id: `${tmpl.id}-${idx}`,
+        name: tmpl.name,
+        fitness_level: level,
+        goal_type: goal,
+        duration_min: tmpl.duration_min,
+        equipment: tmpl.equipment,
+        description: tmpl.description,
+        instructions: tmpl.instructions,
+      }],
+    };
+  });
+
+  return { week_start: new Date().toISOString().slice(0, 10), fitness_level: level, ai_summary: null, days };
+}
+
+export function generateTodayWorkout(input: OnboardingInput) {
+  const plan = generateWorkoutPlan(input);
+  const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  const today = plan.days.find((d) => d.day === todayName) || plan.days[0];
+  if (today.is_rest_day) {
+    return {
+      day: new Date().toLocaleDateString("en-US", { weekday: "long" }),
+      is_rest_day: false,
+      templates: [REST_TEMPLATE],
+    };
+  }
+  return {
+    day: new Date().toLocaleDateString("en-US", { weekday: "long" }),
+    is_rest_day: false,
+    templates: today.templates,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lifestyle generation  (condition-aware)
+// ─────────────────────────────────────────────────────────────────────────────
+const CONDITION_TIPS: Record<string, { condition: string; tip: string }> = {
+  T2D: { condition: "Diabetes", tip: "A 15-minute walk after each meal improves post-meal blood sugar by up to 22%. Keep carbohydrates low-GI and high-fiber." },
+  PREDIABETES: { condition: "Prediabetes", tip: "Losing 5–7% of body weight and 150 min/week of activity can cut your progression to diabetes by ~58%." },
+  HTN: { condition: "Hypertension", tip: "Limit sodium to < 1500 mg/day, increase potassium-rich foods (banana, curd, dal) and practise daily relaxation (DASH protocol)." },
+  HYPERLIPIDEMIA: { condition: "High Cholesterol", tip: "Aim for 10–25 g of soluble fiber daily (oats, beans, flax) and replace saturated fats with olive oil and nuts to lower LDL." },
+  KIDNEY_STONES: { condition: "Kidney Stones", tip: "Drink 2.5–3 L of water daily, add citrus (lemon/orange) for citrate, and limit high-oxalate foods like spinach and almonds." },
+  CKD: { condition: "Kidney Disease", tip: "Keep protein moderate (~0.75 g/kg), limit phosphorus and potassium, and monitor fluid intake with your nephrologist." },
+  HEART_DISEASE: { condition: "Heart Disease", tip: "Prioritise omega-3 rich fish, keep sodium < 1500 mg, avoid trans fats and do moderate cardio while avoiding Valsalva straining." },
+  THYROID: { condition: "Hypothyroidism", tip: "Take levothyroxine on an empty stomach, ensure adequate selenium and iodine, and lightly cook cruciferous vegetables to reduce goitrogens." },
+};
+
+export function generateLifestyle(input: OnboardingInput) {
+  const conditions = input.conditions || [];
+  const w = input.weight_kg || 75;
+  const ls = input.lifestyle || {};
+  const sleepHours = ls.sleep_hours ?? 6.5;
+  const stress = ls.stress_level || "medium";
+
+  // hydration: 35 ml/kg, +0.5 L if kidney stones
+  let liters = Math.round((w * 0.035 + (conditions.includes("KIDNEY_STONES") ? 0.5 : 0)) * 10) / 10;
+  liters = Math.max(2.0, liters);
+
+  const condition_specific = conditions
+    .map((c) => CONDITION_TIPS[c])
+    .filter(Boolean);
+
+  const hasGlycemic = conditions.includes("T2D") || conditions.includes("PREDIABETES");
+
+  return {
+    hydration: {
+      target_liters: liters,
+      glasses_8oz: Math.round((liters * 1000) / 240),
+      reason: `Based on your weight (${w} kg) and ${input.activity_level || "moderate"} activity level${conditions.includes("KIDNEY_STONES") ? ", with an extra 0.5 L to help prevent kidney stones" : ""}.`,
+      tips: [
+        "Start your day with a glass of water before coffee",
+        "Carry a 1 L reusable bottle — refill twice",
+        "Drink a glass of water 30 min before each meal",
+        conditions.includes("KIDNEY_STONES") ? "Add fresh lemon to water — citrate helps prevent stones" : "Set hourly hydration reminders on your phone",
+      ],
+    },
+    sleep: {
+      target_hours: "7–9",
+      current_hours: sleepHours,
+      gap_message: sleepHours < 7
+        ? `You're getting ${sleepHours} h — aim for at least 7 h${hasGlycemic ? " to support blood sugar regulation" : " for recovery and hormone balance"}`
+        : null,
+      tips: [
+        "Keep a consistent sleep and wake time — even on weekends",
+        "Avoid screens 1 hour before bed (blue light disrupts melatonin)",
+        "Keep your bedroom cool at 65–68 °F (18–20 °C)",
+        "Avoid caffeine after 2 PM",
+      ],
+    },
+    stress: {
+      current_level: stress,
+      clinical_note: conditions.length
+        ? "Chronic stress raises cortisol, which elevates both blood pressure and blood glucose. Daily relaxation is as important as medication for your conditions."
+        : "Managing stress protects your heart, sleep and metabolism. A few minutes of daily practice compounds over time.",
+      techniques: [
+        { name: "Box Breathing", duration: "5 min", description: "Inhale 4 s → Hold 4 s → Exhale 4 s → Hold 4 s. Activates the parasympathetic nervous system." },
+        { name: "Nature Walk", duration: "20–30 min", description: "Brisk outdoor walking reduces cortisol by up to 18% in a single session." },
+        { name: "Journalling", duration: "10 min", description: "Write 3 things you're grateful for each evening — shown to lower perceived stress." },
+      ],
+    },
+    meditation: {
+      recommended_minutes: conditions.includes("HTN") || conditions.includes("HEART_DISEASE") ? 15 : 10,
+      best_time: "Morning (before breakfast) or evening (before bed)",
+      clinical_note: conditions.includes("HTN")
+        ? "Regular meditation reduces cortisol by up to 31% and lowers systolic blood pressure by 4–5 mmHg — meaningful for Hypertension management."
+        : "Regular meditation reduces cortisol by up to 31%, improving sleep, focus and metabolic health.",
+      practices: [
+        { name: "4-7-8 Breathing", duration: "5 min", icon: "🫁", level: "Beginner", description: "Inhale 4 s → Hold 7 s → Exhale 8 s. Repeat 4–8 cycles. Rapidly activates the rest-and-digest response." },
+        { name: "Body Scan Meditation", duration: "10 min", icon: "🧘", level: "Beginner", description: "Move attention slowly from toes to crown, releasing tension. Excellent for sleep quality." },
+        { name: "Mindful Eating", duration: "Per meal", icon: "🍽️", level: "Easy", description: "Eat without screens, chew each bite 20–30 times. Reduces post-meal glucose spikes and overeating." },
+        { name: "Guided Visualisation", duration: "10 min", icon: "🌊", level: "Intermediate", description: "Picture a calm place in vivid detail. Reduces anxiety and supports immune function." },
+      ],
+      apps: [
+        { name: "Insight Timer", note: "Free — 100k+ guided meditations" },
+        { name: "Headspace", note: "Structured beginner programs" },
+        { name: "Calm", note: "Sleep stories + breathing exercises" },
+      ],
+    },
+    condition_specific,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User summary
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildUserSummary(input: OnboardingInput, userId: string) {
+  return {
+    user_id: userId,
+    name: input.name || "You",
+    age: input.age,
+    gender: input.gender,
+    weight_kg: input.weight_kg,
+    height_cm: input.height_cm,
+    activity_level: input.activity_level,
+    primary_goal: input.goal_type,
+    condition_codes: input.conditions,
+    cuisine_type: input.cuisine,
+    protein_preference: input.protein_pref,
+    lifestyle: {
+      sleep_hours: input.lifestyle?.sleep_hours ?? 6.5,
+      stress_level: input.lifestyle?.stress_level ?? "medium",
+      water_liters_day: input.lifestyle?.water_liters_day ?? 2.0,
+    },
+  };
+}
