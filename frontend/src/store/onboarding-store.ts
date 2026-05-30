@@ -26,7 +26,8 @@ export interface OnboardingCondition {
 }
 
 export interface OnboardingDiet {
-  diet_type: string;
+  cuisine_type: string;
+  protein_preference: string;
   allergies: string[];
   intolerances: string[];
 }
@@ -64,7 +65,7 @@ const defaultProfile: OnboardingProfile = {
   name: "", email: "", age: "", gender: "", height_cm: "", weight_kg: "",
 };
 const defaultActivity: OnboardingActivity = { activity_level: "" };
-const defaultDiet: OnboardingDiet = { diet_type: "", allergies: [], intolerances: [] };
+const defaultDiet: OnboardingDiet = { cuisine_type: "", protein_preference: "", allergies: [], intolerances: [] };
 const defaultLifestyle: OnboardingLifestyle = {
   sleep_hours: "", stress_level: "", smoking_status: "", alcohol_units_week: "", water_liters_day: "",
 };

@@ -42,7 +42,7 @@ export default function LifestylePage() {
         goals: goals.map((g) => ({ goal_type: g.goal_type, is_primary: g.is_primary })),
         conditions: conditions.map((c) => ({ condition_code: c.condition_code })),
         dietary_preferences: {
-          diet_type: diet.diet_type || null,
+          diet_type: [diet.cuisine_type, diet.protein_preference].filter(Boolean).join("_") || null,
           allergies: diet.allergies,
           intolerances: diet.intolerances,
         },

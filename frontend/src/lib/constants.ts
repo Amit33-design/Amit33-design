@@ -32,14 +32,17 @@ export const ACTIVITY_LEVELS = [
   { value: "very_active", label: "Extra Active",      description: "Very hard exercise, physical job" },
 ];
 
-export const DIET_TYPES = [
-  { value: "non_veg",        label: "Non-Vegetarian",     icon: "🍗" },
-  { value: "vegetarian",     label: "Vegetarian",         icon: "🥗" },
-  { value: "vegan",          label: "Vegan",              icon: "🌱" },
-  { value: "mediterranean",  label: "Mediterranean",      icon: "🫒" },
-  { value: "indian",         label: "Indian",             icon: "🍛" },
-  { value: "low_carb",       label: "Low Carb / Keto",   icon: "🥦" },
-  { value: "high_protein",   label: "High Protein",       icon: "🥩" },
+export const CUISINE_TYPES = [
+  { value: "indian",        label: "Indian",         icon: "🍛", description: "Dal, roti, rice, sabzi" },
+  { value: "western",       label: "Western",        icon: "🥗", description: "Salads, grills, bowls" },
+  { value: "mediterranean", label: "Mediterranean",  icon: "🫒", description: "Olive oil, legumes, fish" },
+];
+
+export const PROTEIN_PREFERENCES = [
+  { value: "vegetarian",     label: "Vegetarian",     icon: "🥦", description: "Dairy & eggs included" },
+  { value: "non_vegetarian", label: "Non-Vegetarian", icon: "🍗", description: "Chicken, fish, eggs, meat" },
+  { value: "vegan",          label: "Vegan",          icon: "🌱", description: "100% plant-based" },
+  { value: "pescatarian",    label: "Pescatarian",    icon: "🐟", description: "Fish & seafood, no meat" },
 ];
 
 export const MEAL_SLOT_LABELS: Record<string, string> = {
