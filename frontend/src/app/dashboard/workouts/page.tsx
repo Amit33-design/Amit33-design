@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 const DAY_LABELS: Record<string, string> = {
@@ -18,7 +18,7 @@ export default function WorkoutsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = localStorage.getItem("health-copilot-user-id");
+    const id = resolveUserId();
     if (!id) { router.push("/onboarding/profile"); return; }
     api.getWorkoutPlan(id).then((p) => { setPlan(p as Record<string, unknown>); setLoading(false); });
   }, [router]);

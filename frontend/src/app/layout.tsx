@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { DemoBanner } from "@/components/shared/DemoBanner";
 
 export const metadata: Metadata = {
   title: "HealthCopilot — AI-Powered Personal Health Platform",
@@ -19,7 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="h-full antialiased">{children}</body>
+      <body className="h-full antialiased">
+        {children}
+        <DemoBanner />
+      </body>
     </html>
   );
 }

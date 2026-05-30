@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, resolveUserId } from "@/lib/api-client";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -26,7 +26,7 @@ export default function ProgressPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const userId = typeof window !== "undefined" ? localStorage.getItem("health-copilot-user-id") : null;
+  const userId = resolveUserId();
 
   useEffect(() => {
     if (!userId) { router.push("/onboarding/profile"); return; }
@@ -91,9 +91,9 @@ export default function ProgressPage() {
               <input
                 type={field.type}
                 placeholder={field.placeholder}
-                step={(field as Record<string, string>).step}
-                min={(field as Record<string, string>).min}
-                max={(field as Record<string, string>).max}
+                step={(field as unknown as Record<string, string>).step}
+                min={(field as unknown as Record<string, string>).min}
+                max={(field as unknown as Record<string, string>).max}
                 value={(form as Record<string, string>)[field.key]}
                 onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none text-sm text-gray-900"

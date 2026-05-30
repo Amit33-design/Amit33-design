@@ -42,10 +42,11 @@ interface MealSlot {
 interface MealCardProps {
   mealSlot: MealSlot;
   onExplainFood?: (foodId: string) => void;
+  expanded?: boolean;
 }
 
-export function MealCard({ mealSlot, onExplainFood }: MealCardProps) {
-  const [expanded, setExpanded] = useState(false);
+export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = false }: MealCardProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const label = MEAL_SLOT_LABELS[mealSlot.slot] || mealSlot.slot;
   const icon = MEAL_SLOT_ICONS[mealSlot.slot] || "🍽️";
 

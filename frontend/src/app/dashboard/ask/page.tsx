@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { api } from "@/lib/api-client";
+import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -34,10 +34,7 @@ export default function AICopilotPage() {
   const [sessionId, setSessionId] = useState<string | undefined>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const userId =
-    typeof window !== "undefined"
-      ? localStorage.getItem("health-copilot-user-id")
-      : null;
+  const userId = resolveUserId();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

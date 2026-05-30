@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 export default function LifestylePage() {
@@ -10,7 +10,7 @@ export default function LifestylePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = localStorage.getItem("health-copilot-user-id");
+    const id = resolveUserId();
     if (!id) { router.push("/onboarding/profile"); return; }
     api.getLifestyleRecs(id).then((r) => { setRecs(r as Record<string, unknown>); setLoading(false); });
   }, [router]);
@@ -84,7 +84,7 @@ export default function LifestylePage() {
               <div className="text-3xl font-black text-indigo-600">{String(sleep.target_hours)} hrs</div>
             </div>
           </div>
-          {sleep.gap_message && (
+          {!!sleep.gap_message && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4 text-sm text-amber-800 font-medium">
               ⚠️ {String(sleep.gap_message)}
             </div>
@@ -116,7 +116,7 @@ export default function LifestylePage() {
               </div>
             </div>
           </div>
-          {stress.clinical_note && (
+          {!!stress.clinical_note && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl mb-4 text-sm text-rose-800">
               🩺 {String(stress.clinical_note)}
             </div>

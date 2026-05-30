@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
+import { api, resolveUserId } from "@/lib/api-client";
 import { MacroRing } from "@/components/dashboard/MacroRing";
 import { MealCard } from "@/components/dashboard/MealCard";
 import { CONDITIONS, CONDITION_COLORS } from "@/lib/constants";
@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = localStorage.getItem("health-copilot-user-id");
+    const id = resolveUserId();
     if (!id) {
       router.push("/onboarding/profile");
       return;
