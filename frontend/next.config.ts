@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 // When building for GitHub Pages we produce a fully static export.
 // Local/dev and full-stack builds keep the API rewrite proxy.
 const isPages = process.env.GITHUB_PAGES === "true";
-const repo = "amit33-design"; // project repo → served at /<repo>/
+const repo = "Amit33-design"; // project repo → served at /<repo>/ (case must match GitHub repo name)
 
 const nextConfig: NextConfig = isPages
   ? {
