@@ -10,7 +10,7 @@
  * Clinical logic mirrors the backend engines:
  *   - Mifflin-St Jeor BMR → TDEE → goal-adjusted calorie target
  *   - Goal-based macro splits, with a CKD protein cap override
- *   - "Most Restrictive Wins" condition filtering across multiple conditions
+ *   - Strictest health rule wins when multiple conditions conflict
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ const FOODS: Food[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Condition rules  ("Most Restrictive Wins" — hard excludes + soft preferences)
+// Condition rules  (strictest health rule wins when conditions conflict — hard excludes + soft preferences)
 // ─────────────────────────────────────────────────────────────────────────────
 function isExcluded(food: Food, conditions: string[]): boolean {
   for (const c of conditions) {

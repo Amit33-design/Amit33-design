@@ -7,7 +7,7 @@ const FEATURES = [
     icon: "🎯",
     title: "Policy-Driven Engine",
     description:
-      "Goals, diseases, allergies, and preferences are converted into constraints — just like network intent-based systems — then optimized by AI.",
+      "Tell us your health goals, conditions, and food preferences — and we build a plan that's personalised to your body, not a one-size-fits-all template.",
     color: "from-sky-500 to-blue-600",
     bg: "bg-sky-50",
   },
@@ -15,7 +15,7 @@ const FEATURES = [
     icon: "🧬",
     title: "Multi-Condition Optimizer",
     description:
-      "Diabetes + Kidney Stones + Hypertension? The engine simultaneously satisfies all constraints using Most Restrictive Wins logic.",
+      "Managing multiple conditions? We handle all of them together — one plan that respects every health rule at the same time, with no contradictions.",
     color: "from-violet-500 to-purple-600",
     bg: "bg-violet-50",
   },
@@ -139,10 +139,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-sky-50 text-sky-700 rounded-full text-sm font-semibold border border-sky-200 mb-4">
-              🔧 Policy Engine Architecture
+              ✨ How It Works
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-              Intent → Constraints → Optimization
+              You → Your Conditions → Your Plan
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               You tell us what you want and what your body deals with — we do the thinking. Every meal, workout, and lifestyle tip is calculated to satisfy all your conditions at once.
@@ -152,11 +152,11 @@ export default function LandingPage() {
           {/* Flow diagram */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center mb-16">
             {[
-              { label: "User Intent",     desc: "Goals, conditions, preferences",     icon: "👤", bg: "bg-sky-500" },
+              { label: "Your Profile",    desc: "Goals, conditions, preferences",     icon: "👤", bg: "bg-sky-500" },
               { label: "→", desc: "", icon: "", bg: "" },
-              { label: "Policy Engine",   desc: "Convert to constraint graph",         icon: "⚙️", bg: "bg-violet-500" },
+              { label: "Smart Engine",   desc: "Builds rules for your health",        icon: "⚙️", bg: "bg-violet-500" },
               { label: "→", desc: "", icon: "", bg: "" },
-              { label: "Optimal Plan",    desc: "Multi-constraint satisfied output",   icon: "✅", bg: "bg-emerald-500" },
+              { label: "Your Plan",      desc: "Meals, workouts & lifestyle tips",    icon: "✅", bg: "bg-emerald-500" },
             ].map((step, i) =>
               step.label === "→" ? (
                 <div key={i} className="text-center text-3xl text-gray-300 hidden md:block">→</div>

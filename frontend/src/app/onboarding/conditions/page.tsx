@@ -38,20 +38,18 @@ export default function ConditionsPage() {
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
           <span className="text-xl">⚠️</span>
           <div className="text-sm text-amber-800">
-            <strong>Important:</strong> These selections add evidence-based safety rules to your plan.
-            A user with all three conditions gets recommendations that simultaneously satisfy all constraints.
-            This is your personal policy engine.
+            <strong>Important:</strong> These selections add clinical safety rules to your plan.
+            If you have multiple conditions, we make sure every recommendation is safe for all of them at the same time.
           </div>
         </div>
 
         {/* Multi-constraint visualization */}
         {conditions.length >= 2 && (
           <div className="p-4 bg-gradient-to-r from-violet-50 to-sky-50 border border-violet-200 rounded-xl animate-fade-in">
-            <div className="text-sm font-semibold text-violet-800 mb-2">🔧 Multi-Constraint Mode Active</div>
+            <div className="text-sm font-semibold text-violet-800 mb-2">🩺 Multiple Conditions Detected</div>
             <div className="text-sm text-gray-600">
-              {conditions.length} conditions detected. The engine will apply Most Restrictive Wins
-              for conflicting nutrient thresholds (e.g., if HTN says Na &lt; 2300mg and CKD says Na &lt; 1500mg,
-              the stricter 1500mg cap applies).
+              {conditions.length} conditions selected. Where rules conflict, we always follow the stricter one
+              to keep you safe (e.g. if one condition allows 2300mg sodium and another allows only 1500mg, we use 1500mg).
             </div>
           </div>
         )}

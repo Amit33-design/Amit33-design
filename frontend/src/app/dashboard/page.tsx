@@ -91,10 +91,9 @@ export default function DashboardPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl">🔧</span>
             <div>
-              <div className="font-bold mb-1">Policy Engine Active — Multi-Constraint Mode</div>
+              <div className="font-bold mb-1">Your plan is tailored for all your conditions</div>
               <div className="text-sm text-violet-200 mb-3">
-                Your plan simultaneously satisfies all {conditions.length} condition constraint{conditions.length > 1 ? "s" : ""}.
-                Most Restrictive Wins logic applied.
+                Every meal and workout recommendation is safe for all {conditions.length} of your health condition{conditions.length > 1 ? "s" : ""} simultaneously.
               </div>
               <div className="flex flex-wrap gap-2">
                 {conditions.map((code) => {
