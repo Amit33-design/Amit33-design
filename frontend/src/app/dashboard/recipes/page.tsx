@@ -6,13 +6,13 @@ import { RECIPES, Recipe } from "@/lib/recipes-data";
 import { cn } from "@/lib/utils";
 
 interface MealItem {
-  food_id: string;
-  name: string;
+  id: string;
+  food: { id: string; name: string };
+  reason_tags?: string[];
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
-  reason_tags?: string[];
 }
 
 interface MealSlot {
@@ -22,7 +22,7 @@ interface MealSlot {
 }
 
 interface MealPlan {
-  slots: MealSlot[];
+  meals: MealSlot[];
 }
 
 const SLOT_LABELS: Record<string, { label: string; icon: string; time: string }> = {
@@ -35,7 +35,9 @@ const SLOT_LABELS: Record<string, { label: string; icon: string; time: string }>
 
 function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags?: string[] }) {
   const [open, setOpen] = useState(false);
-  const recipe: Recipe | undefined = RECIPES[foodId];
+  // food IDs are stored as "food-moong-chilla" in the plan; strip prefix for recipe lookup
+  const recipeKey = foodId.replace(/^food-/, "");
+  const recipe: Recipe | undefined = RECIPES[recipeKey];
 
   if (!recipe) {
     return (
@@ -162,9 +164,9 @@ export default function RecipesPage() {
     );
   }
 
-  const slots = plan?.slots || [];
+  const meals = plan?.meals || [];
   const orderedSlots = ["breakfast", "mid_morning", "lunch", "evening_snack", "dinner"]
-    .map((s) => slots.find((sl) => sl.slot === s))
+    .map((s) => meals.find((m) => m.slot === s))
     .filter(Boolean) as MealSlot[];
 
   // Collect unique food IDs that have recipes, for the "Browse all" count
@@ -239,7 +241,7 @@ export default function RecipesPage() {
               {allItems.map((item, idx) => {
                 const isAlt = idx >= slot.items.length;
                 return (
-                  <div key={item.food_id + idx} className="relative">
+                  <div key={item.food.id + idx} className="relative">
                     {isAlt && (
                       <div className="absolute -top-1 left-3 z-10">
                         <span className="text-xs px-2 py-0.5 bg-sky-100 text-sky-600 rounded-full font-semibold">
@@ -249,8 +251,8 @@ export default function RecipesPage() {
                     )}
                     <div className={cn(isAlt && "mt-3")}>
                       <RecipeCard
-                        foodId={item.food_id}
-                        name={item.name}
+                        foodId={item.food.id}
+                        name={item.food.name}
                         tags={item.reason_tags}
                       />
                     </div>
