@@ -104,8 +104,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-xl md:text-2xl text-sky-100/80 max-w-3xl mb-10 leading-relaxed font-light">
-            Goals, diseases, allergies, and preferences converted into constraints —
-            then optimized by AI. Like intent-based networking, but for your body.
+            Tell us your health goals, conditions, and food preferences — and we build a plan that works for <em>your</em> body. Not a generic template. Yours.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-16">
@@ -146,8 +145,7 @@ export default function LandingPage() {
               Intent → Constraints → Optimization
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Inspired by intent-based networking systems. Your health goals and conditions
-              become a constraint graph — the AI optimizes across all simultaneously.
+              You tell us what you want and what your body deals with — we do the thinking. Every meal, workout, and lifestyle tip is calculated to satisfy all your conditions at once.
             </p>
           </div>
 
