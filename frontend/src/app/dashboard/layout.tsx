@@ -9,8 +9,9 @@ const NAV_ITEMS = [
   { href: "/dashboard/workouts",   label: "Workouts",   icon: "💪" },
   { href: "/dashboard/lifestyle",  label: "Lifestyle",  icon: "🌿" },
   { href: "/dashboard/recipes",   label: "Recipes",    icon: "👨‍🍳" },
-  { href: "/dashboard/progress",   label: "Progress",   icon: "📊" },
-  { href: "/dashboard/ask",        label: "AI Copilot", icon: "🤖" },
+  { href: "/dashboard/progress",  label: "Progress",   icon: "📊" },
+  { href: "/dashboard/report",    label: "Report",     icon: "📋" },
+  { href: "/dashboard/ask",       label: "AI Copilot", icon: "🤖" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

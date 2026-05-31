@@ -70,16 +70,19 @@ export default function DashboardPage() {
             {summary?.name ? `Welcome back, ${summary.name}` : "Your Health Dashboard"}
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Link href="/dashboard/ask" className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-sky-600 text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
             🤖 Ask AI
+          </Link>
+          <Link href="/dashboard/report" className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
+            📋 My Report
           </Link>
           {userId && (
             <button
               onClick={() => api.regeneratePlan(userId).then(() => window.location.reload())}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
-              🔄 Regenerate Plan
+              🔄 Regenerate
             </button>
           )}
         </div>
@@ -229,10 +232,10 @@ export default function DashboardPage() {
       {/* Quick nav */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { href: "/dashboard/lifestyle", label: "Lifestyle Tips",  icon: "🌿", desc: "Sleep, hydration, stress" },
-          { href: "/dashboard/progress",  label: "Log Progress",    icon: "📊", desc: "Track your metrics" },
-          { href: "/dashboard/ask",       label: "AI Copilot",      icon: "🤖", desc: "Ask health questions" },
-          { href: "/dashboard/workouts",  label: "Full Workout Plan",icon: "💪", desc: "Week schedule" },
+          { href: "/dashboard/lifestyle", label: "Lifestyle Tips",   icon: "🌿", desc: "Sleep, hydration, stress" },
+          { href: "/dashboard/recipes",   label: "Recipes",          icon: "👨‍🍳", desc: "How to cook today's meals" },
+          { href: "/dashboard/progress",  label: "Log Progress",     icon: "📊", desc: "Track your metrics" },
+          { href: "/dashboard/workouts",  label: "Full Workout Plan", icon: "💪", desc: "Week schedule" },
         ].map((item) => (
           <Link
             key={item.href}
@@ -244,6 +247,103 @@ export default function DashboardPage() {
             <div className="text-xs text-gray-400 mt-0.5">{item.desc}</div>
           </Link>
         ))}
+      </div>
+
+      {/* Health & Fitness Tips */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-black text-gray-900">Daily Wellness Habits</h2>
+          <span className="text-xs text-gray-400">Science-backed · Build consistency</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Walking */}
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-xl">🚶</div>
+              <div className="font-bold text-emerald-900">Walk Every Day</div>
+            </div>
+            <ul className="space-y-1.5">
+              {[
+                "30 min of brisk walking reduces heart disease risk by up to 35%",
+                "A 10-min walk after every meal cuts post-meal blood sugar spikes by ~22%",
+                "Daily walking reduces blood pressure by 3–5 mmHg over 12 weeks",
+                "Aim for 7,000–10,000 steps — even 5,000 is significantly better than sedentary",
+                "Morning walks improve mood through serotonin release for the whole day",
+              ].map((tip) => (
+                <li key={tip} className="flex items-start gap-2 text-sm text-emerald-800">
+                  <span className="text-emerald-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Weight Training */}
+          <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center text-xl">🏋️</div>
+              <div className="font-bold text-violet-900">Strength Train 2–3×/week</div>
+            </div>
+            <ul className="space-y-1.5">
+              {[
+                "Each kg of muscle burns ~13 kcal/day at rest — raises your baseline metabolism",
+                "Resistance training lowers fasting blood sugar as effectively as metformin in some studies",
+                "Strengthens bones — critical protection against osteoporosis, especially after 40",
+                "Reduces visceral (belly) fat more than cardio alone over 12 weeks",
+                "Improves insulin sensitivity for up to 24 hours after each session",
+              ].map((tip) => (
+                <li key={tip} className="flex items-start gap-2 text-sm text-violet-800">
+                  <span className="text-violet-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Healthy Eating */}
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-xl">🥗</div>
+              <div className="font-bold text-orange-900">Eat Smart, Not Less</div>
+            </div>
+            <ul className="space-y-1.5">
+              {[
+                "Eat protein at every meal — it keeps you full 2× longer than carbs or fat",
+                "Start meals with salad or soup — reduces total calorie intake by 15–20%",
+                "Drink a glass of water 30 min before eating to reduce hunger naturally",
+                "Chew slowly — it takes 20 min for your brain to register fullness",
+                "Half your plate should be vegetables — fibre, vitamins and almost no calories",
+                "Choose whole grains (brown rice, oats, millets) over refined carbs every time",
+              ].map((tip) => (
+                <li key={tip} className="flex items-start gap-2 text-sm text-orange-800">
+                  <span className="text-orange-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Recovery & Habits */}
+          <div className="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-xl">😴</div>
+              <div className="font-bold text-sky-900">Recovery & Daily Habits</div>
+            </div>
+            <ul className="space-y-1.5">
+              {[
+                "7–8 hours of sleep regulates ghrelin & leptin — the hormones that control hunger",
+                "Poor sleep raises cortisol, which increases belly fat and blood sugar",
+                "10 min of meditation daily lowers cortisol and systolic BP by ~5 mmHg",
+                "Consistent sleep/wake times improve insulin sensitivity over time",
+                "Limit screen time 1 hour before bed — blue light blocks melatonin by 50%",
+                "Small consistent habits beat intense short bursts — compound effects take 90 days",
+              ].map((tip) => (
+                <li key={tip} className="flex items-start gap-2 text-sm text-sky-800">
+                  <span className="text-sky-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+        </div>
       </div>
     </div>
   );
