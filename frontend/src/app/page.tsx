@@ -126,9 +126,9 @@ export default function LandingPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {STATS.map((stat) => (
-              <div key={stat.label} className="glass-card rounded-2xl p-5 bg-white/15 border border-white/30">
+              <div key={stat.label} className="rounded-2xl p-5 bg-gradient-to-br from-sky-400 to-violet-500 shadow-lg shadow-violet-500/30">
                 <div className="text-3xl font-black text-white mb-1">{stat.value}</div>
-                <div className="text-sm text-white font-medium">{stat.icon} {stat.label}</div>
+                <div className="text-sm text-white font-semibold">{stat.icon} {stat.label}</div>
               </div>
             ))}
           </div>
