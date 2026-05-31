@@ -3,7 +3,7 @@ import "./globals.css";
 import { DemoBanner } from "@/components/shared/DemoBanner";
 
 export const metadata: Metadata = {
-  title: "HealthCopilot — AI-Powered Personal Health Platform",
+  title: "healthCopilot — AI-Powered Personal Health Platform",
   description:
     "Policy-driven, condition-aware AI health recommendations. Get personalized nutrition, fitness, and lifestyle plans optimized for your specific health conditions.",
   keywords: ["health", "nutrition", "fitness", "AI", "diabetes", "hypertension", "personalized"],

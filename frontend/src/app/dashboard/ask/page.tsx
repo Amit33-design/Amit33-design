@@ -26,7 +26,7 @@ export default function AICopilotPage() {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I'm your HealthCopilot AI. I'm aware of your health conditions, goals, and today's meal plan. Ask me anything about your nutrition, exercise, or lifestyle recommendations — I'll explain the science behind every suggestion.\n\n**Note:** I provide educational information, not medical advice.",
+        "Hello! I'm your healthCopilot AI. I'm aware of your health conditions, goals, and today's meal plan. Ask me anything about your nutrition, exercise, or lifestyle recommendations — I'll explain the science behind every suggestion.\n\n**Note:** I provide educational information, not medical advice.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -92,7 +92,7 @@ export default function AICopilotPage() {
           🤖
         </div>
         <div>
-          <div className="font-bold text-gray-900">HealthCopilot AI</div>
+          <div className="font-bold text-gray-900">healthCopilot AI</div>
           <div className="text-xs text-gray-400">
             Aware of your conditions, goals, and today&apos;s plan
           </div>

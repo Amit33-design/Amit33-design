@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push("/")}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white font-bold text-lg">H</div>
             <div>
-              <div className="font-bold text-gray-900 text-sm">HealthCopilot</div>
+              <div className="font-bold text-gray-900 text-sm">healthCopilot</div>
               <div className="text-xs text-gray-400">AI Health Platform</div>
             </div>
           </div>

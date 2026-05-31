@@ -37,7 +37,7 @@ const FEATURES = [
   },
   {
     icon: "🤖",
-    title: "AI Health Copilot",
+    title: "AI healthCopilot",
     description:
       "Chat with your personal health AI. Ask \"Why should I avoid spinach?\" and get a contextual, condition-specific answer.",
     color: "from-amber-500 to-orange-600",
@@ -70,7 +70,7 @@ export default function LandingPage() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white font-bold text-lg">
               H
             </div>
-            <span className="text-xl font-bold text-gray-900">HealthCopilot</span>
+            <span className="text-xl font-bold text-gray-900">healthCopilot</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden md:block text-sm text-gray-500">Personal Health AI Platform</span>
@@ -100,7 +100,7 @@ export default function LandingPage() {
           <h1 className="text-5xl md:text-7xl font-black leading-tight max-w-5xl mb-6">
             Your Personal
             <br />
-            <span className="gradient-text">Health Copilot</span>
+            <span className="gradient-text">healthCopilot</span>
           </h1>
 
           <p className="text-xl md:text-2xl text-sky-100/80 max-w-3xl mb-10 leading-relaxed font-light">
@@ -287,7 +287,7 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-br from-sky-600 via-violet-600 to-emerald-600 text-white">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-6xl font-black mb-6">
-            Ready to meet your<br />Health Copilot?
+            Ready to meet your<br />healthCopilot?
           </h2>
           <p className="text-xl text-white/80 mb-10 max-w-xl mx-auto">
             Onboard in 5 minutes. Get a condition-aware, AI-explained health plan
@@ -311,7 +311,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center font-bold">H</div>
-            <span className="font-bold">HealthCopilot</span>
+            <span className="font-bold">healthCopilot</span>
           </div>
           <p className="text-sm text-slate-400">
             AI-powered health recommendations. Educational use only — not a substitute for medical advice.

@@ -34,7 +34,7 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
             >
               H
             </div>
-            <span className="font-bold text-gray-900">HealthCopilot</span>
+            <span className="font-bold text-gray-900">healthCopilot</span>
             <span className="text-gray-300">|</span>
             <span className="text-sm text-gray-500">Build Your Health Profile</span>
           </div>
