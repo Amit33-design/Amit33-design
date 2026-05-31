@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, resolveUserId } from "@/lib/api-client";
+import { hasLocalProgress } from "@/lib/local-store";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -69,6 +70,24 @@ export default function ProgressPage() {
     }
   };
 
+  const exportCSV = () => {
+    const headers = ["Date", "Weight (kg)", "Calories", "Sleep (h)", "Steps", "Mood", "BP Systolic", "BP Diastolic", "Sugar Fasting", "Sugar Post-Meal", "Notes"];
+    const rows = [...logs].reverse().map((l) => [
+      l.log_date, l.weight_kg ?? "", l.calories_consumed ?? "", l.sleep_hours ?? "",
+      l.steps_count ?? "", l.mood_score ?? "", l.bp_systolic ?? "", l.bp_diastolic ?? "",
+      l.blood_sugar_fasting ?? "", l.blood_sugar_post_meal ?? "",
+      (l as unknown as Record<string, unknown>).notes ?? "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `healthcopilot-progress-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const chartData = [...logs].reverse().map((l) => ({
     date: l.log_date,
     weight: l.weight_kg,
@@ -83,9 +102,24 @@ export default function ProgressPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900">Progress Tracker</h1>
-        <p className="text-gray-400 text-sm mt-1">Log your daily metrics and see trends over time</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900">Progress Tracker</h1>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <p className="text-gray-400 text-sm">Log your daily metrics and see trends over time</p>
+            <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full font-medium">
+              🔒 Saved on this device
+            </span>
+          </div>
+        </div>
+        {hasLocalProgress() && (
+          <button
+            onClick={exportCSV}
+            className="text-xs px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-semibold flex items-center gap-1.5 flex-shrink-0"
+          >
+            ↓ Export CSV
+          </button>
+        )}
       </div>
 
       {/* Log form */}
@@ -310,8 +344,15 @@ export default function ProgressPage() {
       {logs.length === 0 && !loading && (
         <div className="bg-white rounded-2xl p-10 text-center border border-gray-100 shadow-card">
           <div className="text-4xl mb-3">📊</div>
-          <div className="font-bold text-gray-900 mb-1">No data yet</div>
-          <div className="text-gray-500 text-sm">Log your first metrics above to start tracking trends.</div>
+          <div className="font-bold text-gray-900 mb-1">Start your health journal</div>
+          <div className="text-gray-500 text-sm max-w-sm mx-auto">
+            Log today&apos;s metrics above — weight, BP, blood sugar, sleep. Charts appear after 2+ entries. Your data stays on this device, no account needed.
+          </div>
+          <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs text-gray-400">
+            <span className="px-3 py-1 bg-gray-50 rounded-full">🔒 Stored locally on your device</span>
+            <span className="px-3 py-1 bg-gray-50 rounded-full">📵 Works offline</span>
+            <span className="px-3 py-1 bg-gray-50 rounded-full">🚫 No login required</span>
+          </div>
         </div>
       )}
     </div>

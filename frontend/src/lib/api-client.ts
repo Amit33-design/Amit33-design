@@ -1,11 +1,12 @@
 import { API_BASE } from "./constants";
 import {
-  DEMO_USER_ID, demoProgressHistory, getDemoChatResponse,
+  DEMO_USER_ID, getDemoChatResponse,
 } from "./demo-data";
 import {
   OnboardingInput, buildUserSummary, computeMacros, generateMealPlan,
   generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
 } from "./recommendation-engine";
+import { saveProgressEntry, getLocalProgressHistory } from "./local-store";
 
 // Demo mode: static GitHub Pages build has no backend. Set at build time.
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
@@ -116,12 +117,18 @@ export const api = {
     DEMO_MODE ? Promise.resolve(generateLifestyle(getOnboardingInput())) : apiFetch(`/lifestyle/${userId}/recommendations`),
 
   logProgress: async (userId: string, data: unknown) => {
-    if (DEMO_MODE) { await delay(400); return { id: "demo", ...(data as object) }; }
+    if (DEMO_MODE) {
+      const today = new Date().toISOString().slice(0, 10);
+      saveProgressEntry({ log_date: today, ...(data as object) });
+      return { id: today, ...(data as object) };
+    }
     return apiFetch(`/progress/${userId}/log`, { method: "POST", body: JSON.stringify(data) });
   },
 
   getProgressHistory: (userId: string, days = 30) =>
-    DEMO_MODE ? Promise.resolve(demoProgressHistory) : apiFetch(`/progress/${userId}/history?days=${days}`),
+    DEMO_MODE
+      ? Promise.resolve(getLocalProgressHistory(days))
+      : apiFetch(`/progress/${userId}/history?days=${days}`),
 
   getProgressTrends: (userId: string) =>
     DEMO_MODE ? Promise.resolve({}) : apiFetch(`/progress/${userId}/trends`),
