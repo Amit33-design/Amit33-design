@@ -126,9 +126,9 @@ export default function LandingPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {STATS.map((stat) => (
-              <div key={stat.label} className="glass-card rounded-2xl p-5 bg-white/5 border-white/10">
+              <div key={stat.label} className="glass-card rounded-2xl p-5 bg-white/15 border border-white/30">
                 <div className="text-3xl font-black text-white mb-1">{stat.value}</div>
-                <div className="text-sm text-sky-200/70">{stat.icon} {stat.label}</div>
+                <div className="text-sm text-white font-medium">{stat.icon} {stat.label}</div>
               </div>
             ))}
           </div>
@@ -145,7 +145,7 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
               Intent → Constraints → Optimization
             </h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Inspired by intent-based networking systems. Your health goals and conditions
               become a constraint graph — the AI optimizes across all simultaneously.
             </p>
@@ -168,7 +168,7 @@ export default function LandingPage() {
                     {step.icon}
                   </div>
                   <div className="font-bold text-gray-900 mb-1">{step.label}</div>
-                  <div className="text-sm text-gray-500">{step.desc}</div>
+                  <div className="text-sm text-gray-600">{step.desc}</div>
                 </div>
               )
             )}
@@ -179,7 +179,7 @@ export default function LandingPage() {
             <div className="text-sm font-semibold text-sky-400 mb-4">REAL EXAMPLE — Multi-Constraint Optimization</div>
             <div className="grid md:grid-cols-3 gap-6">
               <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wider mb-3">User Profile</div>
+                <div className="text-xs text-sky-300 font-bold uppercase tracking-wider mb-3">User Profile</div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm"><span className="text-violet-400">Goal:</span> Muscle Gain</div>
                   <div className="flex items-center gap-2 text-sm"><span className="text-red-400">Condition:</span> Type 2 Diabetes</div>
@@ -188,7 +188,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Applied Constraints</div>
+                <div className="text-xs text-sky-300 font-bold uppercase tracking-wider mb-3">Applied Constraints</div>
                 <div className="space-y-2">
                   {[
                     { type: "ENFORCE", text: "Low GI foods only (T2D)" },
@@ -207,7 +207,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Optimized Output</div>
+                <div className="text-xs text-sky-300 font-bold uppercase tracking-wider mb-3">Optimized Output</div>
                 <div className="space-y-2 text-sm text-emerald-300">
                   <div>✓ Masoor Dal over chicken (lower oxalate, low GI)</div>
                   <div>✓ Brown rice over white (low GI, high fiber)</div>
@@ -228,7 +228,7 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
               Enterprise-Grade Health Intelligence
             </h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Built for people with complex health needs — not generic calorie counters.
             </p>
           </div>
@@ -239,7 +239,7 @@ export default function LandingPage() {
                   {f.icon}
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{f.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{f.description}</p>
+                <p className="text-gray-600 text-sm leading-relaxed">{f.description}</p>
               </div>
             ))}
           </div>
@@ -251,7 +251,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-black text-gray-900 mb-4">Supports 8 Chronic Conditions</h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">
+            <p className="text-gray-600 text-lg max-w-xl mx-auto">
               Each condition adds clinical constraints to your personal recommendation engine.
             </p>
           </div>
@@ -260,7 +260,7 @@ export default function LandingPage() {
               <div key={c.code} className="rounded-2xl p-5 bg-white border border-gray-100 shadow-card hover:shadow-card-hover transition-all cursor-default">
                 <div className="text-3xl mb-3">{c.icon}</div>
                 <div className="font-bold text-gray-900 text-sm mb-1">{c.label}</div>
-                <div className="text-xs text-gray-400 leading-relaxed">{c.impact}</div>
+                <div className="text-xs text-gray-600 leading-relaxed">{c.impact}</div>
               </div>
             ))}
           </div>
@@ -300,7 +300,7 @@ export default function LandingPage() {
             Build My Plan — Free
             <span className="text-2xl">→</span>
           </Link>
-          <p className="mt-6 text-sm text-white/50">
+          <p className="mt-6 text-sm text-white/80">
             Not medical advice. Always consult your healthcare provider for clinical decisions.
           </p>
         </div>
