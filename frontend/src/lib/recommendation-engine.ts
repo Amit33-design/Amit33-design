@@ -52,6 +52,7 @@ export interface OnboardingInput {
   activity_level: string;
   goal_type: string;
   conditions: string[];
+  medications: string[];
   cuisine: string;
   protein_pref: string;
   name?: string;
@@ -616,6 +617,118 @@ const WORKOUTS: ExerciseTemplate[] = [
       cooldown: [{ exercise: "Savasana + deep breathing", duration_sec: 300 }],
     },
   },
+  {
+    id: "wo-morning-yoga", name: "Morning Yoga Flow (All Levels)",
+    goals: ["healthy_aging", "maintenance", "weight_loss", "cardiovascular", "blood_pressure_management"], levels: ["beginner", "intermediate", "older_adult"], contra: [],
+    duration_min: 25, equipment: ["yoga_mat"],
+    description: "A gentle yet energising morning flow to wake the body, improve circulation and set a calm tone for the day.",
+    instructions: {
+      warmup: [{ exercise: "Supine spinal twist (each side)", duration_sec: 120 }],
+      main_circuit: [
+        { exercise: "Sun Salutation A (slow)", sets: 3, duration_sec: 90, rest_sec: 30 },
+        { exercise: "Warrior I + Warrior II flow", sets: 2, duration_sec: 90, rest_sec: 30 },
+        { exercise: "Bridge pose (hip opener)", sets: 3, reps: 10, rest_sec: 30 },
+        { exercise: "Seated forward fold (hamstrings)", duration_sec: 60 },
+      ],
+      cooldown: [{ exercise: "Savasana + box breathing", duration_sec: 240 }],
+    },
+  },
+  {
+    id: "wo-yoga-diabetes", name: "Yoga for Blood Sugar Balance",
+    goals: ["diabetes_friendly", "weight_loss", "maintenance"], levels: ["beginner", "intermediate"], contra: [],
+    duration_min: 30, equipment: ["yoga_mat"],
+    description: "Evidence-based yoga sequence targeting insulin sensitivity — twisting poses stimulate the pancreas; forward folds activate the parasympathetic system to lower cortisol and blood glucose.",
+    instructions: {
+      warmup: [{ exercise: "Breath awareness + diaphragmatic breathing", duration_sec: 180 }],
+      main_circuit: [
+        { exercise: "Ardha Matsyendrasana (Half Spinal Twist)", sets: 2, duration_sec: 60, rest_sec: 20 },
+        { exercise: "Paschimottanasana (Seated Forward Bend)", sets: 2, duration_sec: 60, rest_sec: 20 },
+        { exercise: "Dhanurasana (Bow Pose)", sets: 3, reps: 5, rest_sec: 30 },
+        { exercise: "Setu Bandhasana (Bridge Pose)", sets: 3, reps: 12, rest_sec: 30 },
+        { exercise: "Post-meal 10-min slow walk (if possible)", duration_sec: 600 },
+      ],
+      cooldown: [{ exercise: "Legs-up-the-wall pose (Viparita Karani) + yogic breathing", duration_sec: 300 }],
+    },
+  },
+  {
+    id: "wo-pranayama", name: "Pranayama & Breathwork (Stress / BP)",
+    goals: ["blood_pressure_management", "cardiovascular", "healthy_aging", "maintenance"], levels: ["beginner", "intermediate", "older_adult"], contra: [],
+    duration_min: 20, equipment: ["yoga_mat"],
+    description: "Structured breathwork clinically shown to reduce systolic BP by 4–8 mmHg and cortisol by up to 31%. Ideal on high-stress days or as a daily BP management ritual.",
+    instructions: {
+      warmup: [{ exercise: "Comfortable seated posture + shoulder rolls", duration_sec: 120 }],
+      main_circuit: [
+        { exercise: "Nadi Shodhana (Alternate Nostril Breathing) — 5 min", duration_sec: 300 },
+        { exercise: "Bhramari (Humming Bee Breath) — 10 rounds", duration_sec: 180 },
+        { exercise: "4-7-8 Breathing — 8 cycles", duration_sec: 240 },
+        { exercise: "Kapalabhati (Skull-Shining Breath) — gentle, 2 min", duration_sec: 120 },
+      ],
+      cooldown: [{ exercise: "5-min body scan meditation lying down", duration_sec: 300 }],
+    },
+  },
+  {
+    id: "wo-restorative-yoga", name: "Restorative Yoga (Hypertension / Recovery)",
+    goals: ["blood_pressure_management", "healthy_aging", "maintenance", "cardiovascular"], levels: ["beginner", "older_adult"], contra: [],
+    duration_min: 30, equipment: ["yoga_mat", "bolster_or_pillow"],
+    description: "Passive, supported poses held for 3–5 minutes activate the parasympathetic nervous system — clinically effective for lowering resting heart rate and blood pressure.",
+    instructions: {
+      warmup: [{ exercise: "Gentle neck rolls + seated breathing", duration_sec: 180 }],
+      main_circuit: [
+        { exercise: "Supported Child's Pose (Balasana) — 3 min", duration_sec: 180 },
+        { exercise: "Reclined Butterfly (Supta Baddha Konasana) — 4 min", duration_sec: 240 },
+        { exercise: "Legs Up the Wall (Viparita Karani) — 5 min", duration_sec: 300 },
+        { exercise: "Supported Fish Pose (chest opener) — 3 min", duration_sec: 180 },
+      ],
+      cooldown: [{ exercise: "Savasana with progressive muscle relaxation — 5 min", duration_sec: 300 }],
+    },
+  },
+  {
+    id: "wo-stress-buster", name: "Stress-Buster Interval Circuit",
+    goals: ["weight_loss", "fat_loss", "maintenance", "muscle_gain"], levels: ["intermediate", "advanced"], contra: [],
+    duration_min: 25, equipment: ["bodyweight"],
+    description: "Short, high-energy bursts followed by active recovery — burns cortisol, boosts endorphins, and improves insulin sensitivity in under 30 minutes.",
+    instructions: {
+      warmup: [{ exercise: "Dynamic stretches + high knees", duration_sec: 180 }],
+      main_circuit: [
+        { exercise: "Jump squats (20 s on / 10 s off)", sets: 4, duration_sec: 20, rest_sec: 10 },
+        { exercise: "Push-up + shoulder tap", sets: 4, duration_sec: 20, rest_sec: 10 },
+        { exercise: "Mountain climbers", sets: 4, duration_sec: 20, rest_sec: 10 },
+        { exercise: "Burpee (modified if needed)", sets: 3, reps: 8, rest_sec: 45 },
+      ],
+      cooldown: [{ exercise: "Child's pose + slow diaphragmatic breathing — 3 min", duration_sec: 180 }],
+    },
+  },
+  {
+    id: "wo-tai-chi", name: "Tai Chi / Balance Flow (Older Adults)",
+    goals: ["healthy_aging", "maintenance", "blood_pressure_management"], levels: ["older_adult", "beginner"], contra: [],
+    duration_min: 25, equipment: ["bodyweight"],
+    description: "Slow, flowing movements proven to reduce fall risk, lower BP, and improve balance and proprioception — especially important after 60.",
+    instructions: {
+      warmup: [{ exercise: "Gentle joint rotations (ankles → knees → hips → shoulders)", duration_sec: 240 }],
+      main_circuit: [
+        { exercise: "Tai Chi Wave Hands Like Clouds (8 reps each side)", sets: 3, reps: 8, rest_sec: 30 },
+        { exercise: "Single Leg Stand (10 s each leg)", sets: 3, reps: 10, rest_sec: 20 },
+        { exercise: "Tai Chi Brush Knee Push (slow, controlled)", sets: 3, reps: 10, rest_sec: 30 },
+        { exercise: "Heel-to-toe walking (balance beam walk) — 10 steps", sets: 4, reps: 10, rest_sec: 30 },
+      ],
+      cooldown: [{ exercise: "Standing meditation + deep breathing", duration_sec: 180 }],
+    },
+  },
+  {
+    id: "wo-walking-meditation", name: "Mindful Walking + Meditation",
+    goals: ["healthy_aging", "maintenance", "cardiovascular", "blood_pressure_management", "weight_loss"], levels: ["beginner", "older_adult", "intermediate"], contra: [],
+    duration_min: 30, equipment: ["bodyweight"],
+    description: "Combines moderate-intensity walking with mindfulness — reduces cortisol, improves mood, and counts as Zone 2 cardio for metabolic health.",
+    instructions: {
+      warmup: [{ exercise: "5 slow, deep breaths standing still — focus on body sensations", duration_sec: 120 }],
+      main_circuit: [
+        { exercise: "Slow mindful walk (count steps, notice 5 senses) — 10 min", duration_sec: 600 },
+        { exercise: "Brisk walk (moderate pace, RPE 5-6) — 10 min", duration_sec: 600 },
+        { exercise: "Slow mindful walk + gratitude reflection — 5 min", duration_sec: 300 },
+      ],
+      cooldown: [{ exercise: "Seated breathing: 4 counts in, 6 counts out — 3 min", duration_sec: 180 }],
+    },
+  },
 ];
 
 const REST_TEMPLATE = {
@@ -714,8 +827,92 @@ const CONDITION_TIPS: Record<string, { condition: string; tip: string }> = {
   THYROID: { condition: "Hypothyroidism", tip: "Take levothyroxine on an empty stomach, ensure adequate selenium and iodine, and lightly cook cruciferous vegetables to reduce goitrogens." },
 };
 
+const MEDICATION_NOTES: Record<string, { label: string; tips: string[] }> = {
+  insulin_fast: {
+    label: "Fast-Acting Insulin",
+    tips: [
+      "Eat within 15–20 minutes of injecting fast-acting insulin — never skip a meal after dosing.",
+      "Distribute carbohydrates evenly across breakfast, lunch and dinner (aim for consistent carb counts per meal).",
+      "Keep a fast-acting glucose source (juice, glucose tablets) on hand in case of hypoglycaemia.",
+    ],
+  },
+  insulin_long: {
+    label: "Long-Acting Insulin",
+    tips: [
+      "Take long-acting insulin at the same time each day for stable overnight glucose levels.",
+      "Consistent total daily carbohydrate intake helps prevent unexpected glucose swings.",
+      "Your meal plan distributes protein and carbs evenly to complement your basal insulin.",
+    ],
+  },
+  metformin: {
+    label: "Metformin",
+    tips: [
+      "Always take metformin with food or immediately after eating to minimise GI discomfort.",
+      "Avoid alcohol — it increases the risk of lactic acidosis when combined with metformin.",
+      "Stay well hydrated; adequate water intake supports kidney clearance of the drug.",
+    ],
+  },
+  blood_thinners: {
+    label: "Blood Thinners (Warfarin / Anticoagulants)",
+    tips: [
+      "Keep vitamin K intake consistent day-to-day — do not suddenly increase or decrease leafy greens (spinach, kale, broccoli).",
+      "Avoid large amounts of cranberry, grapefruit or pomelo juice — these can amplify bleeding risk.",
+      "Alcohol significantly increases anticoagulant effect — limit strictly or avoid completely.",
+    ],
+  },
+  statins: {
+    label: "Statins",
+    tips: [
+      "Avoid grapefruit and grapefruit juice — compounds in it inhibit statin metabolism and can cause muscle damage.",
+      "A high-fiber diet (oats, flax, beans) works synergistically with statins to lower LDL further.",
+      "Take your statin at the same time each day; many are best absorbed in the evening.",
+    ],
+  },
+  thyroid_meds: {
+    label: "Thyroid Medication (Levothyroxine)",
+    tips: [
+      "Take levothyroxine on a completely empty stomach, 30–60 minutes before breakfast, with plain water only.",
+      "Avoid calcium-rich foods (dairy, fortified juice) and iron supplements within 4 hours of your dose — they block absorption.",
+      "Coffee, even black, can reduce absorption — wait at least 30 minutes after taking your tablet.",
+    ],
+  },
+  beta_blockers: {
+    label: "Beta-Blockers",
+    tips: [
+      "Avoid sudden large increases in potassium-rich foods (bananas, avocado, dal) as beta-blockers can raise potassium levels.",
+      "Beta-blockers can mask low blood sugar symptoms — monitor glucose carefully if you also have diabetes.",
+      "Avoid liquorice — it can raise blood pressure and counteract the medication.",
+    ],
+  },
+  ace_arb: {
+    label: "ACE Inhibitors / ARBs",
+    tips: [
+      "Limit high-potassium foods if your doctor has advised it — ACE/ARBs raise potassium levels.",
+      "Avoid NSAIDs (ibuprofen, naproxen) — they blunt the BP-lowering effect and stress the kidneys.",
+      "Stay well hydrated, especially in hot weather, to prevent low BP episodes.",
+    ],
+  },
+  calcium_channel: {
+    label: "Calcium Channel Blockers",
+    tips: [
+      "Avoid grapefruit and grapefruit juice — it significantly increases drug levels in your bloodstream.",
+      "Limit high-sodium foods — excess sodium counteracts the blood pressure benefit.",
+      "Consistent meal timing helps maintain stable drug absorption.",
+    ],
+  },
+  diuretics: {
+    label: "Diuretics (Water Pills)",
+    tips: [
+      "Increase water intake to 2.5–3 L/day to compensate for increased urinary losses.",
+      "Eat potassium-rich foods daily (banana, curd, dal, tomato) to replenish what's lost — unless your doctor advises otherwise.",
+      "Take diuretics in the morning to avoid disrupting sleep with nighttime urination.",
+    ],
+  },
+};
+
 export function generateLifestyle(input: OnboardingInput) {
   const conditions = input.conditions || [];
+  const medications = input.medications || [];
   const w = input.weight_kg || 75;
   const ls = input.lifestyle || {};
   const sleepHours = ls.sleep_hours ?? 6.5;
@@ -786,6 +983,9 @@ export function generateLifestyle(input: OnboardingInput) {
       ],
     },
     condition_specific,
+    medication_notes: medications
+      .map((m) => MEDICATION_NOTES[m])
+      .filter(Boolean),
   };
 }
 

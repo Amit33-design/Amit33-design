@@ -3,13 +3,19 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
-import { CONDITIONS } from "@/lib/constants";
+import { CONDITIONS, MEDICATIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export default function ConditionsPage() {
   const router = useRouter();
-  const { conditions, setConditions } = useOnboardingStore();
+  const { conditions, setConditions, medications, setMedications } = useOnboardingStore();
   const [expandedCondition, setExpandedCondition] = useState<string | null>(null);
+
+  const toggleMed = (value: string) => {
+    setMedications(
+      medications.includes(value) ? medications.filter((m) => m !== value) : [...medications, value]
+    );
+  };
 
   const selected = new Set(conditions.map((c) => c.condition_code));
 
@@ -87,13 +93,53 @@ export default function ConditionsPage() {
           })}
         </div>
 
+        {/* Medications */}
+        <div className="pt-2">
+          <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+            <span>💊</span> Are you taking any medications?
+          </h3>
+          <p className="text-sm text-gray-500 mb-3">
+            We use this to flag food interactions and time meals correctly — e.g. insulin users need evenly distributed carbs; warfarin users need consistent vitamin K.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {MEDICATIONS.map((med) => {
+              const on = medications.includes(med.value);
+              return (
+                <button
+                  key={med.value}
+                  onClick={() => toggleMed(med.value)}
+                  className={cn(
+                    "text-left rounded-xl border-2 p-4 transition-all",
+                    on ? "border-sky-500 bg-sky-50" : "border-gray-200 bg-white hover:border-gray-300"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">{med.icon}</span>
+                    <div className="flex-1">
+                      <div className={cn("font-semibold text-sm", on ? "text-sky-900" : "text-gray-900")}>
+                        {med.label}
+                      </div>
+                      {on && (
+                        <div className="text-xs text-sky-600 mt-0.5 animate-fade-in">{med.note}</div>
+                      )}
+                    </div>
+                    <div className={cn("w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5", on ? "bg-sky-500 border-sky-500" : "border-gray-300")}>
+                      {on && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex gap-3 pt-2">
           <button onClick={() => router.back()} className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">← Back</button>
           <button
             onClick={() => router.push("/onboarding/diet")}
             className="flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:scale-105 transition-all shadow-glow-blue"
           >
-            {conditions.length === 0 ? "Skip (No Conditions)" : `Continue with ${conditions.length} Condition${conditions.length > 1 ? "s" : ""}`} →
+            {conditions.length === 0 && medications.length === 0 ? "Skip" : `Continue →`}
           </button>
         </div>
       </div>

@@ -27,6 +27,7 @@ export default function LifestylePage() {
   const sleep = recs?.sleep as Record<string, unknown> | undefined;
   const stress = recs?.stress as Record<string, unknown> | undefined;
   const conditionNotes = (recs?.condition_specific as unknown[]) || [];
+  const medicationNotes = (recs?.medication_notes as unknown[]) || [];
   const meditation = recs?.meditation as Record<string, unknown> | undefined;
 
   return (
@@ -51,6 +52,39 @@ export default function LifestylePage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Medication notes */}
+      {medicationNotes.length > 0 && (
+        <div className="bg-white rounded-2xl border border-sky-200 shadow-card p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-xl">💊</div>
+            <div>
+              <div className="font-bold text-gray-900">Medication & Food Interactions</div>
+              <div className="text-xs text-gray-500">Based on the medications you entered — important for safety</div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {medicationNotes.map((m: unknown, i: number) => {
+              const med = m as { label: string; tips: string[] };
+              return (
+                <div key={i} className="rounded-xl border border-sky-100 bg-sky-50 p-4">
+                  <div className="font-semibold text-sky-900 text-sm mb-2">💊 {med.label}</div>
+                  <ul className="space-y-1.5">
+                    {med.tips.map((tip, j) => (
+                      <li key={j} className="flex items-start gap-2 text-sm text-gray-700">
+                        <span className="text-sky-400 mt-0.5 flex-shrink-0">→</span> {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-4">
+            ⚠️ This is general guidance only. Always follow your doctor&apos;s specific instructions for your medication.
+          </p>
         </div>
       )}
 

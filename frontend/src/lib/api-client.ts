@@ -20,7 +20,7 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function getOnboardingInput(): OnboardingInput {
   const fallback: OnboardingInput = {
     age: 40, gender: "male", weight_kg: 75, height_cm: 172,
-    activity_level: "moderate", goal_type: "weight_loss", conditions: [],
+    activity_level: "moderate", goal_type: "weight_loss", conditions: [], medications: [],
     cuisine: "indian", protein_pref: "vegetarian", name: "You",
     lifestyle: { sleep_hours: 6.5, stress_level: "medium", water_liters_day: 2.0 },
   };
@@ -39,6 +39,7 @@ function getOnboardingInput(): OnboardingInput {
       activity_level: s.activity?.activity_level || fallback.activity_level,
       goal_type: s.goals?.[0]?.goal_type || fallback.goal_type,
       conditions: (s.conditions || []).map((c: { condition_code: string }) => c.condition_code).filter(Boolean),
+      medications: (s.medications || []).filter(Boolean),
       cuisine: s.diet?.cuisine_type || fallback.cuisine,
       protein_pref: s.diet?.protein_preference || fallback.protein_pref,
       name: p.name || fallback.name,

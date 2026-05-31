@@ -47,6 +47,7 @@ interface OnboardingState {
   activity: OnboardingActivity;
   goals: OnboardingGoal[];
   conditions: OnboardingCondition[];
+  medications: string[]; // medication codes e.g. ["insulin_fast", "metformin"]
   diet: OnboardingDiet;
   lifestyle: OnboardingLifestyle;
 
@@ -56,6 +57,7 @@ interface OnboardingState {
   setActivity: (a: Partial<OnboardingActivity>) => void;
   setGoals: (g: OnboardingGoal[]) => void;
   setConditions: (c: OnboardingCondition[]) => void;
+  setMedications: (m: string[]) => void;
   setDiet: (d: Partial<OnboardingDiet>) => void;
   setLifestyle: (l: Partial<OnboardingLifestyle>) => void;
   reset: () => void;
@@ -79,6 +81,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       activity: defaultActivity,
       goals: [],
       conditions: [],
+      medications: [],
       diet: defaultDiet,
       lifestyle: defaultLifestyle,
 
@@ -88,11 +91,12 @@ export const useOnboardingStore = create<OnboardingState>()(
       setActivity: (a) => set((s) => ({ activity: { ...s.activity, ...a } })),
       setGoals: (goals) => set({ goals }),
       setConditions: (conditions) => set({ conditions }),
+      setMedications: (medications) => set({ medications }),
       setDiet: (d) => set((s) => ({ diet: { ...s.diet, ...d } })),
       setLifestyle: (l) => set((s) => ({ lifestyle: { ...s.lifestyle, ...l } })),
       reset: () => set({
         step: 1, userId: null, profile: defaultProfile, activity: defaultActivity,
-        goals: [], conditions: [], diet: defaultDiet, lifestyle: defaultLifestyle,
+        goals: [], conditions: [], medications: [], diet: defaultDiet, lifestyle: defaultLifestyle,
       }),
     }),
     { name: "health-copilot-onboarding" }

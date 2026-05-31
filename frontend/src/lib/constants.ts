@@ -78,3 +78,16 @@ export const CONDITION_COLORS: Record<string, string> = {
   HEART_DISEASE: "bg-rose-100 text-rose-800 border-rose-200",
   THYROID:       "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
+
+export const MEDICATIONS = [
+  { value: "insulin_fast",    label: "Fast-Acting Insulin",    icon: "💉", note: "Humalog, NovoLog — meal carb timing critical" },
+  { value: "insulin_long",    label: "Long-Acting Insulin",    icon: "💉", note: "Lantus, Tresiba — consistent carb distribution" },
+  { value: "metformin",       label: "Metformin",              icon: "💊", note: "Take with food; avoid excessive alcohol" },
+  { value: "blood_thinners",  label: "Blood Thinners",         icon: "🩸", note: "Warfarin/Eliquis — keep vitamin K intake consistent" },
+  { value: "statins",         label: "Statins",                icon: "💊", note: "Atorvastatin/Rosuvastatin — avoid grapefruit" },
+  { value: "thyroid_meds",    label: "Thyroid Medication",     icon: "🦋", note: "Levothyroxine — take on empty stomach, 30–60 min before food" },
+  { value: "beta_blockers",   label: "Beta-Blockers",          icon: "💊", note: "Metoprolol/Atenolol — avoid sudden potassium changes" },
+  { value: "ace_arb",         label: "BP Medication (ACE/ARB)", icon: "💊", note: "Lisinopril/Losartan — monitor potassium-rich foods" },
+  { value: "calcium_channel", label: "Calcium Channel Blockers",icon: "💊", note: "Amlodipine — avoid grapefruit" },
+  { value: "diuretics",       label: "Diuretics / Water Pills", icon: "💧", note: "Furosemide/HCTZ — extra hydration; replenish potassium" },
+];
