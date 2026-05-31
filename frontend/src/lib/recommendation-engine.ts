@@ -40,6 +40,7 @@ interface Food {
   goitrogen?: boolean; // raw cruciferous (thyroid)
   highK?: boolean; // high potassium / phosphorus (CKD)
   anchor?: boolean; // primary protein source
+  egg?: boolean; // contains egg — treated as non-veg in Indian cuisine
   tags: string[];
 }
 
@@ -64,8 +65,9 @@ const ALL: string[] = ["indian", "western", "mediterranean"];
 
 const FOODS: Food[] = [
   // ── Universal: fruits, nuts, seeds, dairy, eggs, lean animal protein ──────────
-  { id: "egg-boiled", name: "Boiled Eggs (2)", local: "Uble Ande", group: "protein", cuisines: ALL, diet: "vegetarian", slots: ["breakfast", "evening_snack"], qty: 100, cal: 155, p: 13, c: 1, f: 11, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Muscle Recovery"] },
-  { id: "egg-bhurji", name: "Egg Bhurji (3 eggs)", local: "Anda Bhurji", group: "protein", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast"], qty: 150, cal: 240, p: 18, c: 3, f: 18, fiber: 1, sodium: "med", oxalate: "low", satfat: "med", anchor: true, tags: ["Complete Protein", "High Protein"] },
+  { id: "egg-boiled", name: "Boiled Eggs (2)", local: "Uble Ande", group: "protein", cuisines: ALL, diet: "vegetarian", slots: ["breakfast", "evening_snack"], qty: 100, cal: 155, p: 13, c: 1, f: 11, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, egg: true, tags: ["Complete Protein", "Muscle Recovery"] },
+  { id: "egg-bhurji", name: "Egg Bhurji (3 eggs)", local: "Anda Bhurji", group: "protein", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast"], qty: 150, cal: 240, p: 18, c: 3, f: 18, fiber: 1, sodium: "med", oxalate: "low", satfat: "med", anchor: true, egg: true, tags: ["Complete Protein", "High Protein"] },
+  { id: "egg-omelette", name: "Veggie Omelette (3 eggs)", group: "protein", cuisines: ALL, diet: "vegetarian", slots: ["breakfast"], qty: 180, cal: 260, p: 20, c: 4, f: 18, fiber: 1, sodium: "med", oxalate: "low", satfat: "med", anchor: true, egg: true, tags: ["Complete Protein", "High Protein", "Muscle Recovery"] },
   { id: "greek-yogurt", name: "Greek Yogurt", local: "Chakka Dahi", group: "dairy", cuisines: ALL, diet: "vegetarian", slots: ["breakfast", "mid_morning", "evening_snack"], qty: 180, cal: 180, p: 18, c: 10, f: 4, fiber: 0, gi: 14, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Protein", "Probiotic", "Calcium"] },
   { id: "low-fat-curd", name: "Low-Fat Curd", local: "Dahi", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast", "lunch", "evening_snack"], qty: 150, cal: 82, p: 7, c: 10, f: 2, fiber: 0, gi: 35, sodium: "low", oxalate: "low", satfat: "low", tags: ["Probiotic", "Low Sodium", "Calcium"] },
   { id: "paneer", name: "Low-Fat Paneer", local: "Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 100, cal: 200, p: 18, c: 2, f: 13, fiber: 0, sodium: "low", oxalate: "low", satfat: "high", anchor: true, tags: ["Vegetarian Protein", "Calcium"] },
@@ -126,7 +128,7 @@ const FOODS: Food[] = [
 
   // ── Mediterranean ─────────────────────────────────────────────────────────
   { id: "yogurt-parfait", name: "Greek Yogurt Parfait", group: "dairy", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 180, cal: 200, p: 18, c: 16, f: 4, fiber: 3, gi: 16, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Protein", "Probiotic", "Antioxidant"] },
-  { id: "shakshuka", name: "Shakshuka (Eggs in Tomato)", group: "protein", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 200, cal: 250, p: 16, c: 14, f: 14, fiber: 4, sodium: "med", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Lycopene", "Heart Healthy"] },
+  { id: "shakshuka", name: "Shakshuka (Eggs in Tomato)", group: "protein", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 200, cal: 250, p: 16, c: 14, f: 14, fiber: 4, sodium: "med", oxalate: "low", satfat: "low", anchor: true, egg: true, tags: ["Complete Protein", "Lycopene", "Heart Healthy"] },
   { id: "med-veg", name: "Roasted Eggplant & Zucchini (Olive Oil)", group: "vegetable", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 95, p: 3, c: 14, f: 5, fiber: 5, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Heart Healthy", "Low Sodium"] },
   { id: "greek-salad", name: "Greek Salad (Tomato, Olive, Cucumber)", group: "vegetable", cuisines: ["mediterranean"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 150, cal: 110, p: 4, c: 9, f: 7, fiber: 4, sodium: "med", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Lycopene", "Healthy Fats"] },
   { id: "falafel", name: "Baked Falafel (4)", group: "legumes", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 120, cal: 230, p: 12, c: 26, f: 9, fiber: 7, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Iron"] },
@@ -142,6 +144,45 @@ const FOODS: Food[] = [
   { id: "yogurt-pepper-cashew", name: "Yogurt-Roasted Peppers with Cashew", group: "vegetable", cuisines: ["mediterranean", "western"], diet: "vegetarian", slots: ["evening_snack", "lunch"], qty: 120, cal: 165, p: 7, c: 12, f: 10, fiber: 3, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Probiotic", "Vitamin C", "Healthy Fats"] },
   { id: "tofu-veg-stirfry", name: "Stir-Fry Veggies with Tofu", group: "protein", cuisines: ALL, diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 230, p: 18, c: 16, f: 11, fiber: 6, gi: 30, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Plant-Based", "High Fiber", "Iron"] },
   { id: "hummus-falafel-platter", name: "Homemade Hummus, Falafel & Roasted Veggie Platter", group: "legumes", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 340, p: 16, c: 38, f: 14, fiber: 11, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Heart Healthy", "Homemade"] },
+
+  // ── Expanded library: more breakfasts ────────────────────────────────────────
+  { id: "besan-chilla", name: "Besan Chilla (2) with Veggies", local: "Besan Chilla", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 160, cal: 220, p: 13, c: 24, f: 7, fiber: 5, gi: 40, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "Low GI", "High Fiber"] },
+  { id: "ragi-dosa", name: "Ragi Dosa (2) with Chutney", local: "Ragi Dosa", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 210, p: 7, c: 38, f: 4, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "low", tags: ["Calcium", "Whole Grain", "High Fiber"] },
+  { id: "upma", name: "Vegetable Upma (Suji)", local: "Upma", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 230, p: 6, c: 40, f: 6, fiber: 4, gi: 58, sodium: "low", oxalate: "low", satfat: "low", tags: ["Light", "Complex Carbs"] },
+  { id: "dalia", name: "Vegetable Dalia (Broken Wheat)", local: "Dalia", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 200, cal: 200, p: 7, c: 38, f: 3, fiber: 6, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Whole Grain"] },
+  { id: "thepla", name: "Methi Thepla (2)", local: "Thepla", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 90, cal: 230, p: 7, c: 36, f: 7, fiber: 5, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["Iron", "Whole Grain", "Fiber"] },
+  { id: "stuffed-paratha", name: "Paneer Stuffed Paratha (1)", local: "Paneer Paratha", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast"], qty: 150, cal: 290, p: 14, c: 34, f: 12, fiber: 4, gi: 58, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["Vegetarian Protein", "Calcium", "Filling"] },
+  { id: "smoothie-bowl", name: "Berry & Seed Protein Smoothie Bowl", group: "fruit", cuisines: ["western", "mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 250, cal: 240, p: 16, c: 30, f: 7, fiber: 7, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Protein", "Antioxidant", "High Fiber"] },
+  { id: "avocado-toast", name: "Avocado Toast on Whole Grain", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["breakfast"], qty: 150, cal: 260, p: 8, c: 30, f: 13, fiber: 8, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Monounsaturated Fats", "High Fiber", "Heart Healthy"] },
+  { id: "muesli-yogurt", name: "Bircher Muesli with Yogurt", group: "grains", cuisines: ["western"], diet: "vegetarian", slots: ["breakfast"], qty: 200, cal: 250, p: 12, c: 38, f: 6, fiber: 6, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Fiber", "Probiotic", "Complex Carbs"] },
+
+  // ── Expanded library: more mid-morning / snacks ──────────────────────────────
+  { id: "papaya", name: "Papaya Bowl", local: "Papita", group: "fruit", cuisines: ["indian"], diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 150, cal: 65, p: 1, c: 16, f: 0, fiber: 3, gi: 38, sodium: "low", oxalate: "low", satfat: "low", tags: ["Digestive Enzymes", "Vitamin C", "Low GI"] },
+  { id: "pear", name: "Pear", local: "Nashpati", group: "fruit", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 150, cal: 85, p: 1, c: 22, f: 0, fiber: 5, gi: 38, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Hydrating"] },
+  { id: "pomegranate", name: "Pomegranate", local: "Anar", group: "fruit", cuisines: ["indian", "mediterranean"], diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 100, cal: 83, p: 2, c: 19, f: 1, fiber: 4, gi: 35, sodium: "low", oxalate: "low", satfat: "low", tags: ["Antioxidant", "Anti-Inflammatory", "Heart Healthy"] },
+  { id: "makhana", name: "Roasted Makhana (Fox Nuts)", local: "Makhana", group: "seeds", cuisines: ["indian"], diet: "vegan", slots: ["evening_snack", "mid_morning"], qty: 30, cal: 105, p: 4, c: 18, f: 2, fiber: 3, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low Calorie", "Magnesium", "Light Snack"] },
+  { id: "trail-mix", name: "Nut & Seed Trail Mix", group: "nuts", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 30, cal: 165, p: 5, c: 8, f: 13, fiber: 3, sodium: "low", oxalate: "low", satfat: "low", tags: ["Healthy Fats", "Magnesium", "Energy"] },
+  { id: "edamame", name: "Steamed Edamame", group: "legumes", cuisines: ["western"], diet: "vegan", slots: ["evening_snack", "mid_morning"], qty: 100, cal: 122, p: 11, c: 10, f: 5, fiber: 5, gi: 18, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "High Fiber", "Low GI"] },
+  { id: "dhokla", name: "Steamed Dhokla (4 pcs)", local: "Dhokla", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["evening_snack", "breakfast"], qty: 120, cal: 160, p: 8, c: 24, f: 3, fiber: 4, gi: 45, sodium: "med", oxalate: "low", satfat: "low", anchor: true, tags: ["Fermented", "Plant Protein", "Steamed"] },
+  { id: "fruit-yogurt", name: "Fruit & Nut Yogurt Cup", group: "dairy", cuisines: ALL, diet: "vegetarian", slots: ["evening_snack", "mid_morning"], qty: 150, cal: 150, p: 10, c: 18, f: 4, fiber: 2, gi: 30, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Probiotic", "Calcium", "Protein"] },
+
+  // ── Expanded library: more lunch / dinner mains ──────────────────────────────
+  { id: "fish-curry", name: "Coconut Fish Curry", local: "Macchi Curry", group: "protein", cuisines: ["indian"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 180, cal: 260, p: 28, c: 6, f: 13, fiber: 1, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["Omega-3", "Lean Protein", "Heart Healthy"] },
+  { id: "tandoori-chicken", name: "Tandoori Chicken (Grilled)", local: "Tandoori Murgh", group: "protein", cuisines: ["indian"], diet: "nonveg", slots: ["lunch", "dinner"], qty: 150, cal: 235, p: 38, c: 3, f: 8, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Low Carb", "Muscle Preservation"] },
+  { id: "egg-curry", name: "Egg Curry (2 eggs)", local: "Anda Curry", group: "protein", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 245, p: 15, c: 8, f: 17, fiber: 2, sodium: "med", oxalate: "low", satfat: "med", anchor: true, egg: true, tags: ["Complete Protein", "Muscle Recovery"] },
+  { id: "kadhi", name: "Low-Fat Kadhi with Brown Rice", local: "Kadhi Chawal", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 250, cal: 240, p: 10, c: 38, f: 5, fiber: 3, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Probiotic", "Comfort Food", "Plant Protein"] },
+  { id: "palak-paneer", name: "Palak Paneer (Low-Fat)", local: "Palak Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 240, p: 16, c: 10, f: 15, fiber: 4, sodium: "low", oxalate: "high", satfat: "med", anchor: true, tags: ["Vegetarian Protein", "Iron", "Calcium"] },
+  { id: "veg-pulao", name: "Vegetable Brown Rice Pulao", local: "Pulao", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 220, cal: 250, p: 7, c: 45, f: 5, fiber: 6, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Complex Carbs", "High Fiber", "Low GI"] },
+  { id: "sambar-rice", name: "Sambar with Brown Rice", local: "Sambar Chawal", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 270, p: 12, c: 48, f: 3, fiber: 8, gi: 48, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Low GI"] },
+  { id: "lauki-chana", name: "Lauki Chana Dal", local: "Lauki Chana", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 190, p: 11, c: 28, f: 3, fiber: 8, gi: 30, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "Low GI", "Light"] },
+  { id: "baingan-bharta", name: "Baingan Bharta", local: "Baingan Bharta", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 180, cal: 120, p: 4, c: 14, f: 6, fiber: 6, gi: 30, sodium: "low", oxalate: "low", satfat: "low", tags: ["Smoky", "High Fiber", "Low Calorie"] },
+  { id: "mixed-veg-sabzi", name: "Mixed Vegetable Sabzi", local: "Mix Veg", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 180, cal: 130, p: 5, c: 16, f: 6, fiber: 6, gi: 35, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Fiber", "Antioxidant", "Low Calorie"] },
+  { id: "grilled-prawns", name: "Garlic Grilled Prawns", group: "protein", cuisines: ["western", "mediterranean", "indian"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 150, cal: 170, p: 30, c: 2, f: 5, fiber: 0, sodium: "med", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Low Calorie", "Selenium"] },
+  { id: "tuna-salad", name: "Tuna & White Bean Salad", group: "protein", cuisines: ["mediterranean", "western"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 200, cal: 260, p: 28, c: 18, f: 8, fiber: 6, gi: 30, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Omega-3", "High Fiber"] },
+  { id: "stuffed-peppers", name: "Quinoa-Stuffed Bell Peppers", group: "grains", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 220, cal: 240, p: 9, c: 38, f: 6, fiber: 7, gi: 48, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "High Fiber", "Antioxidant"] },
+  { id: "minestrone", name: "Minestrone Bean Soup", group: "legumes", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["dinner", "lunch"], qty: 300, cal: 200, p: 11, c: 32, f: 4, fiber: 9, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Fiber", "Plant Protein", "Hydrating"] },
+  { id: "grilled-veg-quinoa", name: "Grilled Vegetable & Quinoa Bowl", group: "grains", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 290, p: 11, c: 42, f: 9, fiber: 8, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "High Fiber", "Antioxidant"] },
+  { id: "chicken-quinoa-bowl", name: "Grilled Chicken Quinoa Bowl", group: "protein", cuisines: ["western", "mediterranean"], diet: "nonveg", slots: ["lunch", "dinner"], qty: 250, cal: 360, p: 38, c: 32, f: 9, fiber: 6, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Complete Protein", "High Fiber"] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,6 +249,19 @@ function prefRank(pref: string): number {
 }
 function dietAllows(pref: string, food: Food): boolean {
   return DIET_RANK[food.diet] <= prefRank(pref);
+}
+
+/**
+ * In Indian cuisine, eggs are considered non-vegetarian. So an Indian
+ * vegetarian (or vegan) is never offered egg dishes — but dairy, paneer,
+ * soy and tofu remain perfectly fine. For Western / Mediterranean cuisines
+ * an (ovo-)vegetarian can still have eggs.
+ */
+function eggAllowed(input: OnboardingInput, food: Food): boolean {
+  if (!food.egg) return true;
+  const veg = prefRank(input.protein_pref) <= 1; // vegan or vegetarian
+  if (veg && (input.cuisine || "indian") === "indian") return false;
+  return true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -318,30 +372,26 @@ export function generateMealPlan(input: OnboardingInput) {
 
   const meals = SLOTS.map((slotDef, idx) => {
     const rand = seededRandom(daySeed(idx) + hashStr(input.protein_pref + cuisine + goal + conditions.join("")));
-    // candidate pool for this slot
-    let pool = FOODS.filter(
-      (food) =>
-        food.slots.includes(slotDef.slot) &&
-        (food.cuisines.includes(cuisine) || food.cuisines.length === 3) &&
-        dietAllows(input.protein_pref, food) &&
-        !isExcluded(food, conditions) &&
-        !usedIds.has(food.id)
-    );
-    // fallback: if cuisine filter empties a slot, allow any cuisine
-    if (pool.length < 2) {
-      pool = FOODS.filter(
-        (food) =>
-          food.slots.includes(slotDef.slot) &&
-          dietAllows(input.protein_pref, food) &&
-          !isExcluded(food, conditions) &&
-          !usedIds.has(food.id)
-      );
-    }
 
-    // rank by preference score + daily jitter for rotation
-    const ranked = pool
+    // Every food that is safe & appropriate for this slot given the user's diet,
+    // cuisine, egg rule and medical conditions — the full menu they can pick from.
+    const slotSafe = (food: Food) =>
+      food.slots.includes(slotDef.slot) &&
+      dietAllows(input.protein_pref, food) &&
+      eggAllowed(input, food) &&
+      !isExcluded(food, conditions);
+
+    let eligible = FOODS.filter((food) => slotSafe(food) && (food.cuisines.includes(cuisine) || food.cuisines.length === 3));
+    // fallback: if the cuisine filter leaves too few, open up to all cuisines
+    if (eligible.length < 6) eligible = FOODS.filter(slotSafe);
+
+    // rank the full eligible menu by preference score + daily jitter for rotation
+    const rankedAll = eligible
       .map((food) => ({ food, score: preferenceScore(food, conditions, goal) + rand() * 4 }))
       .sort((a, b) => b.score - a.score);
+
+    // for the auto-picked plan, prefer foods not already used in another slot
+    const ranked = rankedAll.filter((r) => !usedIds.has(r.food.id));
 
     const targetCal = macros.calories * slotDef.share;
     const picked: Food[] = [];
@@ -374,11 +424,21 @@ export function generateMealPlan(input: OnboardingInput) {
     }
 
     const items = picked.map((food) => toMealItem(food, slotDef.slot));
+
+    // Swappable alternatives: the rest of the safe menu for this slot so the user
+    // can mix and match. Always surface at least 5 options where the menu allows.
+    const pickedIds = new Set(picked.map((f) => f.id));
+    const alternatives = rankedAll
+      .filter((r) => !pickedIds.has(r.food.id))
+      .slice(0, Math.max(5, 8 - items.length))
+      .map((r) => toMealItem(r.food, slotDef.slot));
+
     return {
       slot: slotDef.slot,
       slot_calories: items.reduce((s, i) => s + i.calories, 0),
       slot_protein_g: items.reduce((s, i) => s + i.protein_g, 0),
       items,
+      alternatives,
     };
   });
 

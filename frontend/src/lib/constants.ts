@@ -39,7 +39,7 @@ export const CUISINE_TYPES = [
 ];
 
 export const PROTEIN_PREFERENCES = [
-  { value: "vegetarian",     label: "Vegetarian",     icon: "🥦", description: "Dairy & eggs included" },
+  { value: "vegetarian",     label: "Vegetarian",     icon: "🥦", description: "Dairy, paneer, tofu, soy (eggs only in Western/Med cuisine)" },
   { value: "non_vegetarian", label: "Non-Vegetarian", icon: "🍗", description: "Chicken, fish, eggs, meat" },
   { value: "vegan",          label: "Vegan",          icon: "🌱", description: "100% plant-based" },
   { value: "pescatarian",    label: "Pescatarian",    icon: "🐟", description: "Fish & seafood, no meat" },
