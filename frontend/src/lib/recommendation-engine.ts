@@ -272,11 +272,19 @@ const ACTIVITY_MULT: Record<string, number> = {
   sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9,
 };
 const GOAL_CAL_ADJ: Record<string, number> = {
-  weight_loss: -500, fat_loss: -300, muscle_gain: 300, maintenance: 0, healthy_aging: -100, cardiovascular: -200,
+  weight_loss: -500, fat_loss: -300, muscle_gain: 300, maintenance: 0, healthy_aging: -100,
+  cardiovascular: -200, diabetes_friendly: -300, blood_pressure_management: -200,
 };
-// protein g per kg, [protein%, carb%, fat%] for remaining calorie split
+// protein grams per kg of bodyweight, tuned per goal
 const GOAL_PROTEIN: Record<string, number> = {
-  weight_loss: 1.8, fat_loss: 1.9, muscle_gain: 2.2, maintenance: 1.4, healthy_aging: 1.4, cardiovascular: 1.5,
+  weight_loss: 1.8, fat_loss: 1.9, muscle_gain: 2.2, maintenance: 1.4, healthy_aging: 1.4,
+  cardiovascular: 1.5, diabetes_friendly: 1.6, blood_pressure_management: 1.5,
+};
+// dietary fat as a share of total calories (remaining calories go to carbs). Lower
+// fat + higher carbs for muscle gain; higher fat + fewer carbs for diabetes control.
+const GOAL_FAT_PCT: Record<string, number> = {
+  muscle_gain: 0.20, weight_loss: 0.30, fat_loss: 0.30, maintenance: 0.28,
+  healthy_aging: 0.30, cardiovascular: 0.25, diabetes_friendly: 0.35, blood_pressure_management: 0.27,
 };
 
 export function computeMacros(input: OnboardingInput) {
@@ -286,7 +294,10 @@ export function computeMacros(input: OnboardingInput) {
   const bmr = 10 * w + 6.25 * h - 5 * age + (input.gender === "female" ? -161 : 5);
   const tdee = bmr * (ACTIVITY_MULT[input.activity_level] || 1.4);
   const goal = input.goal_type || "weight_loss";
-  const calories = Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0)) / 10) * 10;
+  // Never prescribe below a clinically safe minimum, even for small/sedentary
+  // users where a raw deficit would be dangerously low.
+  const safeFloor = input.gender === "female" ? 1200 : 1500;
+  const calories = Math.max(safeFloor, Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0)) / 10) * 10);
 
   let proteinPerKg = GOAL_PROTEIN[goal] ?? 1.5;
   // CKD override: cap protein at 0.75 g/kg regardless of goal
@@ -295,16 +306,29 @@ export function computeMacros(input: OnboardingInput) {
 
   const protein_g = Math.round(proteinPerKg * w);
   const proteinCals = protein_g * 4;
-  // fat ~28% of calories, rest carbs
-  const fat_g = Math.round((calories * 0.28) / 9);
+  // fat share is goal-specific; remaining calories become carbs
+  const fatPct = GOAL_FAT_PCT[goal] ?? 0.28;
+  const fat_g = Math.round((calories * fatPct) / 9);
   const carbs_g = Math.max(0, Math.round((calories - proteinCals - fat_g * 9) / 4));
+  // Diabetes / prediabetes: hold carbs to a lower ceiling and route the rest to fat
+  let carbsFinal = carbs_g;
+  let fatFinal = fat_g;
+  const carbControl = goal === "diabetes_friendly" || input.conditions.includes("T2D") || input.conditions.includes("PREDIABETES");
+  if (carbControl) {
+    const carbCeil = Math.round((calories * 0.40) / 4); // ≤40% of calories from carbs
+    if (carbsFinal > carbCeil) {
+      const shiftedCals = (carbsFinal - carbCeil) * 4;
+      carbsFinal = carbCeil;
+      fatFinal = fat_g + Math.round(shiftedCals / 9);
+    }
+  }
   const fiber_g = Math.max(25, Math.round((calories / 1000) * 14));
 
   return {
     calories,
     protein_g,
-    carbs_g,
-    fat_g,
+    carbs_g: carbsFinal,
+    fat_g: fatFinal,
     fiber_g,
     protein_g_per_kg: Math.round(proteinPerKg * 100) / 100,
   };
@@ -326,35 +350,61 @@ const SLOT_LABELS: Record<Slot, string> = {
   evening_snack: "evening snack", dinner: "dinner",
 };
 
-function buildFoodObj(food: Food) {
+// Snap a scaled portion to a tidy, human-readable number.
+function roundQty(q: number): number {
+  if (q >= 100) return Math.round(q / 10) * 10;
+  if (q >= 30) return Math.round(q / 5) * 5;
+  return Math.max(1, Math.round(q));
+}
+
+// How far a serving may shrink or grow so portions right-size to the user's
+// calorie / protein needs without becoming unrealistic. Calorie-dense foods
+// (nuts, seeds) are capped tighter; carbs and proteins get more headroom.
+function scaleBounds(food: Food): [number, number] {
+  if (food.group === "beverage") return [1, 1];
+  switch (food.group) {
+    case "nuts":
+    case "seeds": return [0.5, 1.25];
+    case "fruit": return [0.75, 1.5];
+    case "vegetable": return [0.75, 1.75];
+    case "grains": return [0.5, 1.75];
+    case "protein":
+    case "dairy":
+    case "legumes": return [0.75, 1.8];
+    default: return [0.75, 1.5];
+  }
+}
+
+function buildFoodObj(food: Food, scale: number) {
   return {
     id: `food-${food.id}`,
     name: food.name,
     name_local: food.local || null,
     food_group: food.group,
-    calories: food.cal,
-    protein_g: food.p,
-    carbs_g: food.c,
-    fat_g: food.f,
-    fiber_g: food.fiber,
+    calories: Math.round(food.cal * scale),
+    protein_g: Math.round(food.p * scale),
+    carbs_g: Math.round(food.c * scale),
+    fat_g: Math.round(food.f * scale),
+    fiber_g: Math.round(food.fiber * scale * 10) / 10,
     glycemic_index: food.gi,
     is_low_gi: food.gi ? food.gi < 55 : false,
-    is_high_fiber: food.fiber >= 5,
+    is_high_fiber: food.fiber * scale >= 5,
   };
 }
 
-function toMealItem(food: Food, slot: Slot) {
+function toMealItem(food: Food, slot: Slot, scale = 1) {
   return {
     id: `${slot}-${food.id}`,
-    food: buildFoodObj(food),
+    food: buildFoodObj(food, scale),
     meal_slot: slot,
-    quantity_g: food.qty,
+    quantity_g: roundQty(food.qty * scale),
     reason_tags: food.tags,
     ai_reason: null,
-    calories: food.cal,
-    protein_g: food.p,
-    carbs_g: food.c,
-    fat_g: food.f,
+    calories: Math.round(food.cal * scale),
+    protein_g: Math.round(food.p * scale * 10) / 10,
+    carbs_g: Math.round(food.c * scale * 10) / 10,
+    fat_g: Math.round(food.f * scale * 10) / 10,
+    serving_scale: Math.round(scale * 100) / 100,
   };
 }
 
@@ -371,7 +421,8 @@ export function generateMealPlan(input: OnboardingInput) {
   let dayProtein = 0;
   const usedIds = new Set<string>(); // global dedupe → more variety across slots
 
-  const meals = SLOTS.map((slotDef, idx) => {
+  // ── Phase 1: SELECT which foods go in each slot (base 1× serving) ──────────
+  const selected = SLOTS.map((slotDef, idx) => {
     const rand = seededRandom(daySeed(idx) + hashStr(input.protein_pref + cuisine + goal + conditions.join("")));
 
     // Every food that is safe & appropriate for this slot given the user's diet,
@@ -424,30 +475,161 @@ export function generateMealPlan(input: OnboardingInput) {
       tryAdd(r.food);
     }
 
-    const items = picked.map((food) => toMealItem(food, slotDef.slot));
-
-    // Swappable alternatives: the rest of the safe menu for this slot so the user
-    // can mix and match. Always surface at least 5 options where the menu allows.
     const pickedIds = new Set(picked.map((f) => f.id));
-    const alternatives = rankedAll
+    const altFoods = rankedAll
       .filter((r) => !pickedIds.has(r.food.id))
-      .slice(0, Math.max(5, 8 - items.length))
-      .map((r) => toMealItem(r.food, slotDef.slot));
+      .slice(0, Math.max(5, 8 - picked.length))
+      .map((r) => r.food);
 
+    return { slotDef, picked, altFoods };
+  });
+
+  // ── Phase 2: SIZE the portions so day totals converge on the user's targets ─
+  // The two macros are steered by *separate* levers so they don't fight:
+  //   • protein-dense foods are scaled to hit the protein target
+  //   • energy foods (grains, fruit, veg, fats) are scaled to hit the remaining
+  //     calories, with the lowest-priority ones dropped if the target is very low.
+  // A hard protein ceiling (CKD) is enforced last so scaling can never exceed it.
+  type Entry = { food: Food; slotIdx: number; scale: number; role: "protein" | "energy"; dropRank: number };
+  const entries: Entry[] = [];
+  selected.forEach(({ slotDef, picked }, slotIdx) => {
+    picked.forEach((food, i) => {
+      const dense = food.p >= 8 && food.p / Math.max(food.cal, 1) >= 0.09;
+      entries.push({
+        food, slotIdx, scale: 1,
+        role: dense || food.anchor ? "protein" : "energy",
+        // drop energy items from the smallest slots / last-added first
+        dropRank: slotDef.share * 100 - i,
+      });
+    });
+  });
+
+  const proteinItems = entries.filter((e) => e.role === "protein" && e.food.group !== "beverage");
+  const energyItems = entries.filter((e) => e.role === "energy" && e.food.group !== "beverage");
+  const sumBy = (list: Entry[], fn: (e: Entry) => number) => list.reduce((a, e) => a + fn(e), 0);
+  const dayCal = () => sumBy(entries, (e) => e.food.cal * e.scale);
+  const dayProt = () => sumBy(entries, (e) => e.food.p * e.scale);
+
+  // Distribute a scale across a list to move a running total toward `target`.
+  const steer = (list: Entry[], current: number, target: number, valueOf: (e: Entry) => number) => {
+    const base = sumBy(list, (e) => valueOf(e) * e.scale) || 1;
+    const rest = current - base; // contribution from items we're NOT scaling here
+    const want = Math.max(0, target - rest);
+    const factor = want / base;
+    for (const e of list) {
+      const [lo, hi] = scaleBounds(e.food);
+      e.scale = Math.min(hi, Math.max(lo, e.scale * factor));
+    }
+  };
+
+  // Protein lever — respect the CKD ceiling as a hard target maximum.
+  const proteinTarget = proteinCap ? Math.min(macros.protein_g, proteinCeiling) : macros.protein_g;
+  steer(proteinItems, dayProt(), proteinTarget, (e) => e.food.p);
+
+  // Calorie lever — fill the remaining calories with the energy foods.
+  steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
+
+  // If still well over target (very low-calorie plans), drop the lowest-priority
+  // energy items until we're within reach, then re-steer.
+  let guard = 0;
+  while (dayCal() > macros.calories * 1.12 && guard++ < 8) {
+    const droppable = energyItems
+      .filter((e) => {
+        const slotPicked = selected[e.slotIdx].picked;
+        const minItems = selected[e.slotIdx].slotDef.needsAnchor ? 2 : 1;
+        return slotPicked.length > minItems && selected[e.slotIdx].picked.includes(e.food);
+      })
+      .sort((a, b) => a.dropRank - b.dropRank);
+    if (!droppable.length) break;
+    const victim = droppable[0];
+    const sp = selected[victim.slotIdx].picked;
+    sp.splice(sp.indexOf(victim.food), 1);
+    energyItems.splice(energyItems.indexOf(victim), 1);
+    entries.splice(entries.indexOf(victim), 1);
+    steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
+  }
+
+  // Final trim: when a plan is still over on calories (common for protein-dense
+  // plant plans on a low target) and protein is already met, shrink the protein
+  // portions toward their minimum — but never below the protein target itself.
+  if (dayCal() > macros.calories * 1.05) {
+    const shrink = proteinItems.slice().sort((a, b) => b.food.cal * b.scale - a.food.cal * a.scale);
+    for (const e of shrink) {
+      const [lo] = scaleBounds(e.food);
+      while (e.scale > lo && dayCal() > macros.calories * 1.05 && dayProt() > proteinTarget * 0.97) {
+        e.scale = Math.max(lo, e.scale - 0.1);
+      }
+    }
+  }
+
+  // Hard safety (CKD): keep total protein at or under the renal cap. Plant foods
+  // carry protein even in "energy" roles, so we trim EVERY protein-bearing item
+  // toward its minimum — highest contributor first — and drop protein foods from
+  // over-stacked slots if minimum portions still exceed the cap.
+  if (proteinCap && dayProt() > proteinTarget) {
+    // 1) shrink every protein-bearing item toward its lower bound
+    let over = dayProt() - proteinTarget;
+    const shrinkable = entries
+      .filter((e) => e.food.p > 0 && e.food.group !== "beverage")
+      .sort((a, b) => b.food.p * b.scale - a.food.p * a.scale);
+    for (const e of shrinkable) {
+      if (over <= 0) break;
+      const [lo] = scaleBounds(e.food);
+      const cut = Math.min(e.scale - lo, over / Math.max(e.food.p, 1));
+      if (cut <= 0.01) continue;
+      e.scale -= cut;
+      over -= cut * e.food.p;
+    }
+    // 2) if minimum portions still exceed the cap, drop the most protein-dense
+    //    items from slots that have more than one item
+    let dropGuard = 0;
+    while (dayProt() > proteinTarget && dropGuard++ < 12) {
+      const cand = entries
+        .filter((e) => {
+          const s = selected[e.slotIdx];
+          return e.food.p >= 6 && s.picked.includes(e.food) && s.picked.length > 1;
+        })
+        .sort((a, b) => b.food.p * b.scale - a.food.p * a.scale);
+      if (!cand.length) break;
+      const v = cand[0];
+      const sp = selected[v.slotIdx].picked;
+      sp.splice(sp.indexOf(v.food), 1);
+      entries.splice(entries.indexOf(v), 1);
+    }
+  }
+  const scaleOf = (food: Food) => entries.find((e) => e.food === food)?.scale ?? 1;
+
+  // ── Phase 3: MATERIALISE meals with their tuned portions ───────────────────
+  const meals = selected.map(({ slotDef, picked, altFoods }) => {
+    const items = picked.map((food) => toMealItem(food, slotDef.slot, scaleOf(food)));
+    const alternatives = altFoods.map((food) => toMealItem(food, slotDef.slot));
     return {
       slot: slotDef.slot,
       slot_calories: items.reduce((s, i) => s + i.calories, 0),
-      slot_protein_g: items.reduce((s, i) => s + i.protein_g, 0),
+      slot_protein_g: Math.round(items.reduce((s, i) => s + i.protein_g, 0)),
       items,
       alternatives,
     };
   });
 
   const total_calories = meals.reduce((s, m) => s + m.slot_calories, 0);
-  const total_protein_g = meals.reduce((s, m) => s + m.slot_protein_g, 0);
-  const total_carbs_g = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.carbs_g, 0), 0);
-  const total_fat_g = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.fat_g, 0), 0);
-  const total_fiber_g = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.food.fiber_g, 0), 0);
+  const total_protein_g = Math.round(meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.protein_g, 0), 0));
+  const total_carbs_g = Math.round(meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.carbs_g, 0), 0));
+  const total_fat_g = Math.round(meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.fat_g, 0), 0));
+  const total_fiber_g = Math.round(meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.food.fiber_g, 0), 0));
+
+  // How closely the generated plan lands on each personalised target (0–100).
+  const accuracy = (actual: number, target: number) =>
+    target <= 0 ? 100 : Math.max(0, Math.round(100 - (Math.abs(actual - target) / target) * 100));
+  const fit = {
+    calories: accuracy(total_calories, macros.calories),
+    protein: accuracy(total_protein_g, macros.protein_g),
+    carbs: accuracy(total_carbs_g, macros.carbs_g),
+    fat: accuracy(total_fat_g, macros.fat_g),
+    overall: Math.round(
+      (accuracy(total_calories, macros.calories) + accuracy(total_protein_g, macros.protein_g)) / 2
+    ),
+  };
 
   return {
     id: `demo-plan-${goal}-${cuisine}-${input.protein_pref}`,
@@ -460,6 +642,7 @@ export function generateMealPlan(input: OnboardingInput) {
     ai_summary: buildSummary(input, macros),
     meals,
     macro_targets: macros,
+    fit,
   };
 }
 

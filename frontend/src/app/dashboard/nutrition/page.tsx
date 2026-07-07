@@ -18,14 +18,49 @@ export default function NutritionPage() {
   }, [router]);
 
   const macros = plan?.macro_targets as Record<string, number> | undefined;
+  const fit = plan?.fit as { calories: number; protein: number; carbs: number; fat: number; overall: number } | undefined;
   const meals = (plan?.meals as unknown[]) || [];
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-black text-gray-900">Nutrition Plan</h1>
-        <p className="text-gray-400 text-sm mt-1">Condition-aware · Constraint-optimized · Explainable</p>
+        <p className="text-gray-500 text-sm mt-1">Personalised to your body, goal &amp; conditions · portions sized to your targets</p>
       </div>
+
+      {/* Plan match — how closely today's portions land on the user's personalised targets */}
+      {!loading && fit && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎯</span>
+              <span className="font-bold text-gray-900 text-sm">Plan Match</span>
+              <span className="text-xs text-gray-400">how closely your portions hit today&apos;s targets</span>
+            </div>
+            <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${fit.overall >= 85 ? "bg-emerald-100 text-emerald-700" : fit.overall >= 70 ? "bg-amber-100 text-amber-700" : "bg-orange-100 text-orange-700"}`}>
+              {fit.overall}%
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Calories", val: fit.calories, color: "bg-orange-500" },
+              { label: "Protein",  val: fit.protein,  color: "bg-violet-500" },
+              { label: "Carbs",    val: fit.carbs,    color: "bg-sky-500" },
+              { label: "Fat",      val: fit.fat,      color: "bg-amber-500" },
+            ].map((f) => (
+              <div key={f.label}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-semibold text-gray-600">{f.label}</span>
+                  <span className="font-bold text-gray-900">{f.val}%</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${f.color} rounded-full`} style={{ width: `${Math.max(4, Math.min(100, f.val))}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid md:grid-cols-3 gap-6">
