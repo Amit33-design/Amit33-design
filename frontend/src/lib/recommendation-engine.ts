@@ -687,6 +687,20 @@ function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeM
     parts.push("Anti-inflammatory foods, omega-3s and adequate protein are prioritised to combat sarcopenia and support cognition.");
   else
     parts.push(`Protein is held at ${macros.protein_g} g to preserve muscle while in a calorie deficit.`);
+  // Medication-aware guidance woven into the plan explanation (max 2 lines)
+  const meds = input.medications || [];
+  const medLines: string[] = [];
+  if (meds.some((m) => m.startsWith("insulin")))
+    medLines.push("Carbohydrates are spread evenly across your meals so they work smoothly with your insulin doses.");
+  if (meds.includes("metformin"))
+    medLines.push("Pair metformin with the breakfast and dinner in this plan — taking it with food reduces stomach upset.");
+  if (meds.includes("thyroid_meds"))
+    medLines.push("Take your thyroid medication 30–60 minutes before the breakfast shown here, with water only.");
+  if (meds.includes("blood_thinners"))
+    medLines.push("Keep leafy-green portions steady from day to day — consistent vitamin K intake matters with blood thinners.");
+  if (meds.includes("diuretics"))
+    medLines.push("Your plan includes potassium-rich foods to replenish what diuretics flush out — check with your doctor about your target.");
+  parts.push(...medLines.slice(0, 2));
   parts.push("Foods rotate daily so your week stays varied.");
   return parts.join(" ");
 }

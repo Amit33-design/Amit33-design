@@ -58,6 +58,7 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 ## Changelog (newest first)
 
+- **2026-07-07 (3)** Medication-aware meal summary: `buildSummary` now weaves up to 2 medication guidance lines (insulin carb spread, metformin with meals, levothyroxine before breakfast, warfarin vitamin-K consistency, diuretic potassium) into `ai_summary` — shows on nutrition page + report. Lifestyle page already had full `medication_notes` tips.
 - **2026-07-07 (2)** Backlog items 1–3 shipped: +12 calorie-dense healthy foods (pb-banana-toast, granola-yogurt, banana-pb-smoothie, dates-nut-laddoo, dried-fruit-mix, mango, sweet-corn-chaat, veg-biryani-brown, ww-pasta, couscous-chickpea, baked-potato, paneer-rice-bowl) + engine adds one extra item/slot when target > 2800 kcal → muscle-gain fit 72%→91-98%. Recipe coverage: 97 recipes, all cooked dishes covered; remaining 19 are ready-to-eat whole foods with a green "no cooking needed" fallback card. UI: "portion tuned for you" hint in MealCard (serving_scale ≥ ±10%), Plan Match % chip on dashboard overview.
 - **2026-07-07** Portion-scaling engine rewrite: goal coverage complete, safe calorie floor, goal fat splits + diabetes carb ceiling, decoupled protein/energy scaling, hard CKD enforcement, `fit` score + Plan Match UI. Sweep: 768 combos, 0 crashes/violations, ~90% avg fit.
 - **2026-07-07** Report page: EmailJS direct send + html2canvas/jsPDF colored PDF; env placeholders added.
@@ -67,7 +68,7 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 1. **Weekly view** — 7-day rotating plan (daySeed already supports per-day variation) + grocery list generation.
 2. **Progress-aware feedback loop** — use logged weight trend to auto-adjust calorie target (e.g. ±100 kcal if losing too fast/slow).
-3. **Medication-aware rules** — medications collected in onboarding but unused by engine (e.g. warfarin → vitamin-K consistency note, levothyroxine → breakfast timing note).
+3. **Medication-aware food selection** — summary notes + lifestyle tips done; deeper step would be engine-level effects (e.g. enforce steady leafy-green servings for warfarin users, cap potassium foods with ACE/ARB).
 4. **Alternatives portion-scaling** — swap options currently shown at 1× serving; scale them to slot context on swap.
 5. **Unit tests in repo** — move the ad-hoc sweep into `frontend/src/lib/__tests__/` with vitest so CI can run it.
 6. **Muscle-gain protein overshoot** — 3650 kcal case lands P 230 vs 202 target (86% fit); could trim protein scales when calories are satisfied but protein is over.
