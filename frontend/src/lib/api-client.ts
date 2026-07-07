@@ -4,7 +4,7 @@ import {
 } from "./demo-data";
 import {
   OnboardingInput, buildUserSummary, computeMacros, generateMealPlan,
-  generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
+  generateWeeklyPlan, generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
 } from "./recommendation-engine";
 import { saveProgressEntry, getLocalProgressHistory } from "./local-store";
 
@@ -32,13 +32,15 @@ function getOnboardingInput(): OnboardingInput {
     const s = JSON.parse(stored)?.state || {};
     const p = s.profile || {};
     const num = (v: unknown, d: number) => (v === "" || v == null ? d : Number(v));
+    const goal_type = s.goals?.[0]?.goal_type || fallback.goal_type;
     return {
       age: num(p.age, fallback.age),
       gender: p.gender || fallback.gender,
       weight_kg: num(p.weight_kg, fallback.weight_kg),
       height_cm: num(p.height_cm, fallback.height_cm),
       activity_level: s.activity?.activity_level || fallback.activity_level,
-      goal_type: s.goals?.[0]?.goal_type || fallback.goal_type,
+      goal_type,
+      calorie_adjustment: progressCalorieAdjustment(goal_type),
       conditions: (s.conditions || []).map((c: { condition_code: string }) => c.condition_code).filter(Boolean),
       medications: (s.medications || []).filter(Boolean),
       cuisine: s.diet?.cuisine_type || fallback.cuisine,
@@ -52,6 +54,41 @@ function getOnboardingInput(): OnboardingInput {
     };
   } catch {
     return fallback;
+  }
+}
+
+/**
+ * Progress feedback loop: derive a calorie nudge from the user's logged weight
+ * trend over the last 3 weeks. Needs two weight entries at least 7 days apart;
+ * returns 0 (no change) otherwise.
+ *   deficit goals — losing too fast → +100 kcal, too slow / regaining → −100
+ *   muscle gain  — gaining too fast → −100 kcal, stalled → +100
+ */
+function progressCalorieAdjustment(goal: string): number {
+  try {
+    const logs = getLocalProgressHistory(21).logs.filter(
+      (l) => typeof l.weight_kg === "number" && !Number.isNaN(l.weight_kg)
+    );
+    if (logs.length < 2) return 0;
+    const latest = logs[0]; // history is sorted newest first
+    const earliest = logs[logs.length - 1];
+    const days = (new Date(latest.log_date).getTime() - new Date(earliest.log_date).getTime()) / 86400000;
+    if (days < 7) return 0;
+    const perWeek = ((latest.weight_kg! - earliest.weight_kg!) / days) * 7;
+
+    if (goal === "muscle_gain") {
+      if (perWeek > 0.5) return -100; // gaining too fast → mostly fat
+      if (perWeek < 0.05) return 100; // stalled → eat a bit more
+      return 0;
+    }
+    if (goal === "weight_loss" || goal === "fat_loss" || goal === "diabetes_friendly") {
+      if (perWeek < -1.0) return 100; // losing too fast → unsustainable
+      if (perWeek > -0.15) return -100; // plateau or regaining → tighten
+      return 0;
+    }
+    return 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -94,6 +131,11 @@ export const api = {
     DEMO_MODE
       ? Promise.resolve(generateMealPlan(getOnboardingInput()))
       : apiFetch(`/nutrition/${userId}/plan${date ? `?plan_date=${date}` : ""}`),
+
+  getWeeklyPlan: (userId: string) =>
+    DEMO_MODE
+      ? Promise.resolve(generateWeeklyPlan(getOnboardingInput()))
+      : apiFetch(`/nutrition/${userId}/plan/weekly`),
 
   getMacros: (userId: string) =>
     DEMO_MODE ? Promise.resolve(computeMacros(getOnboardingInput())) : apiFetch(`/nutrition/${userId}/macros`),

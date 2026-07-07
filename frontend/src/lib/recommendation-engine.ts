@@ -57,6 +57,8 @@ export interface OnboardingInput {
   protein_pref: string;
   name?: string;
   lifestyle?: { sleep_hours?: number; stress_level?: string; water_liters_day?: number };
+  /** kcal nudge derived from the user's logged weight trend (progress feedback loop) */
+  calorie_adjustment?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,10 +248,10 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function daySeed(extra = 0): number {
+function daySeed(extra = 0, dayOffset = 0): number {
   const now = new Date();
   const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-  return now.getFullYear() * 1000 + dayOfYear + extra * 131;
+  return now.getFullYear() * 1000 + dayOfYear + dayOffset + extra * 131;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,7 +313,9 @@ export function computeMacros(input: OnboardingInput) {
   // Never prescribe below a clinically safe minimum, even for small/sedentary
   // users where a raw deficit would be dangerously low.
   const safeFloor = input.gender === "female" ? 1200 : 1500;
-  const calories = Math.max(safeFloor, Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0)) / 10) * 10);
+  // progress feedback: nudge from logged weight trend, clamped to ±150 kcal
+  const trendAdj = Math.max(-150, Math.min(150, input.calorie_adjustment ?? 0));
+  const calories = Math.max(safeFloor, Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0) + trendAdj) / 10) * 10);
 
   let proteinPerKg = GOAL_PROTEIN[goal] ?? 1.5;
   // CKD override: cap protein at 0.75 g/kg regardless of goal
@@ -422,7 +426,7 @@ function toMealItem(food: Food, slot: Slot, scale = 1) {
   };
 }
 
-export function generateMealPlan(input: OnboardingInput) {
+export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
   const macros = computeMacros(input);
   const cuisine = input.cuisine || "indian";
   const conditions = input.conditions || [];
@@ -437,7 +441,7 @@ export function generateMealPlan(input: OnboardingInput) {
 
   // ── Phase 1: SELECT which foods go in each slot (base 1× serving) ──────────
   const selected = SLOTS.map((slotDef, idx) => {
-    const rand = seededRandom(daySeed(idx) + hashStr(input.protein_pref + cuisine + goal + conditions.join("")));
+    const rand = seededRandom(daySeed(idx, dayOffset) + hashStr(input.protein_pref + cuisine + goal + conditions.join("")));
 
     // Every food that is safe & appropriate for this slot given the user's diet,
     // cuisine, egg rule and medical conditions — the full menu they can pick from.
@@ -649,8 +653,8 @@ export function generateMealPlan(input: OnboardingInput) {
   };
 
   return {
-    id: `demo-plan-${goal}-${cuisine}-${input.protein_pref}`,
-    plan_date: new Date().toISOString().slice(0, 10),
+    id: `demo-plan-${goal}-${cuisine}-${input.protein_pref}-d${dayOffset}`,
+    plan_date: new Date(Date.now() + dayOffset * 86400000).toISOString().slice(0, 10),
     total_calories,
     total_protein_g,
     total_carbs_g,
@@ -660,6 +664,76 @@ export function generateMealPlan(input: OnboardingInput) {
     meals,
     macro_targets: macros,
     fit,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Weekly plan + grocery list
+// ─────────────────────────────────────────────────────────────────────────────
+const GROUP_LABEL: Record<string, string> = {
+  protein: "Proteins", dairy: "Dairy", legumes: "Legumes & Pulses", grains: "Grains & Breads",
+  vegetable: "Vegetables", fruit: "Fruits", nuts: "Nuts", seeds: "Seeds", beverage: "Beverages",
+};
+
+export function generateWeeklyPlan(input: OnboardingInput) {
+  const days = Array.from({ length: 7 }, (_, offset) => {
+    const plan = generateMealPlan(input, offset);
+    const date = new Date(Date.now() + offset * 86400000);
+    return {
+      day_offset: offset,
+      date: plan.plan_date,
+      weekday: date.toLocaleDateString("en-US", { weekday: "long" }),
+      weekday_short: date.toLocaleDateString("en-US", { weekday: "short" }),
+      plan,
+    };
+  });
+
+  // Aggregate the week's picked items (not alternatives) into a grocery list
+  const agg = new Map<string, { name: string; local: string | null; group: string; total_qty_g: number; times: number }>();
+  for (const day of days) {
+    for (const meal of day.plan.meals) {
+      for (const item of meal.items) {
+        const key = item.food.id;
+        const cur = agg.get(key);
+        if (cur) {
+          cur.total_qty_g += item.quantity_g;
+          cur.times += 1;
+        } else {
+          agg.set(key, {
+            name: item.food.name,
+            local: item.food.name_local,
+            group: item.food.food_group,
+            total_qty_g: item.quantity_g,
+            times: 1,
+          });
+        }
+      }
+    }
+  }
+
+  const groupsMap = new Map<string, { label: string; items: { name: string; local: string | null; total_qty_g: number; times: number }[] }>();
+  for (const entry of agg.values()) {
+    const label = GROUP_LABEL[entry.group] || "Other";
+    if (!groupsMap.has(label)) groupsMap.set(label, { label, items: [] });
+    groupsMap.get(label)!.items.push({
+      name: entry.name,
+      local: entry.local,
+      total_qty_g: Math.round(entry.total_qty_g / 10) * 10,
+      times: entry.times,
+    });
+  }
+  const grocery = [...groupsMap.values()]
+    .map((g) => ({ ...g, items: g.items.sort((a, b) => b.times - a.times) }))
+    .sort((a, b) => b.items.length - a.items.length);
+
+  const avgFit = Math.round(days.reduce((s, d) => s + d.plan.fit.overall, 0) / days.length);
+
+  return {
+    week_start: days[0].date,
+    week_end: days[6].date,
+    avg_fit: avgFit,
+    days,
+    grocery,
   };
 }
 
@@ -687,6 +761,21 @@ function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeM
     parts.push("Anti-inflammatory foods, omega-3s and adequate protein are prioritised to combat sarcopenia and support cognition.");
   else
     parts.push(`Protein is held at ${macros.protein_g} g to preserve muscle while in a calorie deficit.`);
+  // Progress feedback loop: tell the user when their logged weight trend moved the target
+  const adj = input.calorie_adjustment ?? 0;
+  const gaining = input.goal_type === "muscle_gain";
+  if (adj <= -50)
+    parts.push(
+      gaining
+        ? `Your logged weight is climbing faster than lean gain allows, so today's calorie target was trimmed by ${Math.abs(adj)} kcal to keep gains lean.`
+        : `Your logged weight trend shows progress has been slower than planned, so today's calorie target was lowered by ${Math.abs(adj)} kcal.`
+    );
+  else if (adj >= 50)
+    parts.push(
+      gaining
+        ? `Your logged weight trend shows slower gains than planned, so today's calorie target was raised by ${adj} kcal.`
+        : `Your logged weight is dropping faster than is sustainable, so today's calorie target was raised by ${adj} kcal to protect muscle and energy.`
+    );
   // Medication-aware guidance woven into the plan explanation (max 2 lines)
   const meds = input.medications || [];
   const medLines: string[] = [];

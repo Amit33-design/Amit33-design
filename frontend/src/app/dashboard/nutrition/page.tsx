@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api, resolveUserId } from "@/lib/api-client";
 import { MealCard } from "@/components/dashboard/MealCard";
 import { MacroRing } from "@/components/dashboard/MacroRing";
@@ -23,9 +24,17 @@ export default function NutritionPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900">Nutrition Plan</h1>
-        <p className="text-gray-500 text-sm mt-1">Personalised to your body, goal &amp; conditions · portions sized to your targets</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900">Nutrition Plan</h1>
+          <p className="text-gray-500 text-sm mt-1">Personalised to your body, goal &amp; conditions · portions sized to your targets</p>
+        </div>
+        <Link
+          href="/dashboard/nutrition/weekly"
+          className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-500 to-violet-600 text-white shadow-lg shadow-violet-500/25 hover:opacity-95 transition-all"
+        >
+          📅 7-Day Plan &amp; Grocery List →
+        </Link>
       </div>
 
       {/* Plan match — how closely today's portions land on the user's personalised targets */}

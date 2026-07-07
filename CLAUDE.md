@@ -58,6 +58,7 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 ## Changelog (newest first)
 
+- **2026-07-07 (4)** Weekly plan + feedback loop: `generateWeeklyPlan` (7 × `generateMealPlan(input, dayOffset)` via offset-aware `daySeed`) returns days[] + grouped grocery list (aggregated `quantity_g`, `times` count) + avg_fit; new page `/dashboard/nutrition/weekly` (day tabs, compact meals, checkable grocery list, copy-to-clipboard) linked from nutrition header. Progress feedback loop: `progressCalorieAdjustment(goal)` in api-client reads 21-day weight trend from local logs (needs 2 entries ≥7 days apart) → ±100 kcal nudge via `input.calorie_adjustment` (engine clamps ±150, goal-aware explanation in ai_summary). NOTE: `getLocalProgressHistory` returns `{ logs: [...] }` not an array.
 - **2026-07-07 (3)** Medication-aware meal summary: `buildSummary` now weaves up to 2 medication guidance lines (insulin carb spread, metformin with meals, levothyroxine before breakfast, warfarin vitamin-K consistency, diuretic potassium) into `ai_summary` — shows on nutrition page + report. Lifestyle page already had full `medication_notes` tips.
 - **2026-07-07 (2)** Backlog items 1–3 shipped: +12 calorie-dense healthy foods (pb-banana-toast, granola-yogurt, banana-pb-smoothie, dates-nut-laddoo, dried-fruit-mix, mango, sweet-corn-chaat, veg-biryani-brown, ww-pasta, couscous-chickpea, baked-potato, paneer-rice-bowl) + engine adds one extra item/slot when target > 2800 kcal → muscle-gain fit 72%→91-98%. Recipe coverage: 97 recipes, all cooked dishes covered; remaining 19 are ready-to-eat whole foods with a green "no cooking needed" fallback card. UI: "portion tuned for you" hint in MealCard (serving_scale ≥ ±10%), Plan Match % chip on dashboard overview.
 - **2026-07-07** Portion-scaling engine rewrite: goal coverage complete, safe calorie floor, goal fat splits + diabetes carb ceiling, decoupled protein/energy scaling, hard CKD enforcement, `fit` score + Plan Match UI. Sweep: 768 combos, 0 crashes/violations, ~90% avg fit.
@@ -66,16 +67,17 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 ## Improvement Backlog (next iterations — keep updated)
 
-1. **Weekly view** — 7-day rotating plan (daySeed already supports per-day variation) + grocery list generation.
-2. **Progress-aware feedback loop** — use logged weight trend to auto-adjust calorie target (e.g. ±100 kcal if losing too fast/slow).
-3. **Medication-aware food selection** — summary notes + lifestyle tips done; deeper step would be engine-level effects (e.g. enforce steady leafy-green servings for warfarin users, cap potassium foods with ACE/ARB).
-4. **Alternatives portion-scaling** — swap options currently shown at 1× serving; scale them to slot context on swap.
-5. **Unit tests in repo** — move the ad-hoc sweep into `frontend/src/lib/__tests__/` with vitest so CI can run it.
-6. **Muscle-gain protein overshoot** — 3650 kcal case lands P 230 vs 202 target (86% fit); could trim protein scales when calories are satisfied but protein is over.
-7. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
-8. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
+1. **Medication-aware food selection** — summary notes + lifestyle tips done; deeper step would be engine-level effects (e.g. enforce steady leafy-green servings for warfarin users, cap potassium foods with ACE/ARB).
+2. **Alternatives portion-scaling** — swap options currently shown at 1× serving; scale them to slot context on swap.
+3. **Unit tests in repo** — move the ad-hoc sweep into `frontend/src/lib/__tests__/` with vitest so CI can run it.
+4. **Muscle-gain protein overshoot** — 3650 kcal case lands P 230 vs 202 target (86% fit); could trim protein scales when calories are satisfied but protein is over.
+5. **Weekly view polish** — grocery quantities are prepared-dish grams; could decompose composite dishes into raw ingredients via recipes data. Report/email could include the weekly view.
+6. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
+7. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
 
 ### Done (moved from backlog)
+- ~~Weekly view + grocery list~~ ✓ 2026-07-07 (4)
+- ~~Progress-aware feedback loop~~ ✓ 2026-07-07 (4)
 - ~~Expand food library for high-calorie targets~~ ✓ 2026-07-07 (2)
 - ~~Plan Match on dashboard + portion-tuned hint~~ ✓ 2026-07-07 (2)
 - ~~Recipes for newer foods~~ ✓ 2026-07-07 (2) — verify with coverage script when adding foods: every cooked dish needs a recipe; ready-to-eat foods fall back to the green card.
