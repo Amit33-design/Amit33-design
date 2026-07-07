@@ -184,6 +184,20 @@ const FOODS: Food[] = [
   { id: "minestrone", name: "Minestrone Bean Soup", group: "legumes", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["dinner", "lunch"], qty: 300, cal: 200, p: 11, c: 32, f: 4, fiber: 9, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Fiber", "Plant Protein", "Hydrating"] },
   { id: "grilled-veg-quinoa", name: "Grilled Vegetable & Quinoa Bowl", group: "grains", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 290, p: 11, c: 42, f: 9, fiber: 8, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "High Fiber", "Antioxidant"] },
   { id: "chicken-quinoa-bowl", name: "Grilled Chicken Quinoa Bowl", group: "protein", cuisines: ["western", "mediterranean"], diet: "nonveg", slots: ["lunch", "dinner"], qty: 250, cal: 360, p: 38, c: 32, f: 9, fiber: 6, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Complete Protein", "High Fiber"] },
+
+  // ── Calorie-dense healthy options (high-calorie / muscle-gain targets) ───────
+  { id: "pb-banana-toast", name: "Peanut Butter Banana Toast", group: "grains", cuisines: ALL, diet: "vegan", slots: ["breakfast", "mid_morning"], qty: 120, cal: 340, p: 11, c: 42, f: 15, fiber: 6, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Energy", "Healthy Fats", "Pre-workout Fuel"] },
+  { id: "granola-yogurt", name: "Granola with Greek Yogurt & Honey", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegetarian", slots: ["breakfast"], qty: 220, cal: 380, p: 18, c: 48, f: 12, fiber: 5, gi: 55, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Energy", "Probiotic", "High Protein"] },
+  { id: "banana-pb-smoothie", name: "Banana Peanut Smoothie", group: "dairy", cuisines: ALL, diet: "vegetarian", slots: ["breakfast", "mid_morning"], qty: 350, cal: 380, p: 16, c: 48, f: 13, fiber: 5, gi: 48, sodium: "low", oxalate: "low", satfat: "low", highK: true, anchor: true, tags: ["High Energy", "Muscle Recovery", "Potassium"] },
+  { id: "dates-nut-laddoo", name: "Date & Nut Energy Balls (2)", local: "Khajur Laddoo", group: "seeds", cuisines: ["indian", "mediterranean"], diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 60, cal: 220, p: 5, c: 28, f: 10, fiber: 4, gi: 45, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["Natural Sweetness", "High Energy", "Iron"] },
+  { id: "dried-fruit-mix", name: "Dried Fruits & Nuts Mix", group: "nuts", cuisines: ALL, diet: "vegan", slots: ["mid_morning", "evening_snack"], qty: 45, cal: 210, p: 5, c: 22, f: 12, fiber: 3, gi: 50, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["High Energy", "Healthy Fats", "Portable"] },
+  { id: "mango", name: "Mango", local: "Aam", group: "fruit", cuisines: ["indian"], diet: "vegan", slots: ["mid_morning"], qty: 150, cal: 90, p: 1, c: 22, f: 0, fiber: 2, gi: 51, sodium: "low", oxalate: "low", satfat: "low", tags: ["Vitamin A", "Natural Sweetness", "Seasonal"] },
+  { id: "sweet-corn-chaat", name: "Sweet Corn Chaat", local: "Bhutta Chaat", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["evening_snack", "mid_morning"], qty: 150, cal: 180, p: 6, c: 32, f: 3, fiber: 4, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Energy", "Fiber", "Street-Style Healthy"] },
+  { id: "veg-biryani-brown", name: "Vegetable Brown Rice Biryani", local: "Veg Biryani", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 280, cal: 380, p: 9, c: 62, f: 10, fiber: 7, gi: 55, sodium: "med", oxalate: "low", satfat: "low", tags: ["High Energy", "Complex Carbs", "High Fiber"] },
+  { id: "ww-pasta", name: "Whole Wheat Pasta Primavera", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 380, p: 13, c: 62, f: 9, fiber: 8, gi: 48, sodium: "low", oxalate: "low", satfat: "low", tags: ["Complex Carbs", "High Fiber", "High Energy"] },
+  { id: "couscous-chickpea", name: "Couscous & Chickpea Bowl", group: "grains", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 360, p: 13, c: 58, f: 8, fiber: 8, gi: 61, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complex Carbs", "Plant Protein", "High Energy"] },
+  { id: "baked-potato", name: "Baked Potato with Herbed Yogurt", group: "vegetable", cuisines: ["western"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 250, cal: 250, p: 8, c: 46, f: 4, fiber: 5, gi: 65, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["High Energy", "Potassium", "Satisfying"] },
+  { id: "paneer-rice-bowl", name: "Paneer & Veg Brown Rice Bowl", local: "Paneer Chawal", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 300, cal: 420, p: 22, c: 52, f: 14, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["High Protein", "High Energy", "Complete Meal"] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -446,6 +460,9 @@ export function generateMealPlan(input: OnboardingInput) {
     const ranked = rankedAll.filter((r) => !usedIds.has(r.food.id));
 
     const targetCal = macros.calories * slotDef.share;
+    // big calorie targets get one extra item per slot — portion scaling alone
+    // can't stretch a normal plate to 3000+ kcal
+    const maxItems = slotDef.maxItems + (macros.calories > 2800 ? 1 : 0);
     const picked: Food[] = [];
     let cal = 0;
     const maxAnchors = proteinCap ? 1 : 2;
@@ -470,7 +487,7 @@ export function generateMealPlan(input: OnboardingInput) {
       if (anchor) tryAdd(anchor.food);
     }
     for (const r of ranked) {
-      if (picked.length >= slotDef.maxItems) break;
+      if (picked.length >= maxItems) break;
       if (cal >= targetCal * 0.92 && picked.length >= (slotDef.needsAnchor ? 2 : 1)) break;
       tryAdd(r.food);
     }

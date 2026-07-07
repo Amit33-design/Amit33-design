@@ -57,6 +57,7 @@ export default function DashboardPage() {
 
   const conditions = (summary?.condition_codes as string[]) || [];
   const macroTargets = mealPlan?.macro_targets as Record<string, number> | undefined;
+  const planFit = mealPlan?.fit as { overall: number } | undefined;
   const meals = (mealPlan?.meals as unknown[]) || [];
   const todayDate = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
@@ -133,7 +134,20 @@ export default function DashboardPage() {
       <div className="grid md:grid-cols-3 gap-6">
         {/* Macro Ring */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
-          <div className="font-bold text-gray-900 mb-1">Today&apos;s Nutrition</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="font-bold text-gray-900">Today&apos;s Nutrition</div>
+            {planFit && (
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-lg text-xs font-black",
+                  planFit.overall >= 85 ? "bg-emerald-100 text-emerald-700" : planFit.overall >= 70 ? "bg-amber-100 text-amber-700" : "bg-orange-100 text-orange-700"
+                )}
+                title="How closely today's portions match your personal targets"
+              >
+                🎯 {planFit.overall}% match
+              </span>
+            )}
+          </div>
           <div className="text-xs text-gray-400 mb-5">Plan vs Target</div>
           {mealPlan ? (
             <MacroRing

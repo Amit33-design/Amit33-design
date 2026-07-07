@@ -30,6 +30,7 @@ interface MealItemData {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  serving_scale?: number;
 }
 
 interface MealSlot {
@@ -109,6 +110,11 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                   </div>
                   <div className="text-sm text-gray-500 mt-0.5">
                     {formatQuantity(item.quantity_g)} · {formatCalories(item.calories)} kcal
+                    {typeof item.serving_scale === "number" && Math.abs(item.serving_scale - 1) >= 0.1 && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-violet-50 text-violet-600 text-xs rounded-md font-semibold">
+                        {item.serving_scale > 1 ? "▲" : "▼"} portion tuned for you
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right text-sm shrink-0">

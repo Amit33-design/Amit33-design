@@ -41,9 +41,14 @@ function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags
 
   if (!recipe) {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-        <div className="font-semibold text-gray-700 text-sm">{name}</div>
-        <div className="text-xs text-gray-400 mt-1">Recipe coming soon</div>
+      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">✅</span>
+          <span className="font-semibold text-gray-700 text-sm">{name}</span>
+        </div>
+        <div className="text-xs text-emerald-700 mt-1">
+          Ready to eat — no cooking needed. Wash / portion as shown in your plan and enjoy fresh.
+        </div>
       </div>
     );
   }

@@ -1083,4 +1083,611 @@ export const RECIPES: Record<string, Recipe> = {
     tip: "Cottage cheese is rich in casein — a slow-digesting protein that keeps you full longer than whey. 150g provides ~20g protein at only 160 calories.",
   },
 
+  // ── CALORIE-DENSE HEALTHY OPTIONS ──────────────────────────────────────────
+
+  "pb-banana-toast": {
+    prep: 5, cook: 3, servings: 1, difficulty: "easy",
+    ingredients: [
+      "2 slices whole grain bread",
+      "2 tbsp natural peanut butter (no added sugar)",
+      "1 ripe banana, sliced",
+      "½ tsp chia or flax seeds (optional)",
+      "Pinch of cinnamon",
+    ],
+    steps: [
+      "Toast the bread until golden and crisp.",
+      "Spread 1 tbsp peanut butter on each slice while warm.",
+      "Arrange banana slices on top.",
+      "Sprinkle with seeds and cinnamon. Serve immediately.",
+    ],
+    tip: "A perfect pre-workout meal 60–90 minutes before training — the banana gives quick fuel while peanut butter and whole grains release energy slowly.",
+  },
+
+  "granola-yogurt": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: [
+      "¾ cup thick Greek yogurt",
+      "½ cup low-sugar granola (oats, nuts, seeds)",
+      "1 tsp honey",
+      "¼ cup berries or chopped fruit",
+    ],
+    steps: [
+      "Spoon half the yogurt into a bowl or glass.",
+      "Layer with half the granola and fruit.",
+      "Repeat the layers, drizzle honey on top.",
+      "Serve immediately so the granola stays crunchy.",
+    ],
+    tip: "Choose granola with less than 8g sugar per serving — or toast your own oats with nuts and a little olive oil for full control.",
+  },
+
+  "banana-pb-smoothie": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: [
+      "1 ripe banana (frozen for a thicker shake)",
+      "1½ tbsp peanut butter",
+      "1 cup milk (or soy milk)",
+      "2 tbsp Greek yogurt",
+      "½ tsp cocoa powder (optional)",
+      "3–4 ice cubes",
+    ],
+    steps: [
+      "Add all ingredients to a blender.",
+      "Blend 45–60 seconds until completely smooth.",
+      "Pour into a tall glass and drink fresh.",
+    ],
+    tip: "Great post-workout: ~380 kcal with 16g protein, potassium for muscle recovery, and carbs to refill glycogen.",
+  },
+
+  "dates-nut-laddoo": {
+    prep: 15, cook: 0, servings: 4, difficulty: "easy",
+    ingredients: [
+      "1 cup soft dates (khajur), pitted",
+      "½ cup mixed nuts (almonds, walnuts, cashews)",
+      "2 tbsp desiccated coconut",
+      "1 tbsp sesame seeds",
+      "¼ tsp cardamom powder",
+    ],
+    steps: [
+      "Pulse nuts in a food processor until coarsely ground. Remove.",
+      "Blend dates to a sticky paste.",
+      "Knead dates, nuts, sesame and cardamom together.",
+      "Roll into 8 small balls; coat with coconut.",
+      "Store refrigerated up to 2 weeks. Serving = 2 balls.",
+    ],
+    tip: "No added sugar — dates provide natural sweetness plus iron and fiber. Ideal healthy replacement for store-bought sweets.",
+  },
+
+  "dried-fruit-mix": {
+    prep: 5, cook: 0, servings: 6, difficulty: "easy",
+    ingredients: [
+      "¼ cup almonds",
+      "¼ cup walnuts",
+      "2 tbsp cashews",
+      "2 tbsp raisins",
+      "2 dried apricots or figs, chopped",
+      "1 tbsp pumpkin seeds",
+    ],
+    steps: [
+      "Mix everything in a jar and shake well.",
+      "Portion ~45g (a small handful) per serving.",
+      "Store airtight up to a month.",
+    ],
+    tip: "Pre-portion into small containers — dried fruit and nuts are healthy but calorie-dense, so a measured handful keeps it intentional.",
+  },
+
+  "mango": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: [
+      "1 medium ripe mango (aam)",
+      "Squeeze of lime (optional)",
+      "Pinch of chaat masala (optional)",
+    ],
+    steps: [
+      "Wash, peel and slice the mango off the seed.",
+      "Cube the flesh and chill 10 minutes.",
+      "Finish with lime or a tiny pinch of chaat masala.",
+    ],
+    tip: "Mango is rich in vitamin A and C. GI is moderate (~51) — enjoy a measured portion mid-morning rather than after a heavy meal.",
+  },
+
+  "sweet-corn-chaat": {
+    prep: 10, cook: 5, servings: 1, difficulty: "easy",
+    ingredients: [
+      "1 cup sweet corn kernels (boiled or steamed)",
+      "¼ cup cucumber, finely diced",
+      "¼ cup tomato, finely diced",
+      "1 tbsp onion, finely chopped",
+      "½ tsp chaat masala",
+      "1 tsp lemon juice",
+      "Fresh coriander",
+    ],
+    steps: [
+      "Boil or steam corn kernels 4–5 minutes; drain.",
+      "Toss warm corn with cucumber, tomato and onion.",
+      "Season with chaat masala and lemon juice.",
+      "Garnish with coriander and serve warm.",
+    ],
+    tip: "A street-food favourite made healthy — no butter needed; lemon and chaat masala carry all the flavour.",
+  },
+
+  "veg-biryani-brown": {
+    prep: 20, cook: 30, servings: 2, difficulty: "medium",
+    ingredients: [
+      "1 cup brown basmati rice, soaked 30 min",
+      "1½ cups mixed vegetables (carrot, beans, peas, cauliflower)",
+      "1 onion, sliced",
+      "1 tbsp ginger-garlic paste",
+      "2 tbsp low-fat yogurt",
+      "1 tsp biryani masala, ½ tsp turmeric",
+      "Whole spices: 1 bay leaf, 2 cloves, 1 cardamom",
+      "2 tsp oil, fresh mint & coriander",
+    ],
+    steps: [
+      "Par-cook soaked rice 12–15 min until 80% done; drain.",
+      "Sauté whole spices and onion in oil until golden.",
+      "Add ginger-garlic paste, vegetables, masala and turmeric; cook 5 min.",
+      "Stir in yogurt. Layer rice over the vegetables.",
+      "Cover tightly and steam on lowest heat 12–15 min (dum).",
+      "Fluff gently, garnish with mint and coriander.",
+    ],
+    tip: "Brown basmati keeps the GI moderate and fiber high while still delivering the energy a training day needs.",
+  },
+
+  "ww-pasta": {
+    prep: 10, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: [
+      "150g whole wheat penne or fusilli",
+      "2 cups mixed vegetables (zucchini, bell pepper, broccoli, cherry tomatoes)",
+      "2 cloves garlic, sliced",
+      "1½ tbsp olive oil",
+      "½ tsp chilli flakes, dried oregano",
+      "2 tbsp grated parmesan (optional)",
+    ],
+    steps: [
+      "Cook pasta al dente per packet; reserve ½ cup pasta water.",
+      "Sauté garlic in olive oil 30 seconds; add vegetables, cook 4–5 min.",
+      "Toss in pasta with a splash of pasta water to coat.",
+      "Season with chilli flakes, oregano, salt and pepper.",
+      "Finish with parmesan if using.",
+    ],
+    tip: "Whole wheat pasta has ~3x the fiber of white pasta and a GI of ~48 — a smart high-carb fuel for active days.",
+  },
+
+  "couscous-chickpea": {
+    prep: 10, cook: 10, servings: 2, difficulty: "easy",
+    ingredients: [
+      "¾ cup whole wheat couscous",
+      "1 cup cooked chickpeas",
+      "1 cup boiling vegetable stock or water",
+      "½ cup cucumber & tomato, diced",
+      "2 tbsp olive oil, 1 tbsp lemon juice",
+      "2 tbsp fresh parsley/mint, ¼ tsp cumin",
+    ],
+    steps: [
+      "Pour boiling stock over couscous, cover 5 minutes, fluff with a fork.",
+      "Whisk olive oil, lemon juice and cumin into a dressing.",
+      "Toss couscous with chickpeas, vegetables and herbs.",
+      "Season and serve warm or at room temperature.",
+    ],
+    tip: "Chickpeas add plant protein and drop the overall glycemic load of the bowl. Great make-ahead lunch — keeps 3 days refrigerated.",
+  },
+
+  "baked-potato": {
+    prep: 5, cook: 45, servings: 1, difficulty: "easy",
+    ingredients: [
+      "1 large potato (skin on), scrubbed",
+      "3 tbsp thick low-fat yogurt",
+      "1 tbsp chives or spring onion, chopped",
+      "½ tsp olive oil, salt & black pepper",
+    ],
+    steps: [
+      "Prick the potato, rub with oil and a little salt.",
+      "Bake at 200°C for 45–55 min until a knife slides in easily (or microwave 8–10 min).",
+      "Split open, fluff the inside with a fork.",
+      "Top with herbed yogurt, chives and black pepper.",
+    ],
+    tip: "Keeping the skin on doubles the fiber and holds most of the potassium. Yogurt replaces butter/sour cream at a fraction of the saturated fat.",
+  },
+
+  "paneer-rice-bowl": {
+    prep: 10, cook: 20, servings: 1, difficulty: "easy",
+    ingredients: [
+      "100g low-fat paneer, cubed",
+      "¾ cup cooked brown rice",
+      "1 cup mixed vegetables (peas, carrot, capsicum)",
+      "1 tsp oil, ½ tsp cumin seeds",
+      "¼ tsp turmeric, ½ tsp garam masala",
+      "1 tbsp coriander, squeeze of lemon",
+    ],
+    steps: [
+      "Sauté cumin in oil; add vegetables and cook 4–5 min.",
+      "Add turmeric, garam masala and paneer; toss gently 2 min.",
+      "Serve over warm brown rice.",
+      "Finish with coriander and lemon.",
+    ],
+    tip: "A complete one-bowl meal: ~22g protein plus complex carbs — ideal for lunch on strength-training days.",
+  },
+
+  // ── QUICK RECIPES (compact) ─────────────────────────────────────────────────
+
+  "egg-boiled": {
+    prep: 1, cook: 10, servings: 1, difficulty: "easy",
+    ingredients: ["2 eggs", "Water", "Pinch of salt & pepper"],
+    steps: [
+      "Place eggs in a pan, cover with cold water, bring to a boil.",
+      "Simmer 8–9 min for fully set yolks (6 min for jammy).",
+      "Cool in cold water 2 min, peel, season and eat.",
+    ],
+    tip: "Boil a batch for the week — they keep 5 days refrigerated in the shell.",
+  },
+
+  "seabass": {
+    prep: 5, cook: 15, servings: 1, difficulty: "easy",
+    ingredients: ["150g sea bass fillet", "1 tsp olive oil", "Lemon, garlic, fresh herbs (thyme/parsley)", "Salt & pepper"],
+    steps: [
+      "Pat fish dry, rub with oil, garlic, salt and pepper.",
+      "Bake at 200°C for 12–15 min until flaky.",
+      "Finish with lemon juice and herbs.",
+    ],
+    tip: "Skin-on fillets stay juicier — crisp the skin side first if pan-searing.",
+  },
+
+  "bajra-roti": {
+    prep: 10, cook: 10, servings: 2, difficulty: "medium",
+    ingredients: ["1 cup bajra (pearl millet) flour", "Warm water", "Pinch of salt"],
+    steps: [
+      "Knead flour with warm water and salt into a soft dough.",
+      "Pat each ball flat between palms (bajra has no gluten — go gently).",
+      "Cook on a hot tawa ~2 min per side until spotted; finish over open flame.",
+    ],
+    tip: "Bajra is rich in magnesium and iron — a warming whole grain, great with sabzi and curd.",
+  },
+
+  "bitter-gourd": {
+    prep: 15, cook: 15, servings: 2, difficulty: "medium",
+    ingredients: ["2 bitter gourds (karela), sliced", "1 onion, sliced", "½ tsp turmeric, 1 tsp fennel", "1 tbsp oil, salt"],
+    steps: [
+      "Salt karela slices 10 min, squeeze out juice (cuts bitterness).",
+      "Sauté onion in oil, add karela, turmeric and fennel.",
+      "Cook covered on low 10–12 min until tender.",
+    ],
+    tip: "Compounds in karela (charantin, polypeptide-p) are studied for blood-sugar support — a classic diabetes-friendly sabzi.",
+  },
+
+  "cauliflower": {
+    prep: 10, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: ["½ head cauliflower florets", "1 tsp cumin, ½ tsp turmeric", "1 tomato, chopped", "1 tbsp oil, coriander"],
+    steps: [
+      "Sauté cumin in oil, add tomato and spices.",
+      "Add florets, toss, cover and cook 10–12 min.",
+      "Garnish with coriander.",
+    ],
+    tip: "Cooking cruciferous vegetables reduces goitrogens — relevant if you have a thyroid condition.",
+  },
+
+  "quinoa": {
+    prep: 2, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: ["1 cup quinoa, rinsed", "2 cups water or stock", "Pinch of salt"],
+    steps: [
+      "Rinse quinoa well (removes bitter saponins).",
+      "Simmer covered 15 min until water is absorbed.",
+      "Rest 5 min off heat, fluff with a fork.",
+    ],
+    tip: "One of the few plant foods with all nine essential amino acids.",
+  },
+
+  "sweet-potato": {
+    prep: 5, cook: 25, servings: 1, difficulty: "easy",
+    ingredients: ["1 medium sweet potato, cubed", "1 tsp olive oil", "Paprika, salt, pepper"],
+    steps: [
+      "Toss cubes with oil and seasoning.",
+      "Roast at 200°C for 22–25 min, turning once, until caramelised.",
+    ],
+    tip: "Lower GI than white potato and packed with beta-carotene.",
+  },
+
+  "chickpea-tofu-salad": {
+    prep: 10, cook: 5, servings: 1, difficulty: "easy",
+    ingredients: ["¾ cup cooked chickpeas", "100g firm tofu, cubed & pan-toasted", "Cucumber, tomato, red onion", "Lemon-olive oil dressing"],
+    steps: [
+      "Toast tofu cubes in a dry pan until golden.",
+      "Toss with chickpeas, vegetables and dressing.",
+    ],
+    tip: "Two plant proteins together give a complete amino-acid profile.",
+  },
+
+  "broccoli": {
+    prep: 5, cook: 12, servings: 2, difficulty: "easy",
+    ingredients: ["1 head broccoli + 1 bell pepper, chopped", "1 tsp olive oil", "Garlic, chilli flakes, salt"],
+    steps: [
+      "Toss vegetables with oil, garlic and seasoning.",
+      "Roast at 210°C for 10–12 min until edges char slightly.",
+    ],
+    tip: "Roasting keeps more vitamin C than boiling.",
+  },
+
+  "asparagus": {
+    prep: 3, cook: 5, servings: 1, difficulty: "easy",
+    ingredients: ["1 bunch asparagus, woody ends snapped", "½ tsp olive oil, lemon, salt"],
+    steps: [
+      "Steam or sauté 4–5 min until tender-crisp.",
+      "Finish with lemon and a little salt.",
+    ],
+    tip: "Very low calorie and one of the best natural sources of folate.",
+  },
+
+  "turkey-wrap": {
+    prep: 8, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: ["1 whole wheat tortilla", "100g sliced turkey breast", "½ avocado, lettuce, tomato", "1 tsp mustard or yogurt spread"],
+    steps: [
+      "Spread the tortilla, layer turkey, avocado and veg.",
+      "Roll tightly, slice in half.",
+    ],
+    tip: "Choose low-sodium deli turkey or use home-roasted leftovers.",
+  },
+
+  "med-veg": {
+    prep: 10, cook: 25, servings: 2, difficulty: "easy",
+    ingredients: ["1 eggplant + 2 zucchini, sliced", "1½ tbsp olive oil", "Garlic, oregano, salt, pepper"],
+    steps: [
+      "Toss slices with oil and seasoning.",
+      "Roast at 200°C for 22–25 min until soft and golden.",
+    ],
+    tip: "Olive oil helps absorb the fat-soluble antioxidants in the vegetables.",
+  },
+
+  "pita-hummus": {
+    prep: 10, cook: 0, servings: 2, difficulty: "easy",
+    ingredients: ["1 whole grain pita", "1 cup cooked chickpeas", "1 tbsp tahini, lemon, garlic, olive oil"],
+    steps: [
+      "Blend chickpeas, tahini, lemon, garlic and a splash of water until creamy.",
+      "Warm the pita, cut into wedges, serve with hummus.",
+    ],
+    tip: "Homemade hummus has a fraction of the sodium of store-bought.",
+  },
+
+  "avocado-toast": {
+    prep: 5, cook: 3, servings: 1, difficulty: "easy",
+    ingredients: ["2 slices whole grain bread", "½ ripe avocado", "Lemon, chilli flakes, salt"],
+    steps: [
+      "Toast the bread. Mash avocado with lemon and salt.",
+      "Spread thickly, finish with chilli flakes.",
+    ],
+    tip: "Add a boiled egg or hemp seeds to turn it into a complete-protein breakfast.",
+  },
+
+  "muesli-yogurt": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: ["½ cup rolled oats", "¾ cup yogurt", "Grated apple, cinnamon, chopped nuts"],
+    steps: [
+      "Mix oats into yogurt with grated apple and cinnamon.",
+      "Rest 10 min (or overnight) so oats soften; top with nuts.",
+    ],
+    tip: "Overnight soaking makes the oats easier to digest and the texture creamier.",
+  },
+
+  "makhana": {
+    prep: 1, cook: 8, servings: 2, difficulty: "easy",
+    ingredients: ["2 cups makhana (fox nuts)", "1 tsp ghee or oil", "Salt, black pepper or peri-peri"],
+    steps: [
+      "Dry-roast makhana with ghee on low 6–8 min until crisp.",
+      "Season while warm.",
+    ],
+    tip: "A light, high-magnesium snack — far better crunch-for-calories than chips.",
+  },
+
+  "edamame": {
+    prep: 1, cook: 5, servings: 1, difficulty: "easy",
+    ingredients: ["1 cup edamame pods", "Sea salt"],
+    steps: [
+      "Boil or steam pods 4–5 min.",
+      "Drain, sprinkle with salt, pop beans from pods to eat.",
+    ],
+    tip: "A complete plant protein — 11g per cup.",
+  },
+
+  "dhokla": {
+    prep: 10, cook: 20, servings: 2, difficulty: "medium",
+    ingredients: ["1 cup besan (gram flour)", "¾ cup water + 1 tbsp lemon juice", "1 tsp Eno / fruit salt", "Mustard seeds, curry leaves, green chilli for tempering"],
+    steps: [
+      "Whisk besan, water, lemon and a pinch of salt into a smooth batter.",
+      "Stir in Eno, pour into a greased tin, steam 15–18 min.",
+      "Temper mustard seeds, curry leaves and chilli in 1 tsp oil; pour over.",
+      "Cut into squares and serve.",
+    ],
+    tip: "Steamed, not fried — one of the lightest high-protein Indian snacks.",
+  },
+
+  "tandoori-chicken": {
+    prep: 15, cook: 25, servings: 2, difficulty: "medium",
+    ingredients: ["300g chicken (skinless, bone-in or breast)", "3 tbsp thick yogurt", "1 tbsp ginger-garlic paste", "1 tsp each: tandoori masala, chilli, turmeric; lemon"],
+    steps: [
+      "Slash the chicken, marinate in yogurt + spices 30 min (or overnight).",
+      "Roast at 220°C for 20–25 min (or grill) until charred at the edges.",
+      "Rest 5 min, squeeze lemon over.",
+    ],
+    tip: "Yogurt tenderises without any cream — restaurant flavour at a fraction of the fat.",
+  },
+
+  "egg-curry": {
+    prep: 10, cook: 20, servings: 2, difficulty: "easy",
+    ingredients: ["4 boiled eggs, halved", "2 onions + 2 tomatoes, pureed", "1 tsp each: ginger-garlic, garam masala, turmeric", "1 tbsp oil"],
+    steps: [
+      "Sauté onion puree until golden, add ginger-garlic and spices.",
+      "Add tomato puree, cook until oil separates; add ½ cup water.",
+      "Slide in the eggs, simmer 5 min.",
+    ],
+    tip: "Simmering halved eggs cut-side up lets the gravy soak into the yolk.",
+  },
+
+  "kadhi": {
+    prep: 5, cook: 25, servings: 2, difficulty: "medium",
+    ingredients: ["1 cup low-fat yogurt + 3 tbsp besan", "2½ cups water", "Mustard seeds, cumin, curry leaves, turmeric", "1 tsp oil"],
+    steps: [
+      "Whisk yogurt, besan, turmeric and water until lump-free.",
+      "Simmer on low 15–20 min, stirring, until it thickens.",
+      "Temper mustard, cumin and curry leaves in oil; pour over.",
+      "Serve with brown rice.",
+    ],
+    tip: "Skip the fried pakoras — the kadhi itself is the light, probiotic-friendly part.",
+  },
+
+  "palak-paneer": {
+    prep: 10, cook: 20, servings: 2, difficulty: "medium",
+    ingredients: ["200g spinach, blanched & pureed", "150g low-fat paneer, cubed", "1 onion + 1 tomato, chopped", "Ginger-garlic, cumin, garam masala, 1 tbsp oil"],
+    steps: [
+      "Blanch spinach 2 min, refresh in cold water, puree.",
+      "Sauté onion, ginger-garlic, then tomato and spices.",
+      "Add spinach puree, simmer 5 min; fold in paneer.",
+    ],
+    tip: "Blanching + cold water keeps the spinach bright green and preserves folate.",
+  },
+
+  "veg-pulao": {
+    prep: 10, cook: 25, servings: 2, difficulty: "easy",
+    ingredients: ["1 cup brown basmati, soaked", "1½ cups mixed vegetables", "Whole spices (bay, clove, cinnamon), cumin", "2 tsp oil"],
+    steps: [
+      "Sauté whole spices and cumin in oil; add vegetables 3 min.",
+      "Add rice and 2 cups water; simmer covered 20–22 min.",
+      "Rest 5 min, fluff.",
+    ],
+    tip: "A one-pot meal — add a bowl of curd or dal for protein.",
+  },
+
+  "sambar-rice": {
+    prep: 10, cook: 30, servings: 2, difficulty: "medium",
+    ingredients: ["½ cup toor dal", "1½ cups mixed vegetables (drumstick, pumpkin, okra)", "2 tbsp sambar powder, tamarind", "1 cup cooked brown rice, mustard-curry leaf tempering"],
+    steps: [
+      "Pressure-cook dal until soft; mash.",
+      "Simmer vegetables with sambar powder and tamarind water 10 min.",
+      "Add dal, simmer 5 min; temper and pour over.",
+      "Serve hot over brown rice.",
+    ],
+    tip: "Dal + rice together form a complete protein — a South Indian staple for good reason.",
+  },
+
+  "lauki-chana": {
+    prep: 10, cook: 25, servings: 2, difficulty: "easy",
+    ingredients: ["½ cup chana dal, soaked 1 hr", "2 cups lauki (bottle gourd), cubed", "1 tomato, cumin, turmeric, 1 tsp oil"],
+    steps: [
+      "Sauté cumin, add tomato and spices.",
+      "Add dal, lauki and 1½ cups water.",
+      "Pressure-cook 3 whistles (or simmer 25 min) until soft.",
+    ],
+    tip: "Lauki is >90% water — this curry is filling, hydrating and very light.",
+  },
+
+  "baingan-bharta": {
+    prep: 10, cook: 30, servings: 2, difficulty: "medium",
+    ingredients: ["1 large eggplant", "1 onion + 2 tomatoes, chopped", "Garlic, cumin, chilli, coriander", "1 tbsp oil"],
+    steps: [
+      "Roast the whole eggplant over flame or at 220°C until collapsed; peel and mash.",
+      "Sauté onion, garlic, then tomatoes and spices.",
+      "Fold in mashed eggplant, cook 5 min; garnish with coriander.",
+    ],
+    tip: "Flame-roasting gives the signature smokiness — pierce the skin first.",
+  },
+
+  "mixed-veg-sabzi": {
+    prep: 10, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: ["3 cups mixed vegetables (beans, carrot, peas, capsicum)", "Cumin, turmeric, coriander powder", "1 tomato, 1 tbsp oil"],
+    steps: [
+      "Sauté cumin, add tomato and spices.",
+      "Add vegetables, toss, cover and cook 10–12 min.",
+    ],
+    tip: "Cut everything the same size so it cooks evenly — no mushy carrots, no raw beans.",
+  },
+
+  "grilled-prawns": {
+    prep: 10, cook: 6, servings: 1, difficulty: "easy",
+    ingredients: ["150g prawns, cleaned", "2 cloves garlic, minced", "1 tsp olive oil, lemon, paprika, parsley"],
+    steps: [
+      "Toss prawns with garlic, oil and paprika.",
+      "Grill or pan-sear 2–3 min per side until pink.",
+      "Finish with lemon and parsley.",
+    ],
+    tip: "Prawns cook fast — pull them the moment they curl into a loose 'C'.",
+  },
+
+  "tuna-salad": {
+    prep: 10, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: ["1 can tuna in water, drained", "¾ cup cooked white beans", "Red onion, cherry tomatoes, rocket", "Olive oil + lemon dressing"],
+    steps: [
+      "Flake tuna into a bowl with beans and vegetables.",
+      "Dress with olive oil, lemon, salt and pepper; toss gently.",
+    ],
+    tip: "Choose pole-and-line tuna in water — same protein, far less sodium than brined.",
+  },
+
+  "stuffed-peppers": {
+    prep: 15, cook: 30, servings: 2, difficulty: "medium",
+    ingredients: ["2 large bell peppers, halved & deseeded", "1 cup cooked quinoa", "½ cup corn/beans, onion, herbs", "2 tbsp grated cheese (optional)"],
+    steps: [
+      "Mix quinoa with sautéed onion, corn/beans and herbs.",
+      "Fill pepper halves, top with cheese if using.",
+      "Bake at 190°C for 25–30 min until peppers soften.",
+    ],
+    tip: "Make extra filling — it doubles as tomorrow's grain bowl base.",
+  },
+
+  "minestrone": {
+    prep: 10, cook: 25, servings: 2, difficulty: "easy",
+    ingredients: ["1 cup mixed beans (cooked)", "2 cups chopped vegetables (carrot, celery, zucchini, tomato)", "Garlic, oregano, 3 cups stock", "1 tbsp olive oil"],
+    steps: [
+      "Sauté garlic and hard vegetables in oil 4 min.",
+      "Add stock, tomatoes and oregano; simmer 15 min.",
+      "Add beans, simmer 5 more; season.",
+    ],
+    tip: "A big pot keeps 4 days — it tastes better on day two.",
+  },
+
+  "grilled-veg-quinoa": {
+    prep: 10, cook: 20, servings: 1, difficulty: "easy",
+    ingredients: ["¾ cup cooked quinoa", "1½ cups vegetables (zucchini, peppers, onion), grilled", "Olive oil, lemon, herbs"],
+    steps: [
+      "Grill or roast vegetables with a little oil until charred.",
+      "Serve over warm quinoa; dress with lemon, oil and herbs.",
+    ],
+    tip: "Char = flavour without salt. Great warm or as a packed lunch.",
+  },
+
+  "chicken-quinoa-bowl": {
+    prep: 10, cook: 20, servings: 1, difficulty: "easy",
+    ingredients: ["150g chicken breast", "¾ cup cooked quinoa", "Roasted vegetables or salad", "Olive oil, lemon, paprika"],
+    steps: [
+      "Season chicken with paprika, grill 6–7 min per side; rest and slice.",
+      "Assemble over quinoa with vegetables.",
+      "Dress with lemon and olive oil.",
+    ],
+    tip: "Resting the chicken 5 minutes keeps it juicy when sliced.",
+  },
+
+  "almond-butter": {
+    prep: 3, cook: 2, servings: 1, difficulty: "easy",
+    ingredients: ["1 slice whole grain bread", "1 tbsp almond butter", "Banana slices or berries (optional)"],
+    steps: [
+      "Toast the bread.",
+      "Spread almond butter, top with fruit.",
+    ],
+    tip: "Check the label: good almond butter has one ingredient — almonds.",
+  },
+
+  "trail-mix": {
+    prep: 5, cook: 0, servings: 6, difficulty: "easy",
+    ingredients: ["Almonds, walnuts, cashews (¼ cup each)", "Pumpkin & sunflower seeds (2 tbsp each)", "A few dark chocolate chips (optional)"],
+    steps: [
+      "Combine in a jar, shake, portion ~30g per serving.",
+    ],
+    tip: "Portioning ahead is the difference between a snack and an accidental meal.",
+  },
+
+  "fruit-yogurt": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: ["¾ cup plain yogurt", "½ cup chopped seasonal fruit", "1 tbsp chopped nuts"],
+    steps: [
+      "Layer yogurt with fruit and nuts. Done.",
+    ],
+    tip: "Plain yogurt + real fruit skips the ~3 tsp of sugar in flavoured cups.",
+  },
+
 };
