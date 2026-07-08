@@ -139,6 +139,63 @@ describe("generateMealPlan — full sweep", () => {
   });
 });
 
+describe("dietician composition rules", () => {
+  const PROFILES: OnboardingInput[] = [
+    baseInput,
+    { ...baseInput, gender: "female", weight_kg: 62, goal_type: "maintenance", protein_pref: "non_vegetarian" },
+    { ...baseInput, cuisine: "mediterranean", protein_pref: "pescatarian", goal_type: "cardiovascular", conditions: ["HEART_DISEASE"] },
+    { ...baseInput, cuisine: "western", protein_pref: "vegan", goal_type: "fat_loss", conditions: ["HTN"] },
+  ];
+
+  it("lunch and dinner always include a vegetable dish", () => {
+    for (const input of PROFILES) {
+      const plan = generateMealPlan(input);
+      for (const slot of ["lunch", "dinner"]) {
+        const meal = plan.meals.find((mm) => mm.slot === slot)!;
+        const hasVeg = meal.items.some((i) => i.food.food_group === "vegetable");
+        expect(hasVeg, `${slot} missing vegetable for ${input.cuisine}/${input.protein_pref}`).toBe(true);
+      }
+    }
+  });
+
+  it("every day includes whole fruit", () => {
+    for (const input of PROFILES) {
+      const plan = generateMealPlan(input);
+      const hasFruit = plan.meals.some((mm) => mm.items.some((i) => i.food.food_group === "fruit"));
+      expect(hasFruit, `no fruit for ${input.cuisine}/${input.protein_pref}`).toBe(true);
+    }
+  });
+
+  it("never stacks the same food group in one meal (normal calorie targets)", () => {
+    for (const input of PROFILES) {
+      const plan = generateMealPlan(input);
+      if (plan.macro_targets.calories > 2800) continue; // high-cal plans may double up
+      for (const meal of plan.meals) {
+        const groups = meal.items.map((i) => i.food.food_group);
+        for (const g of new Set(groups)) {
+          const cap = g === "vegetable" ? 2 : 1;
+          expect(
+            groups.filter((x) => x === g).length,
+            `${g} stacked at ${meal.slot} for ${input.cuisine}/${input.protein_pref}`
+          ).toBeLessThanOrEqual(cap);
+        }
+      }
+    }
+  });
+
+  it("no dish is served more than 4 times in a week", () => {
+    const week = generateWeeklyPlan(baseInput);
+    const counts = new Map<string, number>();
+    for (const d of week.days)
+      for (const meal of d.plan.meals)
+        for (const item of meal.items)
+          counts.set(item.food.id, (counts.get(item.food.id) ?? 0) + 1);
+    for (const [id, count] of counts) {
+      expect(count, `${id} served ${count}× this week`).toBeLessThanOrEqual(4);
+    }
+  });
+});
+
 describe("answerHealthQuestion (plan-aware Q&A)", () => {
   it("warns kidney-stone users about spinach via oxalates", () => {
     const a = answerHealthQuestion({ ...baseInput, conditions: ["KIDNEY_STONES"] }, "Can I eat spinach?");

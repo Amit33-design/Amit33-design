@@ -433,7 +433,17 @@ function toMealItem(food: Food, slot: Slot, scale = 1) {
   };
 }
 
-export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
+// Dietician composition rule: how many dishes of one food group belong in a
+// single meal. Two dals or two fish dishes on one plate is poor meal design —
+// variety across groups beats doubling within one.
+const SLOT_GROUP_CAPS: Record<string, number> = {
+  protein: 1, legumes: 1, grains: 1, dairy: 1, vegetable: 2,
+  fruit: 1, nuts: 1, seeds: 1, beverage: 1,
+};
+// groups allowed one extra dish per meal when the calorie target is very high
+const HIGH_CAL_BONUS_GROUPS = new Set(["grains", "dairy", "nuts", "protein"]);
+
+export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUsage?: Map<string, number>) {
   const macros = computeMacros(input);
   const cuisine = input.cuisine || "indian";
   const conditions = input.conditions || [];
@@ -462,9 +472,16 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
     // fallback: if the cuisine filter leaves too few, open up to all cuisines
     if (eligible.length < 6) eligible = FOODS.filter(slotSafe);
 
-    // rank the full eligible menu by preference score + daily jitter for rotation
+    // rank the full eligible menu by preference score + daily jitter for rotation;
+    // foods already served several times this week rank lower (weekly variety)
     const rankedAll = eligible
-      .map((food) => ({ food, score: preferenceScore(food, conditions, goal, input.medications) + rand() * 4 }))
+      .map((food) => ({
+        food,
+        score:
+          preferenceScore(food, conditions, goal, input.medications) +
+          rand() * 4 -
+          (weeklyUsage?.get(food.id) ?? 0) * 1.5,
+      }))
       .sort((a, b) => b.score - a.score);
 
     // for the auto-picked plan, prefer foods not already used in another slot
@@ -473,21 +490,27 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
     const targetCal = macros.calories * slotDef.share;
     // big calorie targets get one extra item per slot — portion scaling alone
     // can't stretch a normal plate to 3000+ kcal
-    const maxItems = slotDef.maxItems + (macros.calories > 2800 ? 1 : 0);
+    const highCal = macros.calories > 2800;
+    const maxItems = slotDef.maxItems + (highCal ? 1 : 0);
     const picked: Food[] = [];
     let cal = 0;
     const maxAnchors = proteinCap ? 1 : 2;
     let anchors = 0;
+    const groupCount: Record<string, number> = {};
 
     const tryAdd = (food: Food): boolean => {
       if (picked.includes(food)) return false;
       if (food.anchor && anchors >= maxAnchors) return false;
+      // meal composition: don't stack the same food group on one plate
+      const cap = (SLOT_GROUP_CAPS[food.group] ?? 1) + (highCal && HIGH_CAL_BONUS_GROUPS.has(food.group) ? 1 : 0);
+      if ((groupCount[food.group] ?? 0) >= cap) return false;
       // never blow the daily protein ceiling (critical for CKD)
       if (food.p >= 8 && dayProtein + food.p > proteinCeiling) return false;
       picked.push(food);
       usedIds.add(food.id);
       cal += food.cal;
       dayProtein += food.p;
+      groupCount[food.group] = (groupCount[food.group] ?? 0) + 1;
       if (food.anchor) anchors += 1;
       return true;
     };
@@ -496,6 +519,16 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
     if (slotDef.needsAnchor) {
       const anchor = ranked.find((r) => r.food.anchor);
       if (anchor) tryAdd(anchor.food);
+    }
+    // dietician plate rules: lunch & dinner get a vegetable dish; the
+    // mid-morning snack leads with whole fruit
+    if (slotDef.slot === "lunch" || slotDef.slot === "dinner") {
+      const veg = ranked.find((r) => r.food.group === "vegetable");
+      if (veg) tryAdd(veg.food);
+    }
+    if (slotDef.slot === "mid_morning") {
+      const fruit = ranked.find((r) => r.food.group === "fruit");
+      if (fruit) tryAdd(fruit.food);
     }
     for (const r of ranked) {
       if (picked.length >= maxItems) break;
@@ -565,7 +598,12 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
       .filter((e) => {
         const slotPicked = selected[e.slotIdx].picked;
         const minItems = selected[e.slotIdx].slotDef.needsAnchor ? 2 : 1;
-        return slotPicked.length > minItems && selected[e.slotIdx].picked.includes(e.food);
+        // never drop a main meal's only vegetable — cut denser items instead
+        const isLastVeg =
+          e.food.group === "vegetable" &&
+          ["lunch", "dinner"].includes(selected[e.slotIdx].slotDef.slot) &&
+          slotPicked.filter((f) => f.group === "vegetable").length <= 1;
+        return !isLastVeg && slotPicked.length > minItems && slotPicked.includes(e.food);
       })
       .sort((a, b) => a.dropRank - b.dropRank);
     if (!droppable.length) break;
@@ -710,8 +748,17 @@ const GROUP_LABEL: Record<string, string> = {
 };
 
 export function generateWeeklyPlan(input: OnboardingInput) {
+  // Track how often each food is served as the week builds so later days
+  // rank heavily-used dishes lower — no dish should appear every single day.
+  const weeklyUsage = new Map<string, number>();
   const days = Array.from({ length: 7 }, (_, offset) => {
-    const plan = generateMealPlan(input, offset);
+    const plan = generateMealPlan(input, offset, weeklyUsage);
+    for (const meal of plan.meals) {
+      for (const item of meal.items) {
+        const rawId = item.food.id.replace(/^food-/, "");
+        weeklyUsage.set(rawId, (weeklyUsage.get(rawId) ?? 0) + 1);
+      }
+    }
     const date = new Date(Date.now() + offset * 86400000);
     return {
       day_offset: offset,
