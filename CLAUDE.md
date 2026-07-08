@@ -68,9 +68,10 @@ cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.t
 2. **Warfarin leafy-green consistency** — would need week-level coordination (same greens portion daily); day-seeded generation makes this non-trivial. Summary note exists.
 3. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
 4. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
-5. **CI hook** — GitHub Action to run `npm test` + `npm run build` on push (repo currently has no workflows).
+
 
 ### Done (moved from backlog)
+- ~~CI hook (.github/workflows/ci.yml: npm ci + test + build on push/PR)~~ ✓ 2026-07-07 (5)
 - ~~Medication-aware food selection (ACE/ARB high-K penalty, diuretic boost)~~ ✓ 2026-07-07 (5)
 - ~~Alternatives portion-scaling~~ ✓ 2026-07-07 (5)
 - ~~Unit tests in repo (vitest, `npm test`)~~ ✓ 2026-07-07 (5)
