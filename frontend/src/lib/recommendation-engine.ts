@@ -217,14 +217,21 @@ function isExcluded(food: Food, conditions: string[]): boolean {
   return false;
 }
 
-/** Soft preference score: higher = better fit for the user's conditions + goal. */
-function preferenceScore(food: Food, conditions: string[], goal: string): number {
+/** Soft preference score: higher = better fit for the user's conditions, medications + goal. */
+function preferenceScore(food: Food, conditions: string[], goal: string, medications: string[] = []): number {
   let s = 0;
   for (const c of conditions) {
     if ((c === "T2D" || c === "PREDIABETES") && food.gi !== undefined && food.gi < 55) s += 3;
     if ((c === "HTN" || c === "HEART_DISEASE") && food.sodium === "low") s += 2;
     if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE") && food.fiber >= 5) s += 2;
     if (c === "KIDNEY_STONES" && food.oxalate === "low") s += 1;
+  }
+  // Medication interactions steer food ranking (soft, not hard excludes):
+  // ACE/ARB BP meds raise potassium retention → de-prioritise high-potassium foods;
+  // diuretics flush potassium → favour them instead.
+  if (food.highK) {
+    if (medications.includes("ace_arb")) s -= 3;
+    else if (medications.includes("diuretics")) s += 2;
   }
   const proteinDensity = food.p / Math.max(food.cal, 1);
   if (goal === "muscle_gain") s += proteinDensity * 20 + (food.anchor ? 2 : 0);
@@ -457,7 +464,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
 
     // rank the full eligible menu by preference score + daily jitter for rotation
     const rankedAll = eligible
-      .map((food) => ({ food, score: preferenceScore(food, conditions, goal) + rand() * 4 }))
+      .map((food) => ({ food, score: preferenceScore(food, conditions, goal, input.medications) + rand() * 4 }))
       .sort((a, b) => b.score - a.score);
 
     // for the auto-picked plan, prefer foods not already used in another slot
@@ -570,6 +577,23 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
     steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
   }
 
+  // Protein overshoot trim: when calories are on target but protein runs well
+  // over (common for muscle-gain with many anchor foods), shrink the biggest
+  // protein contributors toward the target, then let energy foods refill any
+  // calories that were lost. Skipped under a CKD cap (handled separately below).
+  if (!proteinCap && dayProt() > proteinTarget * 1.08) {
+    const shrink = proteinItems.slice().sort((a, b) => b.food.p * b.scale - a.food.p * a.scale);
+    for (const e of shrink) {
+      if (dayProt() <= proteinTarget * 1.05) break;
+      const [lo] = scaleBounds(e.food);
+      const over = dayProt() - proteinTarget * 1.02;
+      const cut = Math.min(e.scale - lo, over / Math.max(e.food.p, 1));
+      if (cut <= 0.01) continue;
+      e.scale -= cut;
+    }
+    steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
+  }
+
   // Final trim: when a plan is still over on calories (common for protein-dense
   // plant plans on a low target) and protein is already met, shrink the protein
   // portions toward their minimum — but never below the protein target itself.
@@ -623,7 +647,17 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0) {
   // ── Phase 3: MATERIALISE meals with their tuned portions ───────────────────
   const meals = selected.map(({ slotDef, picked, altFoods }) => {
     const items = picked.map((food) => toMealItem(food, slotDef.slot, scaleOf(food)));
-    const alternatives = altFoods.map((food) => toMealItem(food, slotDef.slot));
+    // Alternatives are portioned to the slot's context too: sized toward the
+    // average calories of the picked items so a swap keeps the slot balanced.
+    const meanItemCal = items.length ? items.reduce((s, i) => s + i.calories, 0) / items.length : 0;
+    const alternatives = altFoods.map((food) => {
+      let altScale = 1;
+      if (meanItemCal > 0 && food.cal > 0) {
+        const [lo, hi] = scaleBounds(food);
+        altScale = Math.min(hi, Math.max(lo, meanItemCal / food.cal));
+      }
+      return toMealItem(food, slotDef.slot, altScale);
+    });
     return {
       slot: slotDef.slot,
       slot_calories: items.reduce((s, i) => s + i.calories, 0),

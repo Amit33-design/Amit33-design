@@ -41,13 +41,9 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 ## Engine verification harness (use after ANY engine change)
 
 ```bash
-cd frontend
-SCRATCH=<scratchpad dir>
-npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=node --outfile="$SCRATCH/engine.mjs"
-# then run a sweep over goals × conditions × cuisines × diets asserting:
-# 0 crashes, 0 empty meal slots, 0 CKD protein-cap violations, avg fit ≥ ~90%
+cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.test.ts
 ```
-(Recreate `sweep.mjs`/`run-test.mjs` from the pattern in the 2026-07-07 session if scratchpad was wiped: 768 combos, checks `plan.fit`, meal item counts, CKD `total_protein_g ≤ 0.75*kg*1.15`.)
+11 tests: 768-combo sweep (0 crashes, 0 empty slots, CKD cap ≤ 0.75g/kg×1.15, avg fit ≥ 85%, no GI≥70 for T2D), safe calorie floor, ±150 kcal adjustment clamp, goal coverage, ≥5 alternatives, alt portion-scaling, muscle-gain protein ≤ 1.15× target, no egg dishes for Indian vegetarians, weekly variety + grocery aggregation.
 
 ## How the meal engine works (current design)
 
@@ -58,6 +54,7 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 ## Changelog (newest first)
 
+- **2026-07-07 (5)** Engine refinements + vitest: protein-overshoot trim (calories on target but protein >1.08× → shrink biggest protein contributors, re-steer energy; muscle-gain 3650 kcal now 96% overall, was 83%), alternatives portion-scaled to slot context (sized toward mean picked-item calories), medication-aware scoring (ACE/ARB → −3 on high-K foods, diuretics → +2). Ad-hoc sweep moved into repo: `npm test` runs 11 vitest tests incl. full 768-combo sweep. Test gotcha: don't substring-match "egg" (matches "V*egg*ies") — use egg-dish id list.
 - **2026-07-07 (4)** Weekly plan + feedback loop: `generateWeeklyPlan` (7 × `generateMealPlan(input, dayOffset)` via offset-aware `daySeed`) returns days[] + grouped grocery list (aggregated `quantity_g`, `times` count) + avg_fit; new page `/dashboard/nutrition/weekly` (day tabs, compact meals, checkable grocery list, copy-to-clipboard) linked from nutrition header. Progress feedback loop: `progressCalorieAdjustment(goal)` in api-client reads 21-day weight trend from local logs (needs 2 entries ≥7 days apart) → ±100 kcal nudge via `input.calorie_adjustment` (engine clamps ±150, goal-aware explanation in ai_summary). NOTE: `getLocalProgressHistory` returns `{ logs: [...] }` not an array.
 - **2026-07-07 (3)** Medication-aware meal summary: `buildSummary` now weaves up to 2 medication guidance lines (insulin carb spread, metformin with meals, levothyroxine before breakfast, warfarin vitamin-K consistency, diuretic potassium) into `ai_summary` — shows on nutrition page + report. Lifestyle page already had full `medication_notes` tips.
 - **2026-07-07 (2)** Backlog items 1–3 shipped: +12 calorie-dense healthy foods (pb-banana-toast, granola-yogurt, banana-pb-smoothie, dates-nut-laddoo, dried-fruit-mix, mango, sweet-corn-chaat, veg-biryani-brown, ww-pasta, couscous-chickpea, baked-potato, paneer-rice-bowl) + engine adds one extra item/slot when target > 2800 kcal → muscle-gain fit 72%→91-98%. Recipe coverage: 97 recipes, all cooked dishes covered; remaining 19 are ready-to-eat whole foods with a green "no cooking needed" fallback card. UI: "portion tuned for you" hint in MealCard (serving_scale ≥ ±10%), Plan Match % chip on dashboard overview.
@@ -67,15 +64,17 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 ## Improvement Backlog (next iterations — keep updated)
 
-1. **Medication-aware food selection** — summary notes + lifestyle tips done; deeper step would be engine-level effects (e.g. enforce steady leafy-green servings for warfarin users, cap potassium foods with ACE/ARB).
-2. **Alternatives portion-scaling** — swap options currently shown at 1× serving; scale them to slot context on swap.
-3. **Unit tests in repo** — move the ad-hoc sweep into `frontend/src/lib/__tests__/` with vitest so CI can run it.
-4. **Muscle-gain protein overshoot** — 3650 kcal case lands P 230 vs 202 target (86% fit); could trim protein scales when calories are satisfied but protein is over.
-5. **Weekly view polish** — grocery quantities are prepared-dish grams; could decompose composite dishes into raw ingredients via recipes data. Report/email could include the weekly view.
-6. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
-7. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
+1. **Weekly view polish** — grocery quantities are prepared-dish grams; could decompose composite dishes into raw ingredients via recipes data. Report/email could include the weekly view.
+2. **Warfarin leafy-green consistency** — would need week-level coordination (same greens portion daily); day-seeded generation makes this non-trivial. Summary note exists.
+3. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
+4. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
+5. **CI hook** — GitHub Action to run `npm test` + `npm run build` on push (repo currently has no workflows).
 
 ### Done (moved from backlog)
+- ~~Medication-aware food selection (ACE/ARB high-K penalty, diuretic boost)~~ ✓ 2026-07-07 (5)
+- ~~Alternatives portion-scaling~~ ✓ 2026-07-07 (5)
+- ~~Unit tests in repo (vitest, `npm test`)~~ ✓ 2026-07-07 (5)
+- ~~Muscle-gain protein overshoot trim~~ ✓ 2026-07-07 (5)
 - ~~Weekly view + grocery list~~ ✓ 2026-07-07 (4)
 - ~~Progress-aware feedback loop~~ ✓ 2026-07-07 (4)
 - ~~Expand food library for high-calorie targets~~ ✓ 2026-07-07 (2)
@@ -84,4 +83,4 @@ npx esbuild src/lib/recommendation-engine.ts --bundle --format=esm --platform=no
 
 ## Session-start checklist
 
-1. Read this file (you just did). 2. `git checkout main && git pull origin main` (work landed on `main`, feature branch `claude/health-platform-research-moSzh` is stale/behind). 3. `cd frontend && npm install` if node_modules missing. 4. Build + verify before every push; update Changelog/Backlog here after every change.
+1. Read this file (you just did). 2. `git checkout main && git pull origin main` (work landed on `main`, feature branch `claude/health-platform-research-moSzh` is stale/behind). 3. `cd frontend && npm install` if node_modules missing. 4. `npm test` + `npm run build` before every push; update Changelog/Backlog here after every change.
