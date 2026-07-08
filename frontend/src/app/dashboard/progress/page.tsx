@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, resolveUserId } from "@/lib/api-client";
 import { hasLocalProgress } from "@/lib/local-store";
+import { MedicationTracker } from "@/components/dashboard/MedicationTracker";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -201,6 +202,9 @@ export default function ProgressPage() {
           {saved ? "✓ Saved!" : saving ? "Saving..." : "Log Today's Data"}
         </button>
       </div>
+
+      {/* Medication tracker + reminders */}
+      <MedicationTracker />
 
       {/* Charts */}
       {chartData.length > 1 && (

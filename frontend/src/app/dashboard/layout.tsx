@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { MedicationReminders } from "@/components/dashboard/MedicationReminders";
 
 const NAV_ITEMS = [
   { href: "/dashboard",            label: "Overview",   icon: "🏠" },
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
+      <MedicationReminders />
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 fixed top-0 left-0 h-full z-20">
         <div className="p-6 border-b border-gray-100">

@@ -91,3 +91,17 @@ export const MEDICATIONS = [
   { value: "calcium_channel", label: "Calcium Channel Blockers",icon: "💊", note: "Amlodipine — avoid grapefruit" },
   { value: "diuretics",       label: "Diuretics / Water Pills", icon: "💧", note: "Furosemide/HCTZ — extra hydration; replenish potassium" },
 ];
+
+// Clinically sensible default reminder times (user-adjustable on the Progress page)
+export const MED_DEFAULT_TIMES: Record<string, string> = {
+  insulin_fast:    "08:00", // before breakfast — repeat before other meals per your doctor
+  insulin_long:    "21:00", // consistent bedtime dose
+  metformin:       "08:30", // with breakfast to reduce stomach upset
+  blood_thinners:  "18:00", // same time daily keeps INR stable
+  statins:         "21:00", // evening — cholesterol synthesis peaks at night
+  thyroid_meds:    "06:30", // empty stomach, 30-60 min before breakfast
+  beta_blockers:   "08:00",
+  ace_arb:         "08:00",
+  calcium_channel: "08:00",
+  diuretics:       "07:30", // morning — avoids nighttime bathroom trips
+};
