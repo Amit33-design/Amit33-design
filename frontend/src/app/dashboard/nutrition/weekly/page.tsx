@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, resolveUserId } from "@/lib/api-client";
 import { MEAL_SLOT_LABELS, MEAL_SLOT_ICONS } from "@/lib/constants";
+import { RECIPES } from "@/lib/recipes-data";
 import { cn } from "@/lib/utils";
 
 interface WeekItem {
@@ -20,7 +21,7 @@ interface WeekDay {
   weekday_short: string;
   plan: { meals: WeekMeal[]; total_calories: number; total_protein_g: number; fit: { overall: number } };
 }
-interface GroceryItem { name: string; local: string | null; total_qty_g: number; times: number }
+interface GroceryItem { food_id: string; name: string; local: string | null; total_qty_g: number; times: number }
 interface WeeklyPlan {
   week_start: string;
   week_end: string;
@@ -34,6 +35,7 @@ export default function WeeklyPlanPage() {
   const [week, setWeek] = useState<WeeklyPlan | null>(null);
   const [activeDay, setActiveDay] = useState(0);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [openIngredients, setOpenIngredients] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -60,7 +62,13 @@ export default function WeeklyPlanPage() {
     const lines: string[] = [`Grocery list ${week.week_start} → ${week.week_end}`, ""];
     for (const g of week.grocery) {
       lines.push(`${g.label}:`);
-      for (const it of g.items) lines.push(`  □ ${it.name}${it.local ? ` (${it.local})` : ""} — ~${it.total_qty_g}g for the week`);
+      for (const it of g.items) {
+        lines.push(`  □ ${it.name}${it.local ? ` (${it.local})` : ""} — ~${it.total_qty_g}g for the week (${it.times}×)`);
+        const recipe = RECIPES[it.food_id];
+        if (recipe) {
+          for (const ing of recipe.ingredients) lines.push(`      · ${ing}`);
+        }
+      }
       lines.push("");
     }
     try {
@@ -177,26 +185,64 @@ export default function WeeklyPlanPage() {
                     {group.items.map((item) => {
                       const key = `${group.label}:${item.name}`;
                       const done = checked.has(key);
+                      const recipe = RECIPES[item.food_id];
+                      const showingIngredients = openIngredients.has(key);
                       return (
-                        <button
-                          key={key}
-                          onClick={() => toggleChecked(key)}
-                          className="w-full flex items-center gap-2.5 text-left py-1 group"
-                        >
-                          <span className={cn(
-                            "w-4 h-4 rounded border flex items-center justify-center text-white text-xs shrink-0 transition-all",
-                            done ? "bg-emerald-500 border-emerald-500" : "border-gray-300 group-hover:border-violet-400"
-                          )}>
-                            {done && "✓"}
-                          </span>
-                          <span className={cn("text-sm flex-1", done ? "text-gray-300 line-through" : "text-gray-700")}>
-                            {item.name}
-                            {item.local && <span className="text-gray-400"> ({item.local})</span>}
-                          </span>
-                          <span className={cn("text-xs shrink-0", done ? "text-gray-300" : "text-gray-400")}>
-                            ~{item.total_qty_g}g · {item.times}×
-                          </span>
-                        </button>
+                        <div key={key}>
+                          <div className="w-full flex items-center gap-2.5 py-1 group">
+                            <button
+                              onClick={() => toggleChecked(key)}
+                              className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                            >
+                              <span className={cn(
+                                "w-4 h-4 rounded border flex items-center justify-center text-white text-xs shrink-0 transition-all",
+                                done ? "bg-emerald-500 border-emerald-500" : "border-gray-300 group-hover:border-violet-400"
+                              )}>
+                                {done && "✓"}
+                              </span>
+                              <span className={cn("text-sm flex-1 min-w-0", done ? "text-gray-300 line-through" : "text-gray-700")}>
+                                {item.name}
+                                {item.local && <span className="text-gray-400"> ({item.local})</span>}
+                              </span>
+                            </button>
+                            <span className={cn("text-xs shrink-0", done ? "text-gray-300" : "text-gray-400")}>
+                              ~{item.total_qty_g}g · {item.times}×
+                            </span>
+                            {recipe && (
+                              <button
+                                onClick={() =>
+                                  setOpenIngredients((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(key)) next.delete(key); else next.add(key);
+                                    return next;
+                                  })
+                                }
+                                className={cn(
+                                  "text-xs shrink-0 px-1.5 py-0.5 rounded-md font-semibold transition-all",
+                                  showingIngredients ? "bg-violet-100 text-violet-700" : "bg-gray-50 text-gray-400 hover:text-violet-600"
+                                )}
+                                title="Show shopping ingredients for this dish"
+                              >
+                                🧾
+                              </button>
+                            )}
+                          </div>
+                          {recipe && showingIngredients && (
+                            <div className="ml-6 mb-2 mt-1 p-3 bg-violet-50/60 border border-violet-100 rounded-xl">
+                              <div className="text-xs font-bold text-violet-800 mb-1.5">
+                                To buy — you&apos;ll make this {item.times}× this week (recipe makes {recipe.servings} serving{recipe.servings > 1 ? "s" : ""}):
+                              </div>
+                              <ul className="space-y-0.5">
+                                {recipe.ingredients.map((ing) => (
+                                  <li key={ing} className="text-xs text-gray-600 flex gap-1.5">
+                                    <span className="text-violet-400 shrink-0">•</span>
+                                    <span>{ing}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -205,8 +251,8 @@ export default function WeeklyPlanPage() {
             </div>
             <div className="px-5 pb-5">
               <div className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
-                💡 Quantities are the total for the week based on your tuned portions. Composite dishes (curries, bowls) list the
-                prepared amount — check each recipe on the Recipes page for exact ingredients.
+                💡 Quantities are the total for the week based on your tuned portions. For cooked dishes, tap 🧾 to see the raw
+                ingredients to buy — the copied list includes them automatically.
               </div>
             </div>
           </div>

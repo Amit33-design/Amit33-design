@@ -3,6 +3,7 @@ import {
   computeMacros,
   generateMealPlan,
   generateWeeklyPlan,
+  answerHealthQuestion,
   OnboardingInput,
 } from "../recommendation-engine";
 
@@ -135,6 +136,33 @@ describe("generateMealPlan — full sweep", () => {
     for (const id of ids) {
       expect(EGG_DISH_IDS.includes(id), `egg dish offered to Indian vegetarian: ${id}`).toBe(false);
     }
+  });
+});
+
+describe("answerHealthQuestion (plan-aware Q&A)", () => {
+  it("warns kidney-stone users about spinach via oxalates", () => {
+    const a = answerHealthQuestion({ ...baseInput, conditions: ["KIDNEY_STONES"] }, "Can I eat spinach?");
+    expect(a).toContain("oxalate");
+    expect(a).toContain("limited");
+  });
+
+  it("routes protein questions to the macro answer, not a food match", () => {
+    const a = answerHealthQuestion({ ...baseInput, conditions: ["CKD"] }, "why is my protein so low");
+    expect(a).toContain("0.75 g/kg");
+    expect(a).toContain("Chronic Kidney Disease");
+  });
+
+  it("answers slot questions with today's actual items", () => {
+    const a = answerHealthQuestion(baseInput, "what should I eat for dinner?");
+    const plan = generateMealPlan(baseInput);
+    const dinner = plan.meals.find((mm) => mm.slot === "dinner")!;
+    expect(a).toContain(dinner.items[0].food.name);
+  });
+
+  it("falls back to a personalised overview, never a generic canned line", () => {
+    const a = answerHealthQuestion({ ...baseInput, conditions: ["HTN"] }, "hello");
+    expect(a).toContain("Hypertension");
+    expect(a).toContain("kcal");
   });
 });
 

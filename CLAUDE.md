@@ -54,6 +54,7 @@ cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.t
 
 ## Changelog (newest first)
 
+- **2026-07-07 (6)** Shoppable grocery + plan-aware AI Copilot: grocery items carry `food_id` (recipe key); weekly page 🧾 toggle shows raw recipe ingredients per cooked dish ("you'll make it N×"), copy-list includes them. New `answerHealthQuestion(input, message)` in engine replaces canned demo chat: food-safety answers matched from the food library (token match, STOP_WORDS incl. macro words like "protein" so target questions don't hit foods), slot questions return today's actual items, macro/water/sleep/weight/workout intents answered from computeMacros/generateLifestyle, fallback = personalised overview. 15 vitest tests now (added 4 Q&A tests).
 - **2026-07-07 (5)** Engine refinements + vitest: protein-overshoot trim (calories on target but protein >1.08× → shrink biggest protein contributors, re-steer energy; muscle-gain 3650 kcal now 96% overall, was 83%), alternatives portion-scaled to slot context (sized toward mean picked-item calories), medication-aware scoring (ACE/ARB → −3 on high-K foods, diuretics → +2). Ad-hoc sweep moved into repo: `npm test` runs 11 vitest tests incl. full 768-combo sweep. Test gotcha: don't substring-match "egg" (matches "V*egg*ies") — use egg-dish id list.
 - **2026-07-07 (4)** Weekly plan + feedback loop: `generateWeeklyPlan` (7 × `generateMealPlan(input, dayOffset)` via offset-aware `daySeed`) returns days[] + grouped grocery list (aggregated `quantity_g`, `times` count) + avg_fit; new page `/dashboard/nutrition/weekly` (day tabs, compact meals, checkable grocery list, copy-to-clipboard) linked from nutrition header. Progress feedback loop: `progressCalorieAdjustment(goal)` in api-client reads 21-day weight trend from local logs (needs 2 entries ≥7 days apart) → ±100 kcal nudge via `input.calorie_adjustment` (engine clamps ±150, goal-aware explanation in ai_summary). NOTE: `getLocalProgressHistory` returns `{ logs: [...] }` not an array.
 - **2026-07-07 (3)** Medication-aware meal summary: `buildSummary` now weaves up to 2 medication guidance lines (insulin carb spread, metformin with meals, levothyroxine before breakfast, warfarin vitamin-K consistency, diuretic potassium) into `ai_summary` — shows on nutrition page + report. Lifestyle page already had full `medication_notes` tips.
@@ -64,13 +65,15 @@ cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.t
 
 ## Improvement Backlog (next iterations — keep updated)
 
-1. **Weekly view polish** — grocery quantities are prepared-dish grams; could decompose composite dishes into raw ingredients via recipes data. Report/email could include the weekly view.
+1. **Report/email weekly section** — the report page could include the 7-day overview + grocery list (PDF captures reportRef div; email HTML built separately in buildEmailHtml).
 2. **Warfarin leafy-green consistency** — would need week-level coordination (same greens portion daily); day-seeded generation makes this non-trivial. Summary note exists.
 3. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
 4. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
-
+5. **Q&A follow-ups** — answerHealthQuestion could suggest dynamic follow-up chips (api response has suggested_questions field the ask page may not render yet).
 
 ### Done (moved from backlog)
+- ~~Grocery raw-ingredient decomposition (🧾 per dish via recipes data)~~ ✓ 2026-07-07 (6)
+- ~~Plan-aware AI Copilot (answerHealthQuestion)~~ ✓ 2026-07-07 (6)
 - ~~CI hook (.github/workflows/ci.yml: npm ci + test + build on push/PR)~~ ✓ 2026-07-07 (5)
 - ~~Medication-aware food selection (ACE/ARB high-K penalty, diuretic boost)~~ ✓ 2026-07-07 (5)
 - ~~Alternatives portion-scaling~~ ✓ 2026-07-07 (5)

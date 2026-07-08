@@ -723,7 +723,7 @@ export function generateWeeklyPlan(input: OnboardingInput) {
   });
 
   // Aggregate the week's picked items (not alternatives) into a grocery list
-  const agg = new Map<string, { name: string; local: string | null; group: string; total_qty_g: number; times: number }>();
+  const agg = new Map<string, { food_id: string; name: string; local: string | null; group: string; total_qty_g: number; times: number }>();
   for (const day of days) {
     for (const meal of day.plan.meals) {
       for (const item of meal.items) {
@@ -734,6 +734,7 @@ export function generateWeeklyPlan(input: OnboardingInput) {
           cur.times += 1;
         } else {
           agg.set(key, {
+            food_id: key.replace(/^food-/, ""),
             name: item.food.name,
             local: item.food.name_local,
             group: item.food.food_group,
@@ -745,11 +746,12 @@ export function generateWeeklyPlan(input: OnboardingInput) {
     }
   }
 
-  const groupsMap = new Map<string, { label: string; items: { name: string; local: string | null; total_qty_g: number; times: number }[] }>();
+  const groupsMap = new Map<string, { label: string; items: { food_id: string; name: string; local: string | null; total_qty_g: number; times: number }[] }>();
   for (const entry of agg.values()) {
     const label = GROUP_LABEL[entry.group] || "Other";
     if (!groupsMap.has(label)) groupsMap.set(label, { label, items: [] });
     groupsMap.get(label)!.items.push({
+      food_id: entry.food_id,
       name: entry.name,
       local: entry.local,
       total_qty_g: Math.round(entry.total_qty_g / 10) * 10,
@@ -1422,6 +1424,190 @@ export function generateLifestyle(input: OnboardingInput) {
 // ─────────────────────────────────────────────────────────────────────────────
 // User summary
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Plan-aware Q&A for the AI Copilot page (demo mode)
+// ─────────────────────────────────────────────────────────────────────────────
+const STOP_WORDS = new Set([
+  "with", "and", "the", "low", "fat", "whole", "mixed", "fresh", "roasted", "grilled",
+  "baked", "steamed", "bowl", "salad", "curry", "soup", "grain", "wheat", "free", "herbs",
+  "veg", "vegetable", "veggies", "brown", "white", "sweet", "seeds", "nuts", "milk",
+  // macro/nutrient words must never match a food — they route to target questions
+  "protein", "energy", "fiber", "calorie", "calories",
+]);
+const SHORT_FOOD_WORDS = new Set(["dal", "egg", "eggs", "tofu", "oats", "poha", "idli", "rice", "fish", "roti"]);
+
+function foodTokens(food: Food): string[] {
+  const words = `${food.name} ${food.local || ""}`.toLowerCase().split(/[^a-z]+/);
+  return words.filter((w) => (w.length >= 5 || SHORT_FOOD_WORDS.has(w)) && !STOP_WORDS.has(w));
+}
+
+/** Why a specific food is (or isn't) right for this user — grounded in their real profile. */
+function explainFoodSafety(term: string, matches: Food[], input: OnboardingInput): string {
+  const conditions = input.conditions || [];
+  const reasons = new Set<string>();
+  for (const f of matches) {
+    if ((conditions.includes("T2D") || conditions.includes("PREDIABETES")) && f.gi !== undefined && f.gi >= 70)
+      reasons.add(`its **high glycemic index (GI ${f.gi})** can spike blood sugar`);
+    if ((conditions.includes("HTN") || conditions.includes("HEART_DISEASE")) && f.sodium === "high")
+      reasons.add("its **high sodium** works against your blood-pressure targets");
+    if (conditions.includes("KIDNEY_STONES") && f.oxalate === "high")
+      reasons.add("it's **high in oxalates**, which can promote calcium-oxalate kidney stones");
+    if ((conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE")) && f.satfat === "high")
+      reasons.add("its **saturated fat** content works against your cholesterol goals");
+    if (conditions.includes("CKD") && f.highK)
+      reasons.add("it's **high in potassium**, which strained kidneys clear poorly");
+    if (conditions.includes("THYROID") && f.goitrogen)
+      reasons.add("raw cruciferous vegetables contain **goitrogens** that can interfere with thyroid function");
+  }
+
+  const cap = term.charAt(0).toUpperCase() + term.slice(1);
+  if (reasons.size > 0) {
+    return (
+      `**${cap} is limited in your plan.** Based on the conditions you selected, ${[...reasons].join("; and ")}. ` +
+      `The engine automatically swaps in safer alternatives with similar nutrition — you'll see them in your meal slots.`
+    );
+  }
+
+  // safe → describe benefits + where it shows up today
+  const plan = generateMealPlan(input);
+  const inPlan: string[] = [];
+  const inAlts: string[] = [];
+  for (const meal of plan.meals) {
+    for (const item of meal.items)
+      if (matches.some((f) => `food-${f.id}` === item.food.id)) inPlan.push(`${item.food.name} at ${SLOT_LABELS[meal.slot as Slot]} (${item.quantity_g}g, ${item.calories} kcal)`);
+    for (const alt of meal.alternatives)
+      if (matches.some((f) => `food-${f.id}` === alt.food.id)) inAlts.push(`${alt.food.name} (${SLOT_LABELS[meal.slot as Slot]})`);
+  }
+  const best = matches[0];
+  const perks: string[] = [];
+  if (best.gi !== undefined && best.gi < 55) perks.push(`low glycemic index (GI ${best.gi})`);
+  if (best.fiber >= 5) perks.push(`high fiber (${best.fiber}g per serving)`);
+  if (best.p >= 10) perks.push(`a solid protein source (${best.p}g per serving)`);
+  if (best.sodium === "low") perks.push("naturally low in sodium");
+  const perkStr = perks.length ? ` It's ${perks.join(", ")}.` : "";
+
+  let where = "";
+  if (inPlan.length) where = `\n\n✅ It's already in **today's plan**: ${inPlan.join("; ")}.`;
+  else if (inAlts.length) where = `\n\n🔄 It's available as a **swap option** today: ${inAlts.slice(0, 3).join("; ")}.`;
+  else where = "\n\nIt's safe for your profile — it rotates through your plan on other days, or find it among the swap alternatives.";
+
+  return `**${cap} is a good fit for your profile.**${perkStr}${where}`;
+}
+
+export function answerHealthQuestion(input: OnboardingInput, message: string): string {
+  const m = message.toLowerCase();
+  const conditions = input.conditions || [];
+  const macros = computeMacros(input);
+  const goalLabel = (input.goal_type || "weight_loss").replace(/_/g, " ");
+  const condStr = conditions.length ? conditions.map((c) => CONDITION_LABEL[c] || c).join(", ") : "no medical conditions";
+  const disclaimer = "\n\n---\n*This is educational information, not medical advice. Consult your healthcare provider.*";
+
+  // 1) Food-specific question — match message words against the food library
+  const termMatches = new Map<string, Food[]>();
+  for (const food of FOODS) {
+    for (const token of foodTokens(food)) {
+      if (m.includes(token)) {
+        if (!termMatches.has(token)) termMatches.set(token, []);
+        termMatches.get(token)!.push(food);
+      }
+    }
+  }
+  if (termMatches.size > 0) {
+    // answer about the longest matched term (most specific)
+    const term = [...termMatches.keys()].sort((a, b) => b.length - a.length)[0];
+    return explainFoodSafety(term, termMatches.get(term)!, input) + disclaimer;
+  }
+
+  // 2) "What should I eat for <slot>?"
+  const slotAsk: [RegExp, Slot][] = [
+    [/breakfast|morning meal/, "breakfast"],
+    [/mid[- ]?morning/, "mid_morning"],
+    [/lunch/, "lunch"],
+    [/evening snack|snack/, "evening_snack"],
+    [/dinner|tonight/, "dinner"],
+  ];
+  for (const [re, slot] of slotAsk) {
+    if (re.test(m) && /eat|meal|have|what|suggest|plan/.test(m)) {
+      const plan = generateMealPlan(input);
+      const meal = plan.meals.find((x) => x.slot === slot)!;
+      const items = meal.items.map((i) => `• **${i.food.name}** — ${i.quantity_g}g, ${i.calories} kcal, ${Math.round(i.protein_g)}g protein`).join("\n");
+      return (
+        `Here's your **${SLOT_LABELS[slot]}** for today (${meal.slot_calories} kcal, tuned to your ${goalLabel} target):\n\n${items}\n\n` +
+        `Not feeling it? There are ${meal.alternatives.length} safe swap options on the Nutrition page — all filtered for ${condStr}.` +
+        disclaimer
+      );
+    }
+  }
+
+  // 3) Macro target questions
+  if (/protein/.test(m)) {
+    const ckd = conditions.includes("CKD");
+    return (
+      `Your protein target is **${macros.protein_g}g/day (${macros.protein_g_per_kg} g/kg)**.\n\n` +
+      (ckd
+        ? `Because you selected Chronic Kidney Disease, protein is **capped at 0.75 g/kg** to reduce kidney workload — this overrides your goal's usual target, and the engine trims portions so the day never exceeds it.`
+        : `That's tuned for your goal of **${goalLabel}** at your weight of ${input.weight_kg} kg — enough to ${input.goal_type === "muscle_gain" ? "maximise muscle protein synthesis (spread across all 5 meals)" : "preserve lean muscle"}.`) +
+      disclaimer
+    );
+  }
+  if (/calorie|kcal|energy target/.test(m)) {
+    const adj = input.calorie_adjustment ?? 0;
+    return (
+      `Your daily target is **${macros.calories} kcal**.\n\nIt's computed from your profile: BMR (Mifflin-St Jeor, from your age ${input.age}, ${input.weight_kg} kg, ${input.height_cm} cm) × your **${(input.activity_level || "moderate").replace(/_/g, " ")}** activity level, then adjusted for your **${goalLabel}** goal.` +
+      (adj !== 0 ? ` Your logged weight trend is currently nudging it by **${adj > 0 ? "+" : ""}${adj} kcal**.` : "") +
+      ` A safety floor prevents unhealthily low targets.` +
+      disclaimer
+    );
+  }
+  if (/carb/.test(m)) {
+    const carbControlled = input.goal_type === "diabetes_friendly" || conditions.includes("T2D") || conditions.includes("PREDIABETES");
+    return (
+      `Your carbohydrate target is **${macros.carbs_g}g/day**.\n\n` +
+      (carbControlled
+        ? `Because blood-sugar control matters for your profile, carbs are **capped at 40% of calories** and every carb source in your plan is low-to-medium GI.`
+        : `Carbs fill the calories left after your protein (${macros.protein_g}g) and fat (${macros.fat_g}g) targets — mostly from whole grains, legumes and fruit.`) +
+      disclaimer
+    );
+  }
+  if (/water|hydrat/.test(m)) {
+    const ls = generateLifestyle(input);
+    return (
+      `Your hydration target is **${ls.hydration.target_liters} L/day** (~${ls.hydration.glasses_8oz} glasses). ${ls.hydration.reason}\n\nTips:\n${ls.hydration.tips.map((t: string) => `• ${t}`).join("\n")}` +
+      disclaimer
+    );
+  }
+  if (/sleep/.test(m)) {
+    const ls = generateLifestyle(input);
+    return (
+      `Aim for **7–9 hours**. ${ls.sleep.gap_message ? ls.sleep.gap_message + "." : "Your logged sleep looks reasonable — consistency matters most."}\n\n${ls.sleep.tips.map((t: string) => `• ${t}`).join("\n")}` +
+      disclaimer
+    );
+  }
+  if (/weight|progress|losing|gaining|plateau/.test(m)) {
+    return (
+      `Log your weight on the **Progress page** — the engine reads your 3-week trend and automatically nudges your calorie target (±100 kcal) if you're moving too fast or too slow for your ${goalLabel} goal. ` +
+      `Healthy pace: **0.5–1% of body weight per week** for loss; **~0.25–0.5 kg/month** of lean gain.` +
+      disclaimer
+    );
+  }
+  if (/workout|exercise|training|strength|cardio/.test(m)) {
+    return (
+      `Your workout plan is filtered for your fitness level, your ${goalLabel} goal and your conditions (${condStr}). ` +
+      `Strength training 2–3×/week is included because it improves insulin sensitivity, bone density and resting metabolism — see the **Workouts** page for today's session with sets and reps.` +
+      disclaimer
+    );
+  }
+
+  // Fallback — personalised overview instead of a generic canned line
+  const plan = generateMealPlan(input);
+  return (
+    `I'm answering from your actual profile: goal **${goalLabel}**, conditions **${condStr}**, ${input.cuisine || "indian"} cuisine, ${(input.protein_pref || "vegetarian").replace(/_/g, " ")} diet.\n\n` +
+    `Today's plan: **${plan.total_calories} kcal**, ${plan.total_protein_g}g protein across 5 meals (${plan.fit.overall}% match to your targets).\n\n` +
+    `Try asking me:\n• "Is banana safe for me?"\n• "What should I eat for dinner?"\n• "Why is my protein target ${macros.protein_g}g?"\n• "How much water should I drink?"` +
+    disclaimer
+  );
+}
+
 export function buildUserSummary(input: OnboardingInput, userId: string) {
   return {
     user_id: userId,
