@@ -32,6 +32,7 @@ export default function AICopilotPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>();
+  const [suggested, setSuggested] = useState<string[]>(SUGGESTED_QUESTIONS.slice(0, 4));
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const userId = resolveUserId();
@@ -55,8 +56,10 @@ export default function AICopilotPage() {
       const response = await api.chat(userId, text, sessionId) as {
         session_id: string;
         response: string;
+        suggested_questions?: string[];
       };
       setSessionId(response.session_id);
+      if (response.suggested_questions?.length) setSuggested(response.suggested_questions);
       setMessages((prev) =>
         prev.map((m) =>
           m.id === "thinking"
@@ -151,12 +154,14 @@ export default function AICopilotPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested questions */}
-      {messages.length < 3 && (
+      {/* Suggested questions — refreshed after every answer to stay contextual */}
+      {suggested.length > 0 && !loading && (
         <div className="px-6 py-3 bg-white border-t border-gray-100">
-          <div className="text-xs text-gray-400 font-medium mb-2">Suggested questions:</div>
+          <div className="text-xs text-gray-400 font-medium mb-2">
+            {messages.length < 3 ? "Suggested questions:" : "Ask next:"}
+          </div>
           <div className="flex flex-wrap gap-2">
-            {SUGGESTED_QUESTIONS.slice(0, 4).map((q) => (
+            {suggested.map((q) => (
               <button
                 key={q}
                 onClick={() => sendMessage(q)}

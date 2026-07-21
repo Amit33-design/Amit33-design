@@ -12,14 +12,56 @@ function cap(s: string) { return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.
 interface MealSlot { slot: string; slot_calories: number; slot_protein_g: number; items: { food: { name: string } }[]; }
 
 /* ─── email HTML builder ───────────────────────────────────────────────────── */
+interface WeeklyLite {
+  days: { date: string; weekday_short: string; plan: { meals: MealSlot[] } }[];
+  grocery: { label: string; items: { name: string; times: number }[] }[];
+}
+
 function buildEmailHtml(opts: {
   name: string; goal: string; conditionLabels: string[];
   cal: number; protein: number; carbs: number; fat: number;
   meals: MealSlot[]; logs: ReturnType<typeof getLocalProgressHistory>["logs"];
-  date: string;
+  date: string; weekly: WeeklyLite | null;
 }) {
-  const { name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs, date } = opts;
+  const { name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs, date, weekly } = opts;
   const slotIcons: Record<string, string> = { breakfast: "🌅", mid_morning: "🍎", lunch: "☀️", evening_snack: "🌤", dinner: "🌙" };
+
+  const mainsOf = (dayMeals: MealSlot[], slot: string) =>
+    dayMeals.find((mm) => mm.slot === slot)?.items.slice(0, 2).map((i) => i.food?.name).filter(Boolean).join(", ") || "—";
+
+  const weeklySection = weekly
+    ? `
+    <!-- Week at a glance -->
+    <div style="padding:0 32px 24px">
+      <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1e293b">📅 &nbsp;Week at a Glance</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="padding:8px 10px;text-align:left;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase">Day</th>
+            <th style="padding:8px 10px;text-align:left;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase">🌅 Breakfast</th>
+            <th style="padding:8px 10px;text-align:left;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase">☀️ Lunch</th>
+            <th style="padding:8px 10px;text-align:left;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase">🌙 Dinner</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${weekly.days.map((d) => `
+          <tr>
+            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#1e293b">${d.weekday_short}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151">${mainsOf(d.plan.meals, "breakfast")}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151">${mainsOf(d.plan.meals, "lunch")}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151">${mainsOf(d.plan.meals, "dinner")}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+      <div style="background:#f0fdf4;border-radius:12px;padding:14px 16px;margin-top:14px">
+        <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px">🛒 Grocery list for the week</div>
+        ${weekly.grocery.map((g) => `
+        <div style="font-size:12px;color:#374151;margin-bottom:4px">
+          <strong style="color:#166534">${g.label}:</strong> ${g.items.map((it) => it.name).join(", ")}
+        </div>`).join("")}
+      </div>
+    </div>`
+    : "";
 
   const mealRows = meals.map((m) =>
     `<tr>
@@ -115,6 +157,8 @@ function buildEmailHtml(opts: {
       </table>
     </div>
 
+    ${weeklySection}
+
     <!-- Progress -->
     <div style="padding:0 32px 24px">
       <h2 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1e293b">📊 &nbsp;Recent Progress (last 7 days)</h2>
@@ -177,6 +221,7 @@ export default function ReportPage() {
   const [summary, setSummary]   = useState<Record<string, unknown> | null>(null);
   const [mealPlan, setMealPlan] = useState<Record<string, unknown> | null>(null);
   const [macros, setMacros]     = useState<Record<string, unknown> | null>(null);
+  const [weekly, setWeekly]     = useState<WeeklyLite | null>(null);
   const [loading, setLoading]   = useState(true);
 
   const [email, setEmail]         = useState("");
@@ -191,10 +236,12 @@ export default function ReportPage() {
       api.getUserSummary(id),
       api.getMealPlan(id),
       api.getMacros(id),
-    ]).then(([s, m, mx]) => {
+      api.getWeeklyPlan(id),
+    ]).then(([s, m, mx, w]) => {
       setSummary(s as Record<string, unknown>);
       setMealPlan(m as Record<string, unknown>);
       setMacros(mx as Record<string, unknown>);
+      setWeekly(w as WeeklyLite);
       setLoading(false);
     });
   }, [router]);
@@ -234,7 +281,7 @@ export default function ReportPage() {
     setEmailStatus("idle");
     try {
       const emailjs = (await import("@emailjs/browser")).default;
-      const html = buildEmailHtml({ name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs: recentLogs, date });
+      const html = buildEmailHtml({ name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs: recentLogs, date, weekly });
       await emailjs.send(serviceId, templateId, {
         to_email:     email,
         to_name:      name,
@@ -453,6 +500,52 @@ export default function ReportPage() {
               ))}
             </div>
           </section>
+
+          {/* Week at a glance + grocery */}
+          {weekly && (
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center text-lg">📅</div>
+                <h2 className="text-lg font-black text-slate-900">Week at a Glance</h2>
+              </div>
+              <div className="overflow-x-auto rounded-2xl mb-4" style={{ background: "#f8fafc" }}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ background: "#f1f5f9" }}>
+                      {["Day", "🌅 Breakfast", "☀️ Lunch", "🌙 Dinner"].map((h) => (
+                        <th key={h} className="px-3 py-2.5 text-left font-bold text-slate-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weekly.days.map((d) => {
+                      const mains = (slot: string) =>
+                        d.plan.meals.find((mm) => mm.slot === slot)?.items.slice(0, 2).map((i) => i.food?.name).filter(Boolean).join(", ") || "—";
+                      return (
+                        <tr key={d.date} className="border-t border-slate-100">
+                          <td className="px-3 py-2 font-bold text-slate-900 whitespace-nowrap">{d.weekday_short}</td>
+                          <td className="px-3 py-2 text-slate-600">{mains("breakfast")}</td>
+                          <td className="px-3 py-2 text-slate-600">{mains("lunch")}</td>
+                          <td className="px-3 py-2 text-slate-600">{mains("dinner")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="rounded-2xl p-4" style={{ background: "#f0fdf4" }}>
+                <div className="text-sm font-bold text-emerald-800 mb-2">🛒 Grocery List for the Week</div>
+                <div className="space-y-1">
+                  {weekly.grocery.map((g) => (
+                    <div key={g.label} className="text-xs text-slate-600">
+                      <span className="font-bold text-emerald-700">{g.label}:</span>{" "}
+                      {g.items.map((it) => it.name).join(", ")}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Progress */}
           <section>

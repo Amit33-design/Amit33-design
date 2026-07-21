@@ -3,7 +3,7 @@ import { DEMO_USER_ID } from "./demo-data";
 import {
   OnboardingInput, buildUserSummary, computeMacros, generateMealPlan,
   generateWeeklyPlan, generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
-  answerHealthQuestion,
+  askHealthCopilot,
 } from "./recommendation-engine";
 import { saveProgressEntry, getLocalProgressHistory } from "./local-store";
 
@@ -177,11 +177,8 @@ export const api = {
   chat: async (userId: string, message: string, sessionId?: string) => {
     if (DEMO_MODE) {
       await delay(900);
-      return {
-        session_id: sessionId || "demo-session",
-        response: answerHealthQuestion(getOnboardingInput(), message),
-        suggested_questions: [],
-      };
+      const { response, suggested_questions } = askHealthCopilot(getOnboardingInput(), message);
+      return { session_id: sessionId || "demo-session", response, suggested_questions };
     }
     return apiFetch(`/ai/${userId}/chat`, { method: "POST", body: JSON.stringify({ message, session_id: sessionId }) });
   },

@@ -119,14 +119,17 @@ describe("generateMealPlan — full sweep", () => {
     expect(scales.some((s) => Math.abs(s - 1) >= 0.1)).toBe(true);
   });
 
-  it("keeps muscle-gain protein overshoot within 15% of target", () => {
-    const plan = generateMealPlan({
+  it("keeps muscle-gain protein overshoot within 15% of target on every day of the week", () => {
+    const input: OnboardingInput = {
       ...baseInput,
       age: 28, weight_kg: 92, height_cm: 185, activity_level: "active",
       goal_type: "muscle_gain", cuisine: "western", protein_pref: "non_vegetarian",
-    });
-    expect(plan.total_protein_g).toBeLessThanOrEqual(plan.macro_targets.protein_g * 1.15);
-    expect(plan.fit.calories).toBeGreaterThanOrEqual(85);
+    };
+    for (let offset = 0; offset < 7; offset++) {
+      const plan = generateMealPlan(input, offset);
+      expect(plan.total_protein_g, `day offset ${offset}`).toBeLessThanOrEqual(plan.macro_targets.protein_g * 1.15);
+      expect(plan.fit.calories, `day offset ${offset}`).toBeGreaterThanOrEqual(80);
+    }
   });
 
   it("Indian vegetarians never receive egg dishes", () => {

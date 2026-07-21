@@ -629,6 +629,36 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       if (cut <= 0.01) continue;
       e.scale -= cut;
     }
+    // if portions bottomed out and protein still runs high, drop the smallest
+    // protein dish (keeping each slot viable) and let energy foods refill
+    let dropGuard = 0;
+    while (dayProt() > proteinTarget * 1.12 && dropGuard++ < 4) {
+      const cand = proteinItems
+        .filter((e) => {
+          const s = selected[e.slotIdx];
+          const minItems = s.slotDef.needsAnchor ? 2 : 1;
+          return s.picked.includes(e.food) && s.picked.length > minItems;
+        })
+        .sort((a, b) => a.food.p * a.scale - b.food.p * b.scale);
+      if (!cand.length) break;
+      const v = cand[0];
+      const sp = selected[v.slotIdx].picked;
+      sp.splice(sp.indexOf(v.food), 1);
+      proteinItems.splice(proteinItems.indexOf(v), 1);
+      entries.splice(entries.indexOf(v), 1);
+    }
+    // last resort: shrink to half-portions (below normal bounds) so protein
+    // never exceeds 1.15× target regardless of which foods the day rotated in
+    if (dayProt() > proteinTarget * 1.15) {
+      const byBiggest = proteinItems.slice().sort((a, b) => b.food.p * b.scale - a.food.p * a.scale);
+      for (const e of byBiggest) {
+        if (dayProt() <= proteinTarget * 1.1) break;
+        const over = dayProt() - proteinTarget * 1.1;
+        const cut = Math.min(e.scale - 0.5, over / Math.max(e.food.p, 1));
+        if (cut <= 0.01) continue;
+        e.scale -= cut;
+      }
+    }
     steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
   }
 
@@ -1653,6 +1683,42 @@ export function answerHealthQuestion(input: OnboardingInput, message: string): s
     `Try asking me:\n• "Is banana safe for me?"\n• "What should I eat for dinner?"\n• "Why is my protein target ${macros.protein_g}g?"\n• "How much water should I drink?"` +
     disclaimer
   );
+}
+
+/**
+ * Chat entry point: the answer plus contextual follow-up questions the user
+ * can tap next. Follow-ups are derived from the detected intent and the
+ * user's own plan, so they always make sense to ask.
+ */
+export function askHealthCopilot(input: OnboardingInput, message: string) {
+  const response = answerHealthQuestion(input, message);
+  const m = message.toLowerCase();
+  const macros = computeMacros(input);
+  const plan = generateMealPlan(input);
+
+  // a real food from the user's own swap options → personalised food question
+  const altFood = plan.meals.flatMap((meal) => meal.alternatives)[0]?.food.name;
+  const foodQ = altFood ? `Is ${altFood.toLowerCase().replace(/\s*\(.*\)/, "")} a good choice for me?` : "Is banana safe for me?";
+
+  const foodAsked = FOODS.some((f) => foodTokens(f).some((t) => m.includes(t)));
+  const slotAsked = /(breakfast|lunch|dinner|snack|mid[- ]?morning)/.test(m);
+
+  let suggested: string[];
+  if (foodAsked) {
+    suggested = ["What should I eat for dinner?", `Why is my protein target ${macros.protein_g}g?`, "What foods should I avoid?"];
+  } else if (slotAsked) {
+    suggested = [foodQ, "What's my calorie target?", "How much water should I drink?"];
+  } else if (/protein|calorie|carb|kcal/.test(m)) {
+    suggested = ["What should I eat for breakfast?", foodQ, "How much water should I drink?"];
+  } else if (/water|hydrat|sleep|stress|meditat/.test(m)) {
+    suggested = ["What should I eat for dinner?", `Why is my protein target ${macros.protein_g}g?`, foodQ];
+  } else if (/weight|progress|workout|exercise/.test(m)) {
+    suggested = ["What should I eat after a workout?", "What's my calorie target?", "How much sleep do I need?"];
+  } else {
+    suggested = [foodQ, "What should I eat for dinner?", `Why is my protein target ${macros.protein_g}g?`];
+  }
+
+  return { response, suggested_questions: suggested };
 }
 
 export function buildUserSummary(input: OnboardingInput, userId: string) {
