@@ -132,12 +132,33 @@ describe("generateMealPlan — full sweep", () => {
     expect(fitSum / n).toBeGreaterThanOrEqual(85); // average plan-match stays high
   });
 
-  it("offers at least 5 swap alternatives for main meals", () => {
-    const plan = generateMealPlan(baseInput);
-    for (const meal of plan.meals) {
-      if (["breakfast", "lunch", "dinner"].includes(meal.slot)) {
-        expect(meal.alternatives.length).toBeGreaterThanOrEqual(5);
+  it("gives every meal slot at least 10 choices, for every cuisine, diet and condition set", () => {
+    // A week of cooking needs ten ideas per slot, not five — otherwise people
+    // run out of options by Thursday and stop following the plan.
+    const failures: string[] = [];
+    for (const cuisine of CUISINES) {
+      for (const protein_pref of DIETS) {
+        for (const conditions of CONDITION_SETS) {
+          const plan = generateMealPlan({ ...baseInput, cuisine, protein_pref, conditions, goal_type: "maintenance" });
+          for (const meal of plan.meals) {
+            const choices = meal.items.length + meal.alternatives.length;
+            if (choices < 10) failures.push(`${cuisine}/${protein_pref}/${meal.slot} (${conditions.join("+") || "none"}) = ${choices}`);
+          }
+        }
       }
+    }
+    expect(failures, `slots with fewer than 10 choices:\n${failures.join("\n")}`).toEqual([]);
+  });
+
+  it("does not repeat dishes within a week's worth of any meal slot", () => {
+    const week = generateWeeklyPlan(baseInput);
+    for (const slot of ["breakfast", "lunch", "dinner"]) {
+      const names = new Set<string>();
+      for (const day of week.days) {
+        for (const item of day.plan.meals.find((m) => m.slot === slot)!.items) names.add(item.food.name);
+      }
+      // seven days of a slot should draw on a decent spread, not one or two dishes
+      expect(names.size, `${slot} only used ${names.size} distinct dishes across the week`).toBeGreaterThanOrEqual(7);
     }
   });
 

@@ -1690,4 +1690,361 @@ export const RECIPES: Record<string, Recipe> = {
     tip: "Plain yogurt + real fruit skips the ~3 tsp of sugar in flavoured cups.",
   },
 
+  // ── MORE INDIAN VEGETARIAN MAINS ───────────────────────────────────────────
+
+  "dal-tadka": {
+    prep: 10, cook: 25, servings: 2, difficulty: "easy",
+    ingredients: [
+      "¾ cup toor dal (arhar), rinsed",
+      "2½ cups water, ½ tsp turmeric",
+      "1 tbsp ghee or oil",
+      "1 tsp cumin seeds, 2 dried red chillies",
+      "4 cloves garlic, sliced thin",
+      "1 onion + 1 tomato, chopped",
+      "½ tsp red chilli powder, salt",
+      "Fresh coriander, squeeze of lemon",
+    ],
+    steps: [
+      "Pressure-cook dal with turmeric and water for 3 whistles until completely soft; whisk smooth.",
+      "For the tadka: heat ghee, crackle cumin, add garlic and dried chillies until golden — do not let the garlic burn.",
+      "Add onion, cook till soft, then tomato and chilli powder; cook until the oil separates.",
+      "Pour the tadka into the dal, simmer 5 minutes, season.",
+      "Finish with coriander and lemon. Serve with roti or rice.",
+    ],
+    tip: "The tadka is where all the flavour lives — make it in a small pan and pour it over at the end, sizzling.",
+  },
+
+  "chana-masala": {
+    prep: 10, cook: 25, servings: 2, difficulty: "medium",
+    ingredients: [
+      "1½ cups cooked chickpeas (or 1 can, drained)",
+      "2 onions, finely chopped",
+      "2 tomatoes, pureed",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp each: coriander powder, chana masala",
+      "½ tsp each: turmeric, red chilli, garam masala",
+      "1 tbsp oil, 1 tsp dried mango powder (amchur)",
+      "Coriander, sliced onion and lemon to serve",
+    ],
+    steps: [
+      "Brown the onions well in oil — 8–10 minutes, this is what makes the gravy dark and deep.",
+      "Add ginger-garlic paste, cook 1 minute, then the dry spices for 30 seconds.",
+      "Add tomato puree; cook until the oil separates from the masala.",
+      "Add chickpeas with ½ cup water, simmer 12–15 minutes so they soak up the gravy.",
+      "Mash a few chickpeas against the pan to thicken. Finish with amchur and garam masala.",
+    ],
+    tip: "Slightly mashing a spoonful of chickpeas thickens the gravy naturally — no cream needed.",
+  },
+
+  "matar-paneer": {
+    prep: 10, cook: 20, servings: 2, difficulty: "easy",
+    ingredients: [
+      "150g low-fat paneer, cubed",
+      "1 cup green peas (fresh or frozen)",
+      "2 tomatoes + 1 onion, pureed",
+      "1 tsp ginger-garlic paste",
+      "½ tsp each: turmeric, red chilli, garam masala",
+      "1 tbsp oil, 2 tbsp low-fat curd",
+      "Coriander to finish",
+    ],
+    steps: [
+      "Sauté the onion-tomato puree in oil with ginger-garlic until thickened and the oil separates.",
+      "Add the dry spices, then whisk in the curd off the heat so it doesn't split.",
+      "Add peas and ½ cup water; simmer 8 minutes until tender.",
+      "Fold in paneer gently, cook 2 minutes more — long cooking makes paneer rubbery.",
+      "Garnish with coriander.",
+    ],
+    tip: "Add paneer at the very end. If it has been refrigerated, soak the cubes in warm water for 10 minutes first to soften them.",
+  },
+
+  "paneer-tikka": {
+    prep: 20, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: [
+      "200g paneer, cut in 2.5 cm cubes",
+      "1 capsicum + 1 onion, cut in squares",
+      "½ cup thick low-fat curd (hung)",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp tandoori masala, ½ tsp each turmeric, chilli, garam masala",
+      "1 tsp besan (stops the marinade sliding off)",
+      "1 tsp oil, lemon juice, chaat masala",
+    ],
+    steps: [
+      "Whisk curd with besan, ginger-garlic, all spices and a little salt.",
+      "Fold in paneer and vegetables; marinate at least 30 minutes (overnight is better).",
+      "Thread onto skewers and grill, air-fry or bake at 220°C for 12–15 min, turning once, until charred at the edges.",
+      "Finish with lemon and chaat masala.",
+    ],
+    tip: "Hung curd (drained 20 min in a cloth) clings to the paneer instead of pooling in the tray.",
+  },
+
+  "aloo-gobi-matar": {
+    prep: 10, cook: 20, servings: 2, difficulty: "easy",
+    ingredients: [
+      "1 potato, cubed small",
+      "½ head cauliflower, florets",
+      "½ cup green peas",
+      "1 tsp cumin seeds, ½ tsp turmeric",
+      "1 tsp coriander powder, ½ tsp amchur",
+      "1 tbsp oil, ginger, green chilli, coriander",
+    ],
+    steps: [
+      "Crackle cumin in oil, add ginger and green chilli.",
+      "Add potato first with turmeric; cook covered 5 minutes.",
+      "Add cauliflower and peas, sprinkle coriander powder and salt.",
+      "Cook covered on low 10–12 minutes, stirring gently so the florets stay whole.",
+      "Finish with amchur and fresh coriander.",
+    ],
+    tip: "Resist stirring too often — leaving it undisturbed lets the edges brown, which is where the flavour comes from.",
+  },
+
+  "veg-kofta": {
+    prep: 25, cook: 25, servings: 2, difficulty: "medium",
+    ingredients: [
+      "For koftas: 1 cup grated bottle gourd or cabbage + 1 boiled potato, 3 tbsp besan, ginger, chilli, salt",
+      "For gravy: 2 tomatoes + 1 onion pureed, 1 tbsp cashew paste",
+      "1 tsp ginger-garlic paste, ½ tsp each turmeric, chilli, garam masala",
+      "1 tbsp oil, kasuri methi, coriander",
+    ],
+    steps: [
+      "Squeeze all water from the grated vegetable, mix with potato, besan and seasoning into a firm dough.",
+      "Shape into balls, brush with oil and BAKE at 200°C for 20 min (or air-fry) — turning once.",
+      "For the gravy, sauté the puree with ginger-garlic and spices until the oil separates; stir in cashew paste and ½ cup water.",
+      "Add koftas just before serving so they stay intact, crush kasuri methi over the top.",
+    ],
+    tip: "Baking instead of deep-frying saves roughly 100 kcal a serving and the koftas hold together better in the gravy.",
+  },
+
+  "soya-keema": {
+    prep: 15, cook: 20, servings: 2, difficulty: "easy",
+    ingredients: [
+      "1 cup soya granules, soaked in hot water 10 min then squeezed dry",
+      "½ cup green peas",
+      "1 onion + 2 tomatoes, finely chopped",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp each: coriander powder, garam masala; ½ tsp turmeric, chilli",
+      "1 tbsp oil, coriander, lemon",
+    ],
+    steps: [
+      "Squeeze the soya granules really dry — wet granules steam instead of browning.",
+      "Sauté onion until golden, add ginger-garlic, then tomatoes and spices; cook till the oil separates.",
+      "Add soya and peas with ½ cup water; cook 10 minutes until dry and crumbly like keema.",
+      "Finish with garam masala, coriander and lemon. Serve with roti or pav.",
+    ],
+    tip: "One of the highest-protein vegetarian dinners you can make — around 24g a serving, and it freezes well.",
+  },
+
+  "curd-rice": {
+    prep: 5, cook: 5, servings: 1, difficulty: "easy",
+    ingredients: [
+      "1 cup cooked brown rice, cooled slightly",
+      "¾ cup low-fat curd, whisked",
+      "1 tsp oil, ½ tsp mustard seeds, 1 dried red chilli",
+      "Curry leaves, grated ginger, pinch of asafoetida",
+      "Cucumber, pomegranate or grated carrot to finish",
+    ],
+    steps: [
+      "Mash the warm rice lightly with a spoon so it turns creamy.",
+      "Let it cool to room temperature, then fold in the curd — hot rice will split it.",
+      "Temper mustard seeds, chilli, curry leaves, ginger and asafoetida in oil; pour over.",
+      "Top with cucumber or pomegranate. Season and serve cool.",
+    ],
+    tip: "Cooling and reheating rice raises its resistant starch, which is gentler on blood sugar than freshly cooked rice.",
+  },
+
+  "palak-dal": {
+    prep: 10, cook: 20, servings: 2, difficulty: "easy",
+    ingredients: [
+      "¾ cup moong dal",
+      "3 cups spinach, chopped",
+      "1 tomato, 1 tsp cumin, ½ tsp turmeric",
+      "2 cloves garlic, green chilli, ginger",
+      "1 tsp oil or ghee, lemon to finish",
+    ],
+    steps: [
+      "Cook the dal with turmeric until soft.",
+      "Temper cumin and garlic in oil, add ginger, chilli and tomato; cook 3 minutes.",
+      "Stir in spinach — it wilts in about 2 minutes; over-cooking dulls the colour and the folate.",
+      "Combine with the dal, simmer 5 minutes, finish with lemon.",
+    ],
+    tip: "Lemon at the end isn't just for taste — vitamin C markedly improves how much of the spinach and dal iron you actually absorb.",
+  },
+
+  "stuffed-capsicum": {
+    prep: 15, cook: 25, servings: 2, difficulty: "medium",
+    ingredients: [
+      "4 medium capsicums, tops cut and deseeded",
+      "150g paneer, crumbled",
+      "1 boiled potato, mashed (binds the filling)",
+      "1 tsp each: cumin, coriander powder, amchur",
+      "Green chilli, ginger, coriander, 1 tsp oil",
+    ],
+    steps: [
+      "Mix paneer, potato, spices and herbs into a firm filling.",
+      "Pack into the capsicums, pressing down well.",
+      "Brush with oil and bake at 190°C for 22–25 min, or cook covered in a pan on low heat, turning occasionally.",
+      "Serve whole — the capsicum is the container and the vegetable.",
+    ],
+    tip: "Red and yellow capsicums are sweeter and carry far more vitamin C than green ones.",
+  },
+
+  "veg-uttapam": {
+    prep: 10, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: [
+      "1½ cups dosa/idli batter (fermented)",
+      "1 onion, 1 tomato, 1 capsicum — all finely chopped",
+      "Green chilli, coriander, grated carrot",
+      "1 tsp oil per uttapam, chutney to serve",
+    ],
+    steps: [
+      "Heat a tawa on medium. Pour a ladle of batter and spread into a thick round — uttapam is deliberately thicker than dosa.",
+      "Scatter the chopped vegetables over the top and press them in gently with the back of the ladle.",
+      "Drizzle oil around the edge, cover and cook 3–4 minutes until the base is golden.",
+      "Flip, cook 2 minutes more. Serve with coconut or tomato chutney.",
+    ],
+    tip: "Fermented batter makes the B vitamins more available and is far easier to digest than unfermented flour.",
+  },
+
+  "sabudana-khichdi": {
+    prep: 10, cook: 15, servings: 2, difficulty: "medium",
+    ingredients: [
+      "1 cup sabudana (tapioca pearls), soaked 4–6 hours or overnight",
+      "⅓ cup roasted peanuts, coarsely crushed",
+      "1 boiled potato, cubed",
+      "1 tsp cumin, 2 green chillies, curry leaves",
+      "1 tbsp oil or ghee, lemon, coriander",
+    ],
+    steps: [
+      "Soak sabudana in just enough water to cover; drain fully and fluff — the pearls should crush easily between two fingers.",
+      "Mix the crushed peanuts through the drained sabudana; this is what stops it turning sticky.",
+      "Temper cumin, chilli and curry leaves in oil, add potato and cook 2 minutes.",
+      "Add the sabudana, toss on medium heat 5–7 minutes until translucent. Don't overstir.",
+      "Finish with lemon and coriander.",
+    ],
+    tip: "The peanuts aren't optional — mixing them in before cooking is the difference between fluffy khichdi and a sticky lump.",
+  },
+
+  "masala-oats": {
+    prep: 5, cook: 12, servings: 1, difficulty: "easy",
+    ingredients: [
+      "½ cup rolled oats",
+      "1 cup mixed vegetables (carrot, peas, beans, capsicum)",
+      "1 small onion + 1 tomato, chopped",
+      "1 tsp cumin, ½ tsp turmeric, ½ tsp pav bhaji or garam masala",
+      "1 tsp oil, coriander, lemon",
+    ],
+    steps: [
+      "Dry-roast the oats 2 minutes until they smell nutty; set aside.",
+      "Temper cumin in oil, sauté onion, then tomato and spices.",
+      "Add vegetables and 1¼ cups water; simmer 5 minutes.",
+      "Stir in the oats, cook 3–4 minutes until thick. Finish with coriander and lemon.",
+    ],
+    tip: "Savoury oats keep blood sugar far steadier than the sweetened instant packets, and cost a fraction as much.",
+  },
+
+  // ── MEDITERRANEAN / WESTERN VEGAN BREAKFASTS ──────────────────────────────
+
+  "overnight-oats-vegan": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: [
+      "½ cup rolled oats",
+      "¾ cup soy or almond milk",
+      "1 tbsp chia seeds",
+      "½ cup berries (fresh or frozen)",
+      "1 tbsp chopped nuts, cinnamon",
+      "½ tsp maple syrup (optional)",
+    ],
+    steps: [
+      "Stir oats, milk and chia together in a jar.",
+      "Refrigerate overnight, or at least 4 hours.",
+      "Top with berries and nuts in the morning. Eat cold or warm briefly.",
+    ],
+    tip: "Make three jars at once on Sunday — breakfast is then solved for half the week with no morning decisions.",
+  },
+
+  "tofu-scramble-med": {
+    prep: 5, cook: 10, servings: 1, difficulty: "easy",
+    ingredients: [
+      "150g firm tofu, crumbled",
+      "¼ tsp turmeric (for colour), ½ tsp cumin",
+      "1 tbsp nutritional yeast (adds a savoury, cheesy note)",
+      "Cherry tomatoes, spinach, black olives",
+      "1 tsp olive oil, black pepper, oregano",
+    ],
+    steps: [
+      "Press the tofu between paper towels for a few minutes to remove excess water.",
+      "Crumble into hot oil, add turmeric and cumin, cook 4 minutes without stirring much so it browns.",
+      "Add tomatoes and olives, then spinach at the very end until just wilted.",
+      "Finish with nutritional yeast, pepper and oregano.",
+    ],
+    tip: "Nutritional yeast is usually fortified with B12 — genuinely useful on a vegan diet, where B12 is the one nutrient food alone can't supply.",
+  },
+
+  "socca": {
+    prep: 10, cook: 12, servings: 2, difficulty: "easy",
+    ingredients: [
+      "1 cup besan (chickpea flour)",
+      "1 cup water",
+      "2 tbsp olive oil",
+      "½ tsp salt, black pepper, rosemary",
+      "Sliced onion or cherry tomatoes (optional topping)",
+    ],
+    steps: [
+      "Whisk besan, water, 1 tbsp oil and salt into a smooth batter; rest 30 minutes if you have time.",
+      "Heat an oven-safe pan hot, add remaining oil, pour in the batter.",
+      "Cook 2 minutes on the hob, then grill/broil 6–8 minutes until set and blistered.",
+      "Cut into wedges; eat warm.",
+    ],
+    tip: "A Nice street-food classic that happens to be gluten-free and around 12g of plant protein a serving.",
+  },
+
+  "hummus-toast": {
+    prep: 5, cook: 2, servings: 1, difficulty: "easy",
+    ingredients: [
+      "2 slices whole grain bread",
+      "4 tbsp hummus",
+      "½ cucumber, sliced thin",
+      "Cherry tomatoes, red onion",
+      "Olive oil, za'atar or chilli flakes, lemon",
+    ],
+    steps: [
+      "Toast the bread.",
+      "Spread hummus thickly, layer cucumber and tomato.",
+      "Drizzle olive oil, sprinkle za'atar and squeeze lemon over.",
+    ],
+    tip: "A far more filling breakfast than jam toast — the chickpea protein and fibre keep hunger off for hours.",
+  },
+
+  "date-almond-smoothie": {
+    prep: 5, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: [
+      "3 pitted dates, soaked 10 min in hot water",
+      "1 banana",
+      "1 tbsp almond butter",
+      "1 cup soy or almond milk (fortified)",
+      "Pinch of cardamom, ice",
+    ],
+    steps: [
+      "Blend everything until completely smooth, 45–60 seconds.",
+      "Add a splash more milk if it's too thick.",
+    ],
+    tip: "Choose fortified plant milk — it supplies the calcium and B12 that unfortified versions simply don't have.",
+  },
+
+  "avocado-bean-toast": {
+    prep: 8, cook: 2, servings: 1, difficulty: "easy",
+    ingredients: [
+      "2 slices whole grain bread",
+      "½ cup white beans (cannellini), drained",
+      "½ avocado",
+      "1 clove garlic, lemon juice",
+      "Olive oil, chilli flakes, black pepper",
+    ],
+    steps: [
+      "Smash the beans roughly with garlic, lemon and a drizzle of olive oil — leave it chunky.",
+      "Toast the bread, spread the bean mash, then top with sliced or smashed avocado.",
+      "Finish with chilli flakes, pepper and more lemon.",
+    ],
+    tip: "Beans plus avocado gives around 13g protein and 11g fibre — one of the most satiating vegan breakfasts there is.",
+  },
+
 };

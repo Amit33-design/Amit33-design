@@ -23,10 +23,10 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 | File | What it is |
 |---|---|
 | `lib/recommendation-engine.ts` (~1200 lines) | THE core: ~95-food library, condition rules, Mifflin-St Jeor macros, 3-phase meal generator (select → portion-scale → materialise), workout templates |
-| `lib/nutrition-data.ts` | Per-serving micronutrients for all 116 foods (Na, K, Ca, Fe, B12, vit D, Mg, omega-3, satfat, sugar, NOVA). `getMicros(id, group, cal)` falls back to group profile if a food is missing. |
+| `lib/nutrition-data.ts` | Per-serving micronutrients for all 135 foods (Na, K, Ca, Fe, B12, vit D, Mg, omega-3, satfat, sugar, NOVA). `getMicros(id, group, cal)` falls back to group profile if a food is missing. |
 | `lib/adaptive-tdee.ts` | Solves real expenditure from logged intake + weight trend. OLS slope on RAW weights (EWMA only for display — fitting the smoothed series biases slope toward zero and inflates targets), `blendTdee` confidence-weights vs formula, `paceFeedback` nudges. |
 | `lib/training-science.ts` | Exercise dose layer: `EXERCISE_LIBRARY` (single source of truth — name/primary/secondary/equipment/avoid; `EXERCISE_MUSCLES` + `musclesFor` derive from it, `ALIASES` maps template names to canonical movements), `substituteExercise` (equipment+injury-aware swaps), exercise→muscle map, weekly set volume, e1RM (Brzycki/Epley), progression + stall-triggered deload, HR zones (Tanaka), step target. |
-| `lib/recipes-data.ts` | 45+ recipes keyed by food id **without** `food-` prefix |
+| `lib/recipes-data.ts` | 116 recipes keyed by food id **without** `food-` prefix. 19 ready-to-eat whole foods (fruit/nuts/curd/tea) intentionally have none — they render the green "no cooking needed" card. |
 | `lib/local-store.ts` | localStorage: progress (`health-copilot-progress`), medications (`-med-log`/`-med-reminders`), **strength sets** (`-lift-log`: `logLiftSet`/`getExerciseHistory`/`weeks_at_same_load`) |
 | `lib/api-client.ts` | demo-mode router → engine + local-store |
 | `lib/constants.ts` | goals, conditions, activity levels, cuisines, diets, medications |
@@ -46,13 +46,13 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 ```bash
 cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.test.ts
 ```
-61 tests (3 files) covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
+62 tests (3 files) covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
 macro safety (BMR floor, 25% max deficit, protein RISES in deficit, +-150 kcal clamp — use an active profile
 so the floor doesn't mask the clamp), dietician composition rules, micronutrients (DASH 1500mg cap, iron raised
 for plant/menstruating, no false "over" for omega-3/plant iron, vegan B12 -> supplement advice, free sugars
 exclude whole fruit, protein-per-meal spread, GL band), training dose (no untrained muscle except calves,
 half-credit secondary movers, 1RM refused >10 reps, deload on stall not calendar, step target <= 8000,
-HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — stub localStorage via a MemoryStorage on BOTH `globalThis.window` and `globalThis.localStorage`, since the store guards on `typeof window`), and exercise substitution (`exercise-swap.test.ts` — equipment blocking, injury blocking, same-muscle alternatives, every muscle has a home-friendly option, alias resolution).
+HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — stub localStorage via a MemoryStorage on BOTH `globalThis.window` and `globalThis.localStorage`, since the store guards on `typeof window`), and exercise substitution (`exercise-swap.test.ts` — equipment blocking, injury blocking, same-muscle alternatives, every muscle has a home-friendly option, alias resolution), and **choice coverage** (every cuisine x diet x condition x slot must offer >=10 choices; >=7 distinct dishes per slot across a week).
 
 ## How the meal engine works (current design)
 
@@ -62,6 +62,8 @@ HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — 
 4. **Phase 3 materialise**: `toMealItem(food, slot, scale)` → scaled qty/macros + `serving_scale`; plan returns `fit` {calories, protein, carbs, fat, overall %} shown as "Plan Match" strip on nutrition page.
 
 ## Changelog (newest first)
+
+- **2026-07-08 (7)** Meal variety — user reported Indian veg dinner showed only 5 options. ROOT CAUSE was not the food library (raw eligibility was already 11-33 per combo) but the alternatives cap: `Math.max(5, 8 - picked.length)` in Phase 1. Raised to a flat 10. Then measured all 84 profile x 5 slot combos and found the one genuine library gap: **Mediterranean/Western vegan breakfast** (7-9 options). Added 19 foods + full nutrient rows + 19 recipes: 13 Indian veg mains (dal-tadka, chana-masala, matar-paneer, paneer-tikka, aloo-gobi-matar, veg-kofta, soya-keema, curd-rice, palak-dal, stuffed-capsicum, veg-uttapam, sabudana-khichdi, masala-oats) and 6 med/western vegan breakfasts (overnight-oats-vegan, tofu-scramble-med, socca, hummus-toast, date-almond-smoothie, avocado-bean-toast). Now 135 foods / 135 nutrient rows / 116 recipes; **every slot in every profile offers >=10 choices** (min was 5). Weekly distinct for Indian veg: breakfast 13, lunch 20, dinner 16. Locked by 2 new tests. GOTCHA when appending to recipes-data.ts with a script: the file ends `},\n};` — stripping `};` and re-adding leaves `},,`.
 
 - **2026-07-08 (6)** Equipment- and injury-aware exercise substitution (research: highest-leverage exercise feature for adherence). `EXERCISE_LIBRARY` in `training-science.ts` is now the single source of truth — 45 movements with `equipment[]` and `avoid[]` (knee/shoulder/lower_back/wrist/hip/neck/balance); `EXERCISE_MUSCLES` derives from it and `ALIASES` maps template names ("Push-ups (knee or full)" → "push-up") so volume counting still resolves. `substituteExercise(name, {equipment, limitations})` returns `blocked` ("equipment"|"limitation"|null) + ranked alternatives sharing primary muscles, preferring least kit. Prefs in `local-store` (`health-copilot-training-prefs`: equipment/limitations/swaps). UI: `TrainingSetup` chips panel + `ExerciseSwap` inline flag & picker; `ExerciseRow` wrapper keys `ExerciseLogger` to the *swapped* name so lift history doesn't split across two names. GOTCHA: stricter matching after the refactor exposed senior templates had Core 0 sets/week (warm-ups don't count as volume) — added Seated march + Dead bug to the main circuits.
 

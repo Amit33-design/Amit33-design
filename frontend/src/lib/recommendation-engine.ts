@@ -207,6 +207,29 @@ const FOODS: Food[] = [
   { id: "ww-pasta", name: "Whole Wheat Pasta Primavera", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 380, p: 13, c: 62, f: 9, fiber: 8, gi: 48, sodium: "low", oxalate: "low", satfat: "low", tags: ["Complex Carbs", "High Fiber", "High Energy"] },
   { id: "couscous-chickpea", name: "Couscous & Chickpea Bowl", group: "grains", cuisines: ["mediterranean"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 360, p: 13, c: 58, f: 8, fiber: 8, gi: 61, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complex Carbs", "Plant Protein", "High Energy"] },
   { id: "baked-potato", name: "Baked Potato with Herbed Yogurt", group: "vegetable", cuisines: ["western"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 250, cal: 250, p: 8, c: 46, f: 4, fiber: 5, gi: 65, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["High Energy", "Potassium", "Satisfying"] },
+  // ── Indian vegetarian mains — a week of dinners shouldn't repeat ──────────
+  { id: "dal-tadka", name: "Toor Dal Tadka", local: "Dal Tadka", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 210, p: 13, c: 32, f: 4, fiber: 8, gi: 30, sodium: "low", oxalate: "low", satfat: "low", highK: true, anchor: true, tags: ["Plant Protein", "Low GI", "Comfort Food"] },
+  { id: "chana-masala", name: "Chana Masala", local: "Chole", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 240, p: 12, c: 38, f: 6, fiber: 11, gi: 28, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Fiber", "Plant Protein", "Iron"] },
+  { id: "matar-paneer", name: "Matar Paneer (Low-Fat)", local: "Matar Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 250, p: 17, c: 16, f: 14, fiber: 5, gi: 35, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["Vegetarian Protein", "Calcium", "Fiber"] },
+  { id: "paneer-tikka", name: "Grilled Paneer Tikka", local: "Paneer Tikka", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner", "evening_snack"], qty: 150, cal: 260, p: 20, c: 8, f: 17, fiber: 2, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["High Protein", "Grilled Not Fried", "Calcium"] },
+  { id: "aloo-gobi-matar", name: "Aloo Gobi Matar", local: "Aloo Gobi", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 165, p: 6, c: 26, f: 5, fiber: 7, gi: 45, sodium: "low", oxalate: "low", satfat: "low", goitrogen: true, tags: ["High Fiber", "Vitamin C", "Everyday Sabzi"] },
+  { id: "veg-kofta", name: "Baked Vegetable Kofta Curry", local: "Veg Kofta", group: "vegetable", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 220, cal: 250, p: 10, c: 30, f: 10, fiber: 6, gi: 40, sodium: "med", oxalate: "low", satfat: "low", tags: ["Baked Not Fried", "High Fiber", "Festive"] },
+  { id: "soya-keema", name: "Soya Matar Keema", local: "Soya Keema", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 180, cal: 240, p: 24, c: 22, f: 6, fiber: 9, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Muscle Gain", "High Fiber"] },
+  { id: "curd-rice", name: "Curd Rice with Brown Rice", local: "Thayir Sadam", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 250, cal: 230, p: 9, c: 38, f: 4, fiber: 3, gi: 45, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Probiotic", "Cooling", "Digestive Ease"] },
+  { id: "palak-dal", name: "Palak Moong Dal", local: "Palak Dal", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 190, p: 13, c: 27, f: 3, fiber: 8, gi: 28, sodium: "low", oxalate: "high", satfat: "low", anchor: true, tags: ["Iron", "Plant Protein", "Low GI"] },
+  { id: "stuffed-capsicum", name: "Paneer-Stuffed Capsicum", local: "Bharwa Shimla Mirch", group: "vegetable", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 220, p: 13, c: 18, f: 11, fiber: 5, gi: 30, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["Vegetarian Protein", "Vitamin C", "Low Carb"] },
+  { id: "veg-uttapam", name: "Vegetable Uttapam (2)", local: "Uttapam", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast", "dinner"], qty: 200, cal: 240, p: 8, c: 42, f: 5, fiber: 5, gi: 55, sodium: "med", oxalate: "low", satfat: "low", tags: ["Fermented", "Complex Carbs", "Light"] },
+  { id: "sabudana-khichdi", name: "Sabudana Khichdi with Peanuts", local: "Sabudana", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 280, p: 7, c: 45, f: 9, fiber: 3, gi: 60, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Energy", "Fasting Friendly"] },
+  { id: "masala-oats", name: "Savoury Masala Oats", local: "Masala Oats", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast", "dinner"], qty: 200, cal: 215, p: 8, c: 36, f: 5, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Quick"] },
+
+  // ── Mediterranean / Western vegan breakfasts (measured gap) ───────────────
+  { id: "overnight-oats-vegan", name: "Overnight Oats with Berries & Chia", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["breakfast"], qty: 250, cal: 290, p: 10, c: 45, f: 9, fiber: 9, gi: 45, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Omega-3", "Make Ahead"] },
+  { id: "tofu-scramble-med", name: "Mediterranean Tofu Scramble", group: "protein", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 220, p: 19, c: 9, f: 13, fiber: 4, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Plant-Based", "Iron"] },
+  { id: "socca", name: "Socca (Chickpea Flour Pancake)", group: "legumes", cuisines: ["mediterranean"], diet: "vegan", slots: ["breakfast", "evening_snack"], qty: 160, cal: 230, p: 12, c: 26, f: 9, fiber: 6, gi: 40, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "Gluten Free", "Low GI"] },
+  { id: "hummus-toast", name: "Hummus & Cucumber Toast", group: "grains", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast", "evening_snack"], qty: 150, cal: 250, p: 10, c: 32, f: 9, fiber: 7, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Plant Protein", "High Fiber", "Quick"] },
+  { id: "date-almond-smoothie", name: "Date, Almond & Banana Smoothie", group: "fruit", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast", "mid_morning"], qty: 320, cal: 300, p: 8, c: 48, f: 10, fiber: 7, gi: 48, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["High Energy", "Natural Sweetness", "Potassium"] },
+  { id: "avocado-bean-toast", name: "Smashed White Bean & Avocado Toast", group: "legumes", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 300, p: 13, c: 34, f: 13, fiber: 11, gi: 42, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Heart Healthy"] },
+
   { id: "paneer-rice-bowl", name: "Paneer & Veg Brown Rice Bowl", local: "Paneer Chawal", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 300, cal: 420, p: 22, c: 52, f: 14, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["High Protein", "High Energy", "Complete Meal"] },
 ];
 
@@ -642,9 +665,12 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
 
     const pickedIds = new Set(picked.map((f) => f.id));
+    // Offer a genuinely useful set of swaps. Five options meant a week of
+    // cooking ran out of ideas by Thursday; ten keeps every meal slot varied
+    // for a full week without repeating.
     const altFoods = rankedAll
       .filter((r) => !pickedIds.has(r.food.id))
-      .slice(0, Math.max(5, 8 - picked.length))
+      .slice(0, 10)
       .map((r) => r.food);
 
     return { slotDef, picked, altFoods };
