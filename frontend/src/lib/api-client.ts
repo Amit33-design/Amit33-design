@@ -6,6 +6,7 @@ import {
   askHealthCopilot,
 } from "./recommendation-engine";
 import { saveProgressEntry, getLocalProgressHistory } from "./local-store";
+import { computeAdaptiveTdee, paceFeedback, AdaptiveTdee } from "./adaptive-tdee";
 
 // Demo mode: static GitHub Pages build has no backend. Set at build time.
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
@@ -39,7 +40,14 @@ function getOnboardingInput(): OnboardingInput {
       height_cm: num(p.height_cm, fallback.height_cm),
       activity_level: s.activity?.activity_level || fallback.activity_level,
       goal_type,
-      calorie_adjustment: progressCalorieAdjustment(goal_type),
+      ...(() => {
+        const sig = progressSignals(goal_type, num(p.weight_kg, fallback.weight_kg));
+        return {
+          calorie_adjustment: sig.calorie_adjustment,
+          measured_tdee: sig.measured_tdee,
+          tdee_confidence: sig.tdee_confidence,
+        };
+      })(),
       conditions: (s.conditions || []).map((c: { condition_code: string }) => c.condition_code).filter(Boolean),
       medications: (s.medications || []).filter(Boolean),
       cuisine: s.diet?.cuisine_type || fallback.cuisine,
@@ -57,37 +65,28 @@ function getOnboardingInput(): OnboardingInput {
 }
 
 /**
- * Progress feedback loop: derive a calorie nudge from the user's logged weight
- * trend over the last 3 weeks. Needs two weight entries at least 7 days apart;
- * returns 0 (no change) otherwise.
- *   deficit goals — losing too fast → +100 kcal, too slow / regaining → −100
- *   muscle gain  — gaining too fast → −100 kcal, stalled → +100
+ * Measure the user's real energy expenditure from their own logs, falling back
+ * to the standard formula until there is enough data. Also returns the pace
+ * nudge, so a plateau or an unsafely fast loss still gets corrected.
  */
-function progressCalorieAdjustment(goal: string): number {
+function progressSignals(goal: string, bodyWeightKg: number): {
+  calorie_adjustment: number;
+  measured_tdee: number | null;
+  tdee_confidence: number;
+  adaptive: AdaptiveTdee | null;
+} {
   try {
-    const logs = getLocalProgressHistory(21).logs.filter(
-      (l) => typeof l.weight_kg === "number" && !Number.isNaN(l.weight_kg)
-    );
-    if (logs.length < 2) return 0;
-    const latest = logs[0]; // history is sorted newest first
-    const earliest = logs[logs.length - 1];
-    const days = (new Date(latest.log_date).getTime() - new Date(earliest.log_date).getTime()) / 86400000;
-    if (days < 7) return 0;
-    const perWeek = ((latest.weight_kg! - earliest.weight_kg!) / days) * 7;
-
-    if (goal === "muscle_gain") {
-      if (perWeek > 0.5) return -100; // gaining too fast → mostly fat
-      if (perWeek < 0.05) return 100; // stalled → eat a bit more
-      return 0;
-    }
-    if (goal === "weight_loss" || goal === "fat_loss" || goal === "diabetes_friendly") {
-      if (perWeek < -1.0) return 100; // losing too fast → unsustainable
-      if (perWeek > -0.15) return -100; // plateau or regaining → tighten
-      return 0;
-    }
-    return 0;
+    const { logs } = getLocalProgressHistory(60);
+    const adaptive = computeAdaptiveTdee(logs);
+    const pace = paceFeedback(goal, adaptive.weekly_change_kg, bodyWeightKg);
+    return {
+      calorie_adjustment: pace.adjust,
+      measured_tdee: adaptive.tdee,
+      tdee_confidence: adaptive.confidence,
+      adaptive,
+    };
   } catch {
-    return 0;
+    return { calorie_adjustment: 0, measured_tdee: null, tdee_confidence: 0, adaptive: null };
   }
 }
 
@@ -173,6 +172,22 @@ export const api = {
 
   getProgressTrends: (userId: string) =>
     DEMO_MODE ? Promise.resolve({}) : apiFetch(`/progress/${userId}/trends`),
+
+  /** Expenditure measured from the user's own logs, plus pace feedback. */
+  getMetabolism: (userId: string) => {
+    if (!DEMO_MODE) return apiFetch(`/progress/${userId}/metabolism`);
+    const input = getOnboardingInput();
+    const { logs } = getLocalProgressHistory(60);
+    const adaptive = computeAdaptiveTdee(logs);
+    const pace = paceFeedback(input.goal_type, adaptive.weekly_change_kg, input.weight_kg);
+    const macros = computeMacros(input);
+    return Promise.resolve({
+      adaptive,
+      formula_tdee: macros.tdee_predicted,
+      pace_message: pace.message,
+      pace_verdict: pace.verdict,
+    });
+  },
 
   chat: async (userId: string, message: string, sessionId?: string) => {
     if (DEMO_MODE) {

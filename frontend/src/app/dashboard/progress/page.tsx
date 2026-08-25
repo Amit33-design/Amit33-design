@@ -8,6 +8,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { MetabolismCard } from "@/components/dashboard/MetabolismCard";
 
 interface ProgressLog {
   log_date: string;
@@ -30,6 +31,7 @@ export default function ProgressPage() {
     weight_kg: "", calories_consumed: "", sleep_hours: "", steps_count: "", mood_score: "",
     bp_systolic: "", bp_diastolic: "", blood_sugar_fasting: "", blood_sugar_post_meal: "", notes: "",
   });
+  const [metabolism, setMetabolism] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -41,6 +43,7 @@ export default function ProgressPage() {
       setLogs(((r as Record<string, unknown>).logs as ProgressLog[]) || []);
       setLoading(false);
     });
+    api.getMetabolism(userId).then((m) => setMetabolism(m as Record<string, unknown>));
   }, [router, userId]);
 
   const handleSave = async () => {
@@ -202,6 +205,16 @@ export default function ProgressPage() {
           {saved ? "✓ Saved!" : saving ? "Saving..." : "Log Today's Data"}
         </button>
       </div>
+
+      {/* Measured metabolism */}
+      {metabolism && metabolism.adaptive ? (
+        <MetabolismCard
+          adaptive={metabolism.adaptive as Parameters<typeof MetabolismCard>[0]["adaptive"]}
+          formulaTdee={metabolism.formula_tdee as number | undefined}
+          paceMessage={metabolism.pace_message as string | undefined}
+          paceVerdict={metabolism.pace_verdict as Parameters<typeof MetabolismCard>[0]["paceVerdict"]}
+        />
+      ) : null}
 
       {/* Medication tracker + reminders */}
       <MedicationTracker />

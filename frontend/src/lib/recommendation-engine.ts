@@ -15,6 +15,7 @@
 
 import { getMicros, Micros } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
+import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -62,6 +63,10 @@ export interface OnboardingInput {
   lifestyle?: { sleep_hours?: number; stress_level?: string; water_liters_day?: number };
   /** kcal nudge derived from the user's logged weight trend (progress feedback loop) */
   calorie_adjustment?: number;
+  /** energy expenditure solved from the user's own intake + weight logs */
+  measured_tdee?: number | null;
+  /** 0–1 trust in `measured_tdee`; blends it against the formula estimate */
+  tdee_confidence?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,7 +370,16 @@ export function computeMacros(input: OnboardingInput) {
   const h = input.height_cm || 170;
   const age = input.age || 40;
   const bmr = 10 * w + 6.25 * h - 5 * age + (input.gender === "female" ? -161 : 5);
-  const tdee = bmr * (ACTIVITY_MULT[input.activity_level] || 1.4);
+  const predictedTdee = bmr * (ACTIVITY_MULT[input.activity_level] || 1.4);
+  // Prefer expenditure measured from the user's own logs once there is enough
+  // of it. Predictive equations are population averages and individuals scatter
+  // widely around them, so a measured value beats a formula every time.
+  const blended = blendTdee(predictedTdee, {
+    tdee: input.measured_tdee ?? null,
+    confidence: input.tdee_confidence ?? 0,
+  } as AdaptiveTdee);
+  const tdee = blended.tdee;
+  const tdee_source = blended.source;
   const goal = input.goal_type || "weight_loss";
   // Never prescribe below a clinically safe minimum, even for small/sedentary
   // users where a raw deficit would be dangerously low.
@@ -427,6 +441,8 @@ export function computeMacros(input: OnboardingInput) {
     fiber_g,
     protein_g_per_kg: Math.round(proteinPerKg * 100) / 100,
     tdee: Math.round(tdee),
+    tdee_predicted: Math.round(predictedTdee),
+    tdee_source,
     bmr: Math.round(bmr),
     floor_applied,
     /** protein per meal that best supports muscle maintenance (~0.4 g/kg) */

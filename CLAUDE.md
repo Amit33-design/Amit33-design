@@ -24,6 +24,7 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 |---|---|
 | `lib/recommendation-engine.ts` (~1200 lines) | THE core: ~95-food library, condition rules, Mifflin-St Jeor macros, 3-phase meal generator (select → portion-scale → materialise), workout templates |
 | `lib/nutrition-data.ts` | Per-serving micronutrients for all 116 foods (Na, K, Ca, Fe, B12, vit D, Mg, omega-3, satfat, sugar, NOVA). `getMicros(id, group, cal)` falls back to group profile if a food is missing. |
+| `lib/adaptive-tdee.ts` | Solves real expenditure from logged intake + weight trend. OLS slope on RAW weights (EWMA only for display — fitting the smoothed series biases slope toward zero and inflates targets), `blendTdee` confidence-weights vs formula, `paceFeedback` nudges. |
 | `lib/training-science.ts` | Exercise dose layer: exercise→muscle map, weekly set volume, e1RM (Brzycki/Epley), progression + stall-triggered deload, HR zones (Tanaka), step target. |
 | `lib/recipes-data.ts` | 45+ recipes keyed by food id **without** `food-` prefix |
 | `lib/local-store.ts` | localStorage progress persistence (`health-copilot-progress`) |
@@ -45,7 +46,7 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 ```bash
 cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.test.ts
 ```
-37 tests covering: 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
+45 tests covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
 macro safety (BMR floor, 25% max deficit, protein RISES in deficit, +-150 kcal clamp — use an active profile
 so the floor doesn't mask the clamp), dietician composition rules, micronutrients (DASH 1500mg cap, iron raised
 for plant/menstruating, no false "over" for omega-3/plant iron, vegan B12 -> supplement advice, free sugars
@@ -61,6 +62,8 @@ HTN cardio caution, Tanaka HRmax).
 4. **Phase 3 materialise**: `toMealItem(food, slot, scale)` → scaled qty/macros + `serving_scale`; plan returns `fit` {calories, protein, carbs, fat, overall %} shown as "Plan Match" strip on nutrition page.
 
 ## Changelog (newest first)
+
+- **2026-07-08 (4)** Adaptive TDEE (research P0 #1) — expenditure measured from the user's own logs instead of Mifflin-St Jeor. `computeAdaptiveTdee(logs)`: EWMA for *display* trend weight, **OLS slope on raw weights** for the rate (fitting the lagging EWMA under-states loss → inflates the target; simulation caught this as a −7% systematic error, fixed to −2%). `TDEE = meanIntake − kgPerDay×7700`. Confidence from span (28d) × density (14 logs); `blendTdee` weights measured vs formula and caps movement at ±25%. Rejects results outside 900–6000 kcal. Replaces the old crude ±100 nudge; `paceFeedback` now handles pace separately. KEY INSIGHT (in code comments + UI): self-report under-reporting of 10–30% **cancels** — a consistently low log yields a proportionally low expenditure and the prescribed deficit is still right; verified by test. New `MetabolismCard` on Progress page shows measured vs formula, trend weight, confidence, pace verdict.
 
 - **2026-07-08 (3)** Competitive benchmark (Cronometer/MacroFactor/MFP/Zoe/Fitbod/January AI/HealthifyMe) → built the clinical layer they lack.
   NUTRITION: `nutrition-data.ts` (116 foods x 11 micronutrients). `computeMicroTargets` personalises by age/sex/diet/condition (DASH 1500mg; iron x1.8 plant, higher for menstruating women; CKD K restriction; satfat 6% for hyperlipidemia). Sodium now in **mg not categorical** — this exposed that our own HTN plans ran 70% over the DASH limit we claimed; fixed via mg-level scoring penalty + explicit low-sodium-cooking model (nova>=3 dishes get 62.5% of listed Na, surfaced to user). `atRiskNutrients()` drives bounded micro boosts in `preferenceScore` (caps matter — uncapped omega-3 boost made flax appear 6x/week and broke the variety test). Free sugars exclude whole fruit/plain dairy. "over" only fires against real ULs (omega-3/plant iron have none). Protein/kg RISES in deficit (capped 1.9 general / 2.2 active), BMR + 25%-deficit floors. Per-meal protein spread (~0.4g/kg) — fixing breakfast anchors took main meals meeting threshold 5/12 -> 10/12. GL attenuated for protein/fat, reported as band. Na:K ratio. `nutrient_actions` gives dietitian advice incl. honest "supplement B12" for vegans.
@@ -81,8 +84,7 @@ HTN cardio caution, Tanaka HRmax).
 
 ## Improvement Backlog (next iterations — keep updated)
 
-1. **Adaptive TDEE from logged data** — research P0 #1. Reverse-calculate expenditure from intake + weight-trend (EWMA smoother) over 14–28 days instead of Mifflin-St Jeor. Beats every predictive equation and wearable (18% mean overestimate vs doubly-labelled water) and is robust to the 10–30% under-reporting all self-report carries. We currently do a crude ±100 kcal nudge.
-2. **Diet-phase state machine** — cut → maintenance → reverse → bulk, with rule-triggered diet breaks after N weeks in deficit (Carbon Diet Coach's differentiator).
+1. **Diet-phase state machine** — cut → maintenance → reverse → bulk, with rule-triggered diet breaks after N weeks in deficit (Carbon Diet Coach's differentiator).
 3. **Leucine / DIAAS protein quality for plant eaters** — plant proteins score <75 DIAAS alone; complementarity (dal+rice) pushes blends higher. Would sharpen the per-meal protein check we already ship.
 4. **Per-exercise logging + progressive overload UI** — `training-science.ts` has `estimate1RM` and `progressionAdvice` ready, but nothing logs weight/reps yet. Needs a workout-logging surface in local-store.
 5. **Equipment/injury-aware exercise substitution** — `EXERCISE_MUSCLES` map exists; add `equipment[]`/`contraindications[]` and a one-tap swap.
@@ -98,6 +100,7 @@ HTN cardio caution, Tanaka HRmax).
 - **Claiming to compute a personal MRV** — no app can measure it; use volume ranges.
 
 ### Done (moved from backlog)
+- ~~Adaptive TDEE from logged data~~ ✓ 2026-07-08 (4)
 - ~~Grocery raw-ingredient decomposition (🧾 per dish via recipes data)~~ ✓ 2026-07-07 (6)
 - ~~Plan-aware AI Copilot (answerHealthQuestion)~~ ✓ 2026-07-07 (6)
 - ~~CI hook (.github/workflows/ci.yml: npm ci + test + build on push/PR)~~ ✓ 2026-07-07 (5)

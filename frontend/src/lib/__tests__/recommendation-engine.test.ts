@@ -11,6 +11,7 @@ import {
 import {
   weeklyVolume, estimate1RM, progressionAdvice, stepTarget, cardioZones, maxHeartRate,
 } from "../training-science";
+import { computeAdaptiveTdee, blendTdee, paceFeedback } from "../adaptive-tdee";
 
 const baseInput: OnboardingInput = {
   age: 45, gender: "male", weight_kg: 80, height_cm: 175,
@@ -297,6 +298,112 @@ describe("micronutrient analysis", () => {
     const plan = generateMealPlan({ ...baseInput, conditions: ["T2D"] });
     expect(["low", "moderate", "high"]).toContain(plan.glycemic_load.band);
     expect(plan.glycemic_load.note).toMatch(/range|estimate/i);
+  });
+});
+
+describe("adaptive TDEE", () => {
+  /** Simulate a user whose weight responds to real energy balance. */
+  function simulate(opts: {
+    trueTdee: number; intake: number; days: number; startKg: number;
+    reportBias?: number; noise?: number; logEvery?: number;
+  }) {
+    const { trueTdee, intake, days, startKg, reportBias = 1, noise = 0.6, logEvery = 1 } = opts;
+    const logs: { log_date: string; weight_kg: number; calories_consumed: number }[] = [];
+    let kg = startKg;
+    let seed = 7;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed / 2147483647 - 0.5) * 2; };
+    for (let d = 0; d < days; d++) {
+      kg += (intake - trueTdee) / 7700;
+      if (d % logEvery !== 0) continue;
+      logs.push({
+        log_date: new Date(Date.now() - (days - d) * 86400000).toISOString().slice(0, 10),
+        weight_kg: Math.round((kg + rnd() * noise) * 10) / 10,
+        calories_consumed: Math.round(intake * reportBias),
+      });
+    }
+    return logs;
+  }
+
+  it("recovers true expenditure within 10% across cutting, maintaining and bulking", () => {
+    const cases = [
+      { trueTdee: 2600, intake: 2100, days: 28, startKg: 85 },
+      { trueTdee: 2300, intake: 2300, days: 28, startKg: 70 },
+      { trueTdee: 2800, intake: 3100, days: 28, startKg: 75 },
+      { trueTdee: 2100, intake: 2100, days: 28, startKg: 78 }, // slower than formula predicts
+    ];
+    for (const c of cases) {
+      const r = computeAdaptiveTdee(simulate(c));
+      expect(r.tdee, `no estimate for TDEE ${c.trueTdee}`).not.toBeNull();
+      const err = Math.abs((r.tdee! - c.trueTdee) / c.trueTdee);
+      expect(err, `TDEE ${c.trueTdee} off by ${Math.round(err * 100)}%`).toBeLessThan(0.1);
+    }
+  });
+
+  it("fits the trend to raw weights, not the lagging smoothed series", () => {
+    // a lag-biased slope understates loss and would inflate the target
+    const r = computeAdaptiveTdee(simulate({ trueTdee: 2600, intake: 2100, days: 28, startKg: 85, noise: 0 }));
+    expect(r.weekly_change_kg).toBeLessThan(-0.3);
+    expect(r.tdee!).toBeGreaterThan(2450);
+  });
+
+  it("stays silent until there is genuinely enough data", () => {
+    expect(computeAdaptiveTdee([]).tdee).toBeNull();
+    expect(computeAdaptiveTdee(simulate({ trueTdee: 2600, intake: 2100, days: 8, startKg: 85 })).status).toBe("measuring");
+    // weight logged but almost no food logged
+    const weightOnly = simulate({ trueTdee: 2600, intake: 2100, days: 28, startKg: 85 })
+      .map((l, i) => (i < 25 ? { ...l, calories_consumed: null } : l));
+    expect(computeAdaptiveTdee(weightOnly).tdee).toBeNull();
+  });
+
+  it("rejects impossible values instead of prescribing from bad logs", () => {
+    const nonsense = [
+      { log_date: "2026-01-01", weight_kg: 80, calories_consumed: 800 },
+      { log_date: "2026-01-15", weight_kg: 95, calories_consumed: 800 },
+      { log_date: "2026-01-20", weight_kg: 99, calories_consumed: 800 },
+      { log_date: "2026-01-25", weight_kg: 104, calories_consumed: 800 },
+      { log_date: "2026-01-28", weight_kg: 108, calories_consumed: 800 },
+      { log_date: "2026-02-01", weight_kg: 112, calories_consumed: 800 },
+    ];
+    expect(computeAdaptiveTdee(nonsense).tdee).toBeNull();
+  });
+
+  it("cancels consistent under-reporting in the final target", () => {
+    // logging 20% low should still yield roughly the intended deficit
+    const honest = computeAdaptiveTdee(simulate({ trueTdee: 2600, intake: 2100, days: 28, startKg: 85 }));
+    const biased = computeAdaptiveTdee(simulate({ trueTdee: 2600, intake: 2100, days: 28, startKg: 85, reportBias: 0.8 }));
+    expect(biased.tdee!).toBeLessThan(honest.tdee!); // the bias shows in the estimate
+    const targetLogged = biased.tdee! - 500;
+    const actuallyEaten = targetLogged / 0.8;
+    const realDeficit = 2600 - actuallyEaten;
+    expect(realDeficit).toBeGreaterThan(350);
+    expect(realDeficit).toBeLessThan(700);
+  });
+
+  it("blends toward the formula while confidence is low", () => {
+    const formula = 2400;
+    expect(blendTdee(formula, { tdee: 2000, confidence: 0 } as never).source).toBe("formula");
+    const low = blendTdee(formula, { tdee: 2000, confidence: 0.3 } as never);
+    expect(low.source).toBe("blended");
+    expect(low.tdee).toBeGreaterThan(2000);
+    expect(blendTdee(formula, { tdee: 2000, confidence: 0.9 } as never).source).toBe("measured");
+    // never lurches more than 25% from the formula
+    expect(blendTdee(formula, { tdee: 800, confidence: 1 } as never).tdee).toBeGreaterThanOrEqual(formula * 0.75);
+  });
+
+  it("corrects an unsafely fast loss upward and a plateau downward", () => {
+    expect(paceFeedback("weight_loss", -1.2, 85).verdict).toBe("too_fast");
+    expect(paceFeedback("weight_loss", -1.2, 85).adjust).toBeGreaterThan(0);
+    expect(paceFeedback("weight_loss", -0.02, 85).verdict).toBe("too_slow");
+    expect(paceFeedback("weight_loss", -0.5, 85).verdict).toBe("on_track");
+    expect(paceFeedback("muscle_gain", 1.0, 80).adjust).toBeLessThan(0);
+  });
+
+  it("feeds the measured value into the calorie target", () => {
+    const base = computeMacros(baseInput);
+    const measured = computeMacros({ ...baseInput, measured_tdee: base.tdee_predicted - 400, tdee_confidence: 0.9 });
+    expect(measured.tdee).toBeLessThan(base.tdee);
+    expect(measured.tdee_source).toBe("measured");
+    expect(computeMacros(baseInput).tdee_source).toBe("formula");
   });
 });
 
