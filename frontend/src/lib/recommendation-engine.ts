@@ -13,6 +13,8 @@
  *   - Strictest health rule wins when multiple conditions conflict
  */
 
+import { getMicros, Micros } from "./nutrition-data";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,8 +219,32 @@ function isExcluded(food: Food, conditions: string[]): boolean {
   return false;
 }
 
+/**
+ * Nutrients this profile is at risk of falling short on, known before a single
+ * meal is chosen. Diet pattern predicts deficiency far better than logging does:
+ * B12 is essentially absent from plant foods, non-heme iron absorbs poorly, and
+ * vitamin D is scarce in food for everyone.
+ */
+function atRiskNutrients(input: OnboardingInput): (keyof Micros)[] {
+  const diet = input.protein_pref || "vegetarian";
+  const risks: (keyof Micros)[] = ["vitamin_d_ug"]; // scarce in food for everyone
+  if (diet === "vegan" || diet === "vegetarian") {
+    risks.push("b12_ug", "iron_mg", "omega3_g");
+    if (diet === "vegan") risks.push("calcium_mg");
+  }
+  if (input.gender === "female" && (input.age || 40) < 51) risks.push("iron_mg");
+  if ((input.age || 40) >= 51) risks.push("calcium_mg");
+  return [...new Set(risks)];
+}
+
 /** Soft preference score: higher = better fit for the user's conditions, medications + goal. */
-function preferenceScore(food: Food, conditions: string[], goal: string, medications: string[] = []): number {
+function preferenceScore(
+  food: Food,
+  conditions: string[],
+  goal: string,
+  medications: string[] = [],
+  deficitFocus: (keyof Micros)[] = []
+): number {
   let s = 0;
   for (const c of conditions) {
     if ((c === "T2D" || c === "PREDIABETES") && food.gi !== undefined && food.gi < 55) s += 3;
@@ -233,6 +259,29 @@ function preferenceScore(food: Food, conditions: string[], goal: string, medicat
     if (medications.includes("ace_arb")) s -= 3;
     else if (medications.includes("diuretics")) s += 2;
   }
+
+  // Micronutrient steering — this is what turns a macro calculator into a
+  // clinical plan. Sodium is scored in real milligrams (a DASH cap cannot be
+  // met with "low/med/high" buckets), and nutrients the user is genuinely at
+  // risk of missing get a ranking boost.
+  const mic = getMicros(food.id, food.group, food.cal);
+  const tightSodium = conditions.includes("HTN") || conditions.includes("HEART_DISEASE") || conditions.includes("CKD");
+  // every 100 mg of sodium costs a point under DASH, half that otherwise
+  s -= (mic.sodium_mg / 100) * (tightSodium ? 1.0 : 0.35);
+  if (tightSodium && mic.potassium_mg >= 400) s += 1.5; // potassium blunts sodium's effect
+
+  if (deficitFocus.length) {
+    // each boost is capped so no single nutrient can dominate ranking and
+    // collapse variety — one flaxseed-heavy day is good, seven is not
+    if (deficitFocus.includes("b12_ug") && mic.b12_ug >= 0.4) s += Math.min(4, mic.b12_ug * 2.5);
+    if (deficitFocus.includes("vitamin_d_ug") && mic.vitamin_d_ug >= 1) s += Math.min(4, mic.vitamin_d_ug);
+    if (deficitFocus.includes("iron_mg") && mic.iron_mg >= 2) s += Math.min(3, mic.iron_mg * 0.5);
+    if (deficitFocus.includes("calcium_mg") && mic.calcium_mg >= 150) s += Math.min(3, mic.calcium_mg / 120);
+    if (deficitFocus.includes("omega3_g") && mic.omega3_g >= 0.3) s += Math.min(3, mic.omega3_g * 2);
+  }
+  // ultra-processed foods rank below whole foods, all else equal
+  if (mic.nova >= 4) s -= 2;
+
   const proteinDensity = food.p / Math.max(food.cal, 1);
   if (goal === "muscle_gain") s += proteinDensity * 20 + (food.anchor ? 2 : 0);
   else if (goal === "weight_loss" || goal === "fat_loss") s += proteinDensity * 12 + food.fiber * 0.4;
@@ -319,12 +368,32 @@ export function computeMacros(input: OnboardingInput) {
   const goal = input.goal_type || "weight_loss";
   // Never prescribe below a clinically safe minimum, even for small/sedentary
   // users where a raw deficit would be dangerously low.
-  const safeFloor = input.gender === "female" ? 1200 : 1500;
+  const absoluteFloor = input.gender === "female" ? 1200 : 1500;
+  // Safety guardrails. Tracking apps optimise for restriction and rarely set a
+  // floor, which is the most-cited clinical criticism of the category. Two
+  // limits apply: never prescribe below resting metabolic rate, and never let
+  // the deficit exceed ~25% of maintenance (roughly 1% of bodyweight a week).
+  const safeFloor = Math.round(Math.max(absoluteFloor, bmr, tdee * 0.75) / 10) * 10;
   // progress feedback: nudge from logged weight trend, clamped to ±150 kcal
   const trendAdj = Math.max(-150, Math.min(150, input.calorie_adjustment ?? 0));
-  const calories = Math.max(safeFloor, Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0) + trendAdj) / 10) * 10);
+  const rawTarget = Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0) + trendAdj) / 10) * 10;
+  const calories = Math.max(safeFloor, rawTarget);
+  const floor_applied = calories > rawTarget;
 
   let proteinPerKg = GOAL_PROTEIN[goal] ?? 1.5;
+  // In a calorie deficit, protein needs go UP, not down — ISSN puts the range
+  // for preserving lean mass while dieting well above maintenance needs. Apps
+  // that set protein as a percentage of calories get this exactly backwards,
+  // shrinking the protein target precisely when muscle is most at risk.
+  // The very high end of that range (2.3–3.1 g/kg) applies to resistance-trained
+  // athletes, so the escalation is capped well below it for general users.
+  const deficitFraction = (tdee - calories) / Math.max(tdee, 1);
+  if (deficitFraction > 0.1) {
+    const active = ["active", "very_active"].includes(input.activity_level || "") || goal === "muscle_gain";
+    proteinPerKg = Math.min(active ? 2.2 : 1.9, proteinPerKg + Math.min(0.4, (deficitFraction - 0.1) * 2));
+  }
+  // Older adults need more protein per kg to overcome anabolic resistance
+  if (age >= 65) proteinPerKg = Math.max(proteinPerKg, 1.6);
   // CKD override: cap protein at 0.75 g/kg regardless of goal
   const hasCKD = input.conditions.includes("CKD");
   if (hasCKD) proteinPerKg = Math.min(proteinPerKg, 0.75);
@@ -356,6 +425,11 @@ export function computeMacros(input: OnboardingInput) {
     fat_g: fatFinal,
     fiber_g,
     protein_g_per_kg: Math.round(proteinPerKg * 100) / 100,
+    tdee: Math.round(tdee),
+    bmr: Math.round(bmr),
+    floor_applied,
+    /** protein per meal that best supports muscle maintenance (~0.4 g/kg) */
+    protein_per_meal_g: Math.round(0.4 * w),
   };
 }
 
@@ -453,6 +527,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // selection, not just the displayed target. Track protein across the whole day.
   const proteinCap = conditions.includes("CKD");
   const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
+  const deficitFocus = atRiskNutrients(input);
   let dayProtein = 0;
   const usedIds = new Set<string>(); // global dedupe → more variety across slots
 
@@ -478,9 +553,9 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       .map((food) => ({
         food,
         score:
-          preferenceScore(food, conditions, goal, input.medications) +
+          preferenceScore(food, conditions, goal, input.medications, deficitFocus) +
           rand() * 4 -
-          (weeklyUsage?.get(food.id) ?? 0) * 1.5,
+          (weeklyUsage?.get(food.id) ?? 0) * 3,
       }))
       .sort((a, b) => b.score - a.score);
 
@@ -515,10 +590,23 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       return true;
     };
 
-    // ensure a protein anchor first for main meals
+    // Ensure a protein anchor first for main meals. Muscle protein synthesis
+    // responds per meal, so each main meal needs a genuine protein source —
+    // not just whichever anchor ranked highest. Breakfast is where plans
+    // usually fall short, and a carb-led breakfast wastes an anabolic window.
     if (slotDef.needsAnchor) {
-      const anchor = ranked.find((r) => r.food.anchor);
+      const perMealProtein = macros.protein_per_meal_g;
+      const strong = ranked.filter((r) => r.food.anchor && r.food.p >= perMealProtein * 0.55);
+      const anchor = strong[0] || ranked.find((r) => r.food.anchor);
       if (anchor) tryAdd(anchor.food);
+      // top up with a second protein source when the first can't carry the meal
+      const slotProtein = () => picked.reduce((s, f) => s + f.p, 0);
+      if (slotProtein() < perMealProtein * 0.8) {
+        const boost = ranked.find(
+          (r) => !picked.includes(r.food) && r.food.p >= 8 && (SLOT_GROUP_CAPS[r.food.group] ?? 1) > (groupCount[r.food.group] ?? 0)
+        );
+        if (boost) tryAdd(boost.food);
+      }
     }
     // dietician plate rules: lunch & dinner get a vegetable dish; the
     // mid-morning snack leads with whole fruit
@@ -754,6 +842,17 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     ),
   };
 
+  // Micronutrient adequacy + glycemic load — the clinical layer most apps skip
+  const lowSodiumCooking =
+    conditions.includes("HTN") || conditions.includes("HEART_DISEASE") || conditions.includes("CKD");
+  const micros = sumMicros(meals, lowSodiumCooking);
+  const micro_targets = computeMicroTargets(input);
+  const nutrients = analyseMicros(micros, micro_targets);
+  const glycemic_load = glycemicLoad(meals);
+  const nutrient_actions = buildNutrientActions(input, nutrients, lowSodiumCooking);
+  const protein_distribution = analyseProteinDistribution(meals, macros.protein_per_meal_g);
+  const na_k_ratio = sodiumPotassiumRatio(micros);
+
   return {
     id: `demo-plan-${goal}-${cuisine}-${input.protein_pref}-d${dayOffset}`,
     plan_date: new Date(Date.now() + dayOffset * 86400000).toISOString().slice(0, 10),
@@ -766,7 +865,345 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     meals,
     macro_targets: macros,
     fit,
+    micros,
+    nutrients,
+    nutrient_actions,
+    glycemic_load,
+    protein_distribution,
+    na_k_ratio,
+    low_sodium_cooking: lowSodiumCooking,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Micronutrient targets & daily adequacy
+//
+// Most consumer apps stop at calories and macros. The clinically meaningful
+// gaps — especially for the vegetarian and Indian eaters this app is built for
+// — are B12, iron, vitamin D, calcium and omega-3, plus milligram-level sodium
+// and potassium, which is what actually makes a DASH or renal plan verifiable.
+// ─────────────────────────────────────────────────────────────────────────────
+export interface MicroTarget {
+  key: keyof Micros;
+  label: string;
+  unit: string;
+  target: number;
+  /** true when the number is a ceiling to stay under, not a floor to reach */
+  isLimit?: boolean;
+  /** Tolerable Upper Intake Level. Exceeding a *target* is only a problem when
+   *  a real UL exists — dietary omega-3 or plant iron running high is normal
+   *  and harmless, and warning about it would be false alarm. */
+  upper?: number;
+  why: string;
+}
+
+export function computeMicroTargets(input: OnboardingInput): MicroTarget[] {
+  const conditions = input.conditions || [];
+  const age = input.age || 40;
+  const female = input.gender === "female";
+  const diet = input.protein_pref || "vegetarian";
+  const plantOnly = diet === "vegan" || diet === "vegetarian";
+
+  // Sodium: DASH tightens the general 2300 mg ceiling to 1500 mg
+  const sodiumCap =
+    conditions.includes("HTN") || conditions.includes("HEART_DISEASE") || conditions.includes("CKD") ? 1500 : 2300;
+
+  // Iron: menstruating women need far more; plant (non-heme) iron absorbs ~1.8× worse
+  let ironTarget = female && age < 51 ? 18 : 8;
+  if (plantOnly) ironTarget = Math.round(ironTarget * 1.8);
+
+  // Calcium rises after 50 (women) / 70 (men) for bone loss
+  const calciumTarget = (female && age >= 51) || age >= 71 ? 1200 : 1000;
+
+  const targets: MicroTarget[] = [
+    { key: "sodium_mg", label: "Sodium", unit: "mg", target: sodiumCap, isLimit: true,
+      why: sodiumCap === 1500 ? "DASH limit for blood pressure and heart/kidney protection" : "General upper limit for healthy blood pressure" },
+    { key: "potassium_mg", label: "Potassium", unit: "mg",
+      target: conditions.includes("CKD") ? 2000 : female ? 2600 : 3400,
+      isLimit: conditions.includes("CKD"),
+      why: conditions.includes("CKD") ? "Restricted — weakened kidneys clear potassium poorly" : "Counteracts sodium and relaxes blood vessel walls" },
+    { key: "calcium_mg", label: "Calcium", unit: "mg", target: calciumTarget, upper: 2500,
+      why: "Bone density, muscle contraction and nerve signalling" },
+    { key: "iron_mg", label: "Iron", unit: "mg", target: ironTarget, upper: 45,
+      why: plantOnly ? "Raised 1.8× because plant (non-heme) iron absorbs poorly" : "Oxygen transport and energy metabolism" },
+    { key: "b12_ug", label: "Vitamin B12", unit: "µg", target: 2.4,
+      why: plantOnly ? "Found almost only in animal foods — the top vegetarian deficiency" : "Nerve function and red blood cell formation" },
+    { key: "vitamin_d_ug", label: "Vitamin D", unit: "µg", target: age >= 71 ? 20 : 15, upper: 100,
+      why: "Calcium absorption and immunity — widely deficient even in sunny climates" },
+    { key: "magnesium_mg", label: "Magnesium", unit: "mg", target: female ? 320 : 420,
+      why: "Blood pressure, blood sugar control and muscle recovery" },
+    { key: "omega3_g", label: "Omega-3", unit: "g", target: female ? 1.1 : 1.6,
+      why: "Anti-inflammatory; supports heart, brain and joint health" },
+    { key: "satfat_g", label: "Saturated Fat", unit: "g",
+      target: Math.round((computeMacros(input).calories * (conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") ? 0.06 : 0.10)) / 9),
+      isLimit: true,
+      why: conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") ? "Tightened to 6% of calories to lower LDL cholesterol" : "Kept under 10% of calories for heart health" },
+    { key: "sugar_g", label: "Free Sugars", unit: "g",
+      target: conditions.includes("T2D") || conditions.includes("PREDIABETES") ? 25 : female ? 25 : 36,
+      isLimit: true,
+      why: "WHO limit for sugars added in cooking or processing — sugars inside whole fruit are not counted and are not a concern" },
+  ];
+  return targets;
+}
+
+/**
+ * Sum micronutrients across every item in a plan's meals.
+ *
+ * Sugar is counted as WHO "free sugars": sugars added during cooking or
+ * processing. Sugars locked inside whole fruit and plain dairy are excluded,
+ * because flagging someone for eating a guava is nutritionally wrong and
+ * teaches the wrong habit.
+ */
+function sumMicros(
+  meals: { items: { food: { id: string; food_group: string }; calories: number; serving_scale: number }[] }[],
+  lowSodiumCooking = false
+): Micros {
+  const total: Micros = {
+    sodium_mg: 0, potassium_mg: 0, calcium_mg: 0, iron_mg: 0, b12_ug: 0,
+    vitamin_d_ug: 0, magnesium_mg: 0, omega3_g: 0, satfat_g: 0, sugar_g: 0, nova: 0,
+  };
+  let items = 0;
+  let novaSum = 0;
+  for (const meal of meals) {
+    for (const item of meal.items) {
+      const rawId = item.food.id.replace(/^food-/, "");
+      const m = getMicros(rawId, item.food.food_group, item.calories);
+      const scale = item.serving_scale || 1;
+      // In a cooked dish most sodium is salt added at the stove (~75%), not
+      // intrinsic to the ingredients. Halving cooking salt is the single most
+      // effective DASH change, so when the plan prescribes it we count it.
+      const saltAdjust = lowSodiumCooking && m.nova >= 3 ? 0.25 + 0.75 * 0.5 : 1;
+      total.sodium_mg += m.sodium_mg * scale * saltAdjust;
+      total.potassium_mg += m.potassium_mg * scale;
+      total.calcium_mg += m.calcium_mg * scale;
+      total.iron_mg += m.iron_mg * scale;
+      total.b12_ug += m.b12_ug * scale;
+      total.vitamin_d_ug += m.vitamin_d_ug * scale;
+      total.magnesium_mg += m.magnesium_mg * scale;
+      total.omega3_g += m.omega3_g * scale;
+      total.satfat_g += m.satfat_g * scale;
+      // free sugars only — whole fruit and plain dairy sugars don't count
+      const intrinsic = item.food.food_group === "fruit" || rawId === "low-fat-curd" || rawId === "greek-yogurt" || rawId === "buttermilk";
+      if (!intrinsic) total.sugar_g += m.sugar_g * scale;
+      novaSum += m.nova;
+      items += 1;
+    }
+  }
+  const round = (v: number, p = 0) => Math.round(v * 10 ** p) / 10 ** p;
+  return {
+    sodium_mg: round(total.sodium_mg), potassium_mg: round(total.potassium_mg),
+    calcium_mg: round(total.calcium_mg), iron_mg: round(total.iron_mg, 1),
+    b12_ug: round(total.b12_ug, 1), vitamin_d_ug: round(total.vitamin_d_ug, 1),
+    magnesium_mg: round(total.magnesium_mg), omega3_g: round(total.omega3_g, 2),
+    satfat_g: round(total.satfat_g, 1), sugar_g: round(total.sugar_g, 1),
+    nova: items ? round(novaSum / items, 2) : 0,
+  };
+}
+
+export interface NutrientStatus {
+  key: keyof Micros;
+  label: string;
+  unit: string;
+  actual: number;
+  target: number;
+  percent: number;
+  isLimit: boolean;
+  status: "low" | "good" | "over";
+  why: string;
+}
+
+/** Compare a day's micronutrients against the user's personal targets. */
+export function analyseMicros(micros: Micros, targets: MicroTarget[]): NutrientStatus[] {
+  return targets.map((t) => {
+    const actual = micros[t.key] as number;
+    const percent = t.target > 0 ? Math.round((actual / t.target) * 100) : 100;
+    let status: "low" | "good" | "over";
+    if (t.isLimit) status = percent > 100 ? "over" : "good";
+    else if (percent < 70) status = "low";
+    // above the recommended intake is only a warning when a genuine upper
+    // limit is crossed — plenty of nutrients are harmless in abundance
+    else status = t.upper !== undefined && actual > t.upper ? "over" : "good";
+    return { key: t.key, label: t.label, unit: t.unit, actual, target: t.target, percent, isLimit: !!t.isLimit, status, why: t.why };
+  });
+}
+
+export interface NutrientAction {
+  nutrient: string;
+  severity: "critical" | "watch" | "tip";
+  headline: string;
+  detail: string;
+}
+
+/**
+ * Turn nutrient gaps into what a dietitian would actually say. Some gaps are
+ * fixable by food choice; others honestly are not — no realistic vegan menu
+ * reaches the B12 requirement, and almost no diet reaches vitamin D. Saying
+ * "eat more B12 foods" to a vegan is useless advice, so those cases recommend
+ * fortification or a supplement instead of pretending food will cover it.
+ */
+function buildNutrientActions(
+  input: OnboardingInput,
+  nutrients: NutrientStatus[],
+  lowSodiumCooking: boolean
+): NutrientAction[] {
+  const diet = input.protein_pref || "vegetarian";
+  const plantOnly = diet === "vegan" || diet === "vegetarian";
+  const out: NutrientAction[] = [];
+  const get = (k: keyof Micros) => nutrients.find((n) => n.key === k);
+
+  const b12 = get("b12_ug");
+  if (b12 && b12.status === "low") {
+    out.push(
+      diet === "vegan"
+        ? { nutrient: "Vitamin B12", severity: "critical",
+            headline: "A B12 supplement is essential on a vegan diet",
+            detail: "B12 is made by bacteria, not plants — no whole plant food supplies it, so this gap cannot be closed by meal choices. Standard guidance is a 250 µg daily or 2500 µg weekly supplement, or fortified soy milk and nutritional yeast. Untreated deficiency causes irreversible nerve damage, so this is worth acting on." }
+        : { nutrient: "Vitamin B12", severity: "watch",
+            headline: "B12 is running low — lean on dairy",
+            detail: "Milk, curd, paneer and eggs are your B12 sources. Roughly 500 ml of milk or curd a day covers the requirement. If you rarely eat dairy, ask your doctor about a supplement." }
+    );
+  }
+
+  const vitD = get("vitamin_d_ug");
+  if (vitD && vitD.status === "low") {
+    out.push({ nutrient: "Vitamin D", severity: "watch",
+      headline: "Vitamin D is hard to get from food alone",
+      detail: `Your plan supplies about ${vitD.actual} µg of the ${vitD.target} µg target — that is normal, since very few foods contain it${plantOnly ? " and the richest sources are oily fish and egg yolk" : ""}. Aim for 15–20 minutes of midday sunlight on arms and face, and ask your doctor to check your level; deficiency is very common even in sunny countries.` });
+  }
+
+  const iron = get("iron_mg");
+  if (iron && iron.status === "low") {
+    out.push({ nutrient: "Iron", severity: "watch",
+      headline: "Boost iron absorption, not just iron intake",
+      detail: "Plant iron absorbs poorly on its own. Pair iron-rich meals (dal, sprouts, ragi, pumpkin seeds) with vitamin C — lemon over dal, or a guava or orange afterwards — which can triple absorption. Avoid tea and coffee within an hour of meals; their tannins block iron." });
+  }
+
+  const calcium = get("calcium_mg");
+  if (calcium && calcium.status === "low") {
+    out.push({ nutrient: "Calcium", severity: "watch",
+      headline: "Add a calcium-rich food to one more meal",
+      detail: plantOnly && diet === "vegan"
+        ? "Ragi, sesame, tofu set with calcium, almonds and fortified plant milk are the strongest vegan sources."
+        : "Curd, paneer, milk, ragi and sesame are the easiest additions." });
+  }
+
+  const sodium = get("sodium_mg");
+  const bpCondition = (input.conditions || []).some((c) => ["HTN", "HEART_DISEASE", "CKD"].includes(c));
+  if (sodium && sodium.status === "over") {
+    out.push({ nutrient: "Sodium", severity: bpCondition ? "critical" : "watch",
+      headline: bpCondition ? "Cut cooking salt to reach your blood-pressure target" : "Sodium is above the healthy limit",
+      detail: `Today's plan lands at ${sodium.actual} mg against a ${sodium.target} mg limit. Most of it is salt added while cooking, not the ingredients. Halve the salt in every dish, skip pickles, papad and packaged snacks, and finish dishes with lemon, black pepper, roasted cumin or fresh coriander — they replace the "flat" taste that low salt leaves behind.` });
+  } else if (lowSodiumCooking) {
+    out.push({ nutrient: "Sodium", severity: "tip",
+      headline: "This plan assumes reduced-salt cooking",
+      detail: "Your sodium total is calculated with roughly half the usual cooking salt — the single most effective change for blood pressure. Season with lemon, pepper, cumin and herbs instead; taste buds adjust within about two weeks." });
+  }
+
+  const sugar = get("sugar_g");
+  if (sugar && sugar.status === "over") {
+    out.push({ nutrient: "Free Sugars", severity: "watch",
+      headline: "Trim added sugars",
+      detail: `About ${sugar.actual} g of free sugars against a ${sugar.target} g limit. This excludes fruit — it comes from honey, dates, granola and sweetened drinks. Whole fruit instead of dried fruit or juice is the easiest swap.` });
+  }
+
+  const satfat = get("satfat_g");
+  if (satfat && satfat.status === "over") {
+    out.push({ nutrient: "Saturated Fat", severity: "watch",
+      headline: "Swap some saturated fat for unsaturated",
+      detail: "Use less ghee, butter, coconut and full-fat paneer; cook with mustard, groundnut or olive oil and add nuts and seeds instead. Replacing saturated with unsaturated fat lowers LDL cholesterol more reliably than simply eating less fat." });
+  }
+
+  const omega3 = get("omega3_g");
+  if (omega3 && omega3.status === "low") {
+    out.push({ nutrient: "Omega-3", severity: "tip",
+      headline: "Add a daily spoon of flax or chia",
+      detail: plantOnly
+        ? "Ground flaxseed, chia and walnuts supply ALA. Conversion to the active EPA/DHA form is inefficient, so an algal omega-3 supplement is worth considering if you never eat fish."
+        : "Oily fish twice a week (salmon, surmai, sardines) is the most effective source." });
+  }
+
+  return out;
+}
+
+/**
+ * Glycemic load = GI × available carbohydrate ÷ 100 — better than GI alone,
+ * which ignores how much you actually eat.
+ *
+ * The number is deliberately reported as a band rather than a precise value.
+ * A food's GI measured in isolation badly over-predicts the response to a
+ * mixed meal: protein, fat and fiber eaten alongside carbohydrate blunt the
+ * glucose rise substantially, so an unadjusted figure would overstate the
+ * impact of a balanced Indian plate of dal, sabzi and roti.
+ */
+export function glycemicLoad(
+  meals: { items: { food: { glycemic_index?: number }; carbs_g: number; protein_g: number; fat_g: number }[] }[]
+): { value: number; band: "low" | "moderate" | "high"; note: string } {
+  let raw = 0;
+  let carbs = 0;
+  let blunting = 0;
+  for (const meal of meals) {
+    for (const item of meal.items) {
+      const gi = item.food.glycemic_index;
+      if (gi !== undefined && gi > 0) raw += (gi * item.carbs_g) / 100;
+      carbs += item.carbs_g;
+      blunting += item.protein_g + item.fat_g;
+    }
+  }
+  // protein+fat alongside carbohydrate cuts the glucose rise; cap the
+  // adjustment at 35% so the estimate stays conservative
+  const ratio = carbs > 0 ? blunting / carbs : 0;
+  const attenuation = Math.min(0.35, ratio * 0.35);
+  const value = Math.round(raw * (1 - attenuation));
+  const band = value < 80 ? "low" : value <= 120 ? "moderate" : "high";
+  return {
+    value,
+    band,
+    note: "Estimated for whole meals — the protein, fat and fiber eaten alongside carbohydrate lower the real blood-sugar rise, so this is adjusted downward and should be read as a range, not a precise figure.",
+  };
+}
+
+export interface ProteinDistribution {
+  per_meal_target_g: number;
+  meals: { slot: string; protein_g: number; meets: boolean }[];
+  meals_meeting: number;
+  main_meals: number;
+  verdict: string;
+}
+
+/**
+ * Muscle protein synthesis is stimulated per meal, not per day: roughly
+ * 0.4 g/kg in each of three to five meals beats the same daily total
+ * concentrated into dinner. Almost no consumer tracker checks this even though
+ * the evidence is solid — and it matters most for older adults, who need more
+ * protein per sitting to get the same anabolic response.
+ */
+export function analyseProteinDistribution(
+  meals: { slot: string; items: { protein_g: number }[] }[],
+  perMealTarget: number
+): ProteinDistribution {
+  const MAIN = ["breakfast", "lunch", "dinner"];
+  const rows = meals.map((m) => {
+    const protein_g = Math.round(m.items.reduce((s, i) => s + i.protein_g, 0));
+    return { slot: m.slot, protein_g, meets: protein_g >= perMealTarget };
+  });
+  const mains = rows.filter((r) => MAIN.includes(r.slot));
+  const meeting = mains.filter((r) => r.meets).length;
+  let verdict: string;
+  if (meeting >= 3) verdict = "Protein is well spread — every main meal clears the threshold that triggers muscle repair.";
+  else if (meeting === 2) verdict = "Two of your three main meals hit the protein threshold. Adding a protein source to the third would improve muscle maintenance.";
+  else verdict = `Protein is concentrated in too few meals. Aim for about ${perMealTarget}g in each main meal — spreading the same daily total across breakfast, lunch and dinner builds and preserves more muscle than loading it into dinner.`;
+  return { per_meal_target_g: perMealTarget, meals: rows, meals_meeting: meeting, main_meals: mains.length, verdict };
+}
+
+/**
+ * Sodium-to-potassium ratio. Across controlled trials this predicts blood
+ * pressure more reliably than sodium alone, because potassium actively
+ * counteracts sodium's effect on vessel walls. Target is at or below 1.0 by
+ * mass — most modern diets sit far above it.
+ */
+export function sodiumPotassiumRatio(micros: Micros): { ratio: number; status: "good" | "watch" | "high" } {
+  const ratio = micros.potassium_mg > 0 ? Math.round((micros.sodium_mg / micros.potassium_mg) * 100) / 100 : 99;
+  return { ratio, status: ratio <= 1.0 ? "good" : ratio <= 1.5 ? "watch" : "high" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

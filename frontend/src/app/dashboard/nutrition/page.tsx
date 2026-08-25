@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, resolveUserId } from "@/lib/api-client";
 import { MealCard } from "@/components/dashboard/MealCard";
 import { MacroRing } from "@/components/dashboard/MacroRing";
+import { NutrientPanel, NutrientRow, NutrientActionRow } from "@/components/dashboard/NutrientPanel";
 import { formatCalories } from "@/lib/utils";
 
 export default function NutritionPage() {
@@ -123,6 +124,15 @@ export default function NutritionPage() {
               </div>
             </div>
           )}
+
+          {/* Clinical nutrient layer */}
+          <NutrientPanel
+            nutrients={(plan?.nutrients as NutrientRow[]) || []}
+            actions={(plan?.nutrient_actions as NutrientActionRow[]) || []}
+            glycemicLoad={plan?.glycemic_load as { value: number; band: string; note: string } | undefined}
+            naK={plan?.na_k_ratio as { ratio: number; status: string } | undefined}
+            proteinDistribution={plan?.protein_distribution as Parameters<typeof NutrientPanel>[0]["proteinDistribution"]}
+          />
 
           {/* Meal plan */}
           <div>

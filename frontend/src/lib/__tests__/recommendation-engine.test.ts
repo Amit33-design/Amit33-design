@@ -4,6 +4,7 @@ import {
   generateMealPlan,
   generateWeeklyPlan,
   answerHealthQuestion,
+  computeMicroTargets,
   OnboardingInput,
 } from "../recommendation-engine";
 
@@ -48,9 +49,32 @@ describe("computeMacros", () => {
   });
 
   it("clamps the progress feedback adjustment to ±150 kcal", () => {
-    const base = computeMacros(baseInput).calories;
-    expect(computeMacros({ ...baseInput, calorie_adjustment: 999 }).calories).toBe(base + 150);
-    expect(computeMacros({ ...baseInput, calorie_adjustment: -999 }).calories).toBe(base - 150);
+    // use an active profile so the safety floor doesn't bind and mask the clamp
+    const active: OnboardingInput = { ...baseInput, activity_level: "very_active" };
+    const base = computeMacros(active).calories;
+    expect(computeMacros({ ...active, calorie_adjustment: 999 }).calories).toBe(base + 150);
+    expect(computeMacros({ ...active, calorie_adjustment: -999 }).calories).toBe(base - 150);
+  });
+
+  it("never prescribes below BMR or a 25% deficit, whatever the adjustment", () => {
+    const profiles: OnboardingInput[] = [
+      baseInput,
+      { ...baseInput, gender: "female", weight_kg: 52, height_cm: 152, age: 62, activity_level: "sedentary" },
+      { ...baseInput, goal_type: "weight_loss", activity_level: "sedentary", calorie_adjustment: -999 },
+    ];
+    for (const p of profiles) {
+      const m = computeMacros(p);
+      expect(m.calories, "below BMR").toBeGreaterThanOrEqual(m.bmr - 10);
+      expect(m.calories, "deficit deeper than 25%").toBeGreaterThanOrEqual(Math.round(m.tdee * 0.75) - 10);
+    }
+  });
+
+  it("raises protein per kg in a deficit rather than lowering it", () => {
+    const maintain = computeMacros({ ...baseInput, goal_type: "maintenance" });
+    const cutting = computeMacros({ ...baseInput, goal_type: "weight_loss" });
+    expect(cutting.protein_g_per_kg).toBeGreaterThan(maintain.protein_g_per_kg);
+    // and stays within sane bounds for a non-athlete
+    expect(cutting.protein_g_per_kg).toBeLessThanOrEqual(2.2);
   });
 });
 
@@ -196,6 +220,79 @@ describe("dietician composition rules", () => {
     for (const [id, count] of counts) {
       expect(count, `${id} served ${count}× this week`).toBeLessThanOrEqual(4);
     }
+  });
+});
+
+describe("micronutrient analysis", () => {
+  it("reports every priority nutrient with a personal target", () => {
+    const plan = generateMealPlan(baseInput);
+    const keys = plan.nutrients.map((n) => n.key);
+    for (const k of ["sodium_mg", "potassium_mg", "calcium_mg", "iron_mg", "b12_ug", "vitamin_d_ug", "omega3_g"]) {
+      expect(keys, `missing ${k}`).toContain(k);
+    }
+    for (const n of plan.nutrients) expect(n.target).toBeGreaterThan(0);
+  });
+
+  it("applies the DASH sodium limit for blood-pressure conditions", () => {
+    const dash = generateMealPlan({ ...baseInput, conditions: ["HTN"] });
+    const plain = generateMealPlan({ ...baseInput, conditions: [] });
+    const cap = (p: typeof dash) => p.nutrients.find((n) => n.key === "sodium_mg")!.target;
+    expect(cap(dash)).toBe(1500);
+    expect(cap(plain)).toBe(2300);
+    expect(dash.low_sodium_cooking).toBe(true);
+  });
+
+  it("raises the iron target for plant-based diets and menstruating women", () => {
+    const target = (i: OnboardingInput) => computeMicroTargets(i).find((t) => t.key === "iron_mg")!.target;
+    expect(target({ ...baseInput, protein_pref: "vegan" }))
+      .toBeGreaterThan(target({ ...baseInput, protein_pref: "non_vegetarian" }));
+    expect(target({ ...baseInput, gender: "female", age: 32, protein_pref: "non_vegetarian" }))
+      .toBeGreaterThan(target({ ...baseInput, gender: "male", protein_pref: "non_vegetarian" }));
+  });
+
+  it("does not flag nutrients that are harmless in abundance", () => {
+    // dietary omega-3 and plant iron running above target is normal, not a warning
+    for (const diet of ["vegan", "vegetarian", "pescatarian", "non_vegetarian"]) {
+      const plan = generateMealPlan({ ...baseInput, protein_pref: diet });
+      const omega = plan.nutrients.find((n) => n.key === "omega3_g")!;
+      expect(omega.status, `omega-3 wrongly flagged for ${diet}`).not.toBe("over");
+    }
+  });
+
+  it("tells vegans to supplement B12 rather than pretending food covers it", () => {
+    const plan = generateMealPlan({ ...baseInput, protein_pref: "vegan" });
+    const b12 = plan.nutrient_actions.find((a) => a.nutrient === "Vitamin B12");
+    expect(b12).toBeTruthy();
+    expect(b12!.severity).toBe("critical");
+    expect(b12!.detail.toLowerCase()).toContain("supplement");
+  });
+
+  it("excludes whole-fruit sugars from the free-sugar count", () => {
+    const plan = generateMealPlan(baseInput);
+    const fruitSugar = plan.meals
+      .flatMap((m) => m.items)
+      .filter((i) => i.food.food_group === "fruit").length;
+    expect(fruitSugar).toBeGreaterThan(0); // plan does contain fruit
+    const sugar = plan.nutrients.find((n) => n.key === "sugar_g")!;
+    expect(sugar.label).toBe("Free Sugars");
+  });
+
+  it("spreads protein across main meals rather than loading dinner", () => {
+    const profiles: OnboardingInput[] = [
+      baseInput,
+      { ...baseInput, protein_pref: "non_vegetarian", cuisine: "western" },
+      { ...baseInput, protein_pref: "vegan" },
+    ];
+    for (const p of profiles) {
+      const plan = generateMealPlan(p);
+      expect(plan.protein_distribution.meals_meeting, `${p.protein_pref}`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("reports glycemic load as an attenuated band, not a raw number", () => {
+    const plan = generateMealPlan({ ...baseInput, conditions: ["T2D"] });
+    expect(["low", "moderate", "high"]).toContain(plan.glycemic_load.band);
+    expect(plan.glycemic_load.note).toMatch(/range|estimate/i);
   });
 });
 
