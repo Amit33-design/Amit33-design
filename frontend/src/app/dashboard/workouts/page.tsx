@@ -5,6 +5,9 @@ import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { TrainingDosePanel } from "@/components/dashboard/TrainingDosePanel";
 import { ExerciseLogger } from "@/components/dashboard/ExerciseLogger";
+import { ExerciseSwap } from "@/components/dashboard/ExerciseSwap";
+import { TrainingSetup } from "@/components/dashboard/TrainingSetup";
+import { getTrainingPrefs } from "@/lib/local-store";
 
 const DAY_LABELS: Record<string, string> = {
   monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
@@ -13,7 +16,38 @@ const DAY_LABELS: Record<string, string> = {
 
 const TODAY_DAY = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
 
+/**
+ * One prescribed exercise: the swap control plus the weight log. If the user
+ * has swapped this movement, the log follows the substitute — otherwise their
+ * history would be split across two names and progression would never build.
+ */
+function ExerciseRow({
+  exercise, targetSets, targetReps, level, setupVersion,
+}: {
+  exercise: string; targetSets: number; targetReps: number; level: string; setupVersion: number;
+}) {
+  const [effective, setEffective] = useState(exercise);
+
+  useEffect(() => {
+    setEffective(getTrainingPrefs().swaps[exercise] || exercise);
+  }, [exercise, setupVersion]);
+
+  return (
+    <>
+      <ExerciseSwap exercise={exercise} onSwap={setEffective} />
+      <ExerciseLogger
+        key={effective}
+        exercise={effective}
+        targetSets={targetSets}
+        targetReps={targetReps}
+        level={level}
+      />
+    </>
+  );
+}
+
 export default function WorkoutsPage() {
+  const [setupVersion, setSetupVersion] = useState(0);
   const router = useRouter();
   const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [selectedDay, setSelectedDay] = useState(TODAY_DAY);
@@ -48,6 +82,8 @@ export default function WorkoutsPage() {
           </div>
         )}
       </div>
+
+      {!loading && plan && <TrainingSetup onChange={() => setSetupVersion((v) => v + 1)} />}
 
       {!loading && plan && (
         <TrainingDosePanel
@@ -163,11 +199,12 @@ export default function WorkoutsPage() {
                                             </span>
                                           </div>
                                           {loggable && (
-                                            <ExerciseLogger
+                                            <ExerciseRow
                                               exercise={String(exercise.exercise)}
                                               targetSets={Number(exercise.sets)}
                                               targetReps={Number(exercise.reps)}
                                               level={String(plan?.fitness_level || "beginner")}
+                                              setupVersion={setupVersion}
                                             />
                                           )}
                                         </div>

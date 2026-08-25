@@ -1440,6 +1440,7 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Seated leg extension", sets: 3, reps: 12, rest_sec: 45 },
         { exercise: "Glute bridge (floor)", sets: 3, reps: 12, rest_sec: 45 },
         { exercise: "Calf raise (holding chair back)", sets: 2, reps: 15, rest_sec: 40 },
+        { exercise: "Dead bug", sets: 2, reps: 10, rest_sec: 40 },
       ],
       cooldown: [{ exercise: "Gentle seated stretching + breathing", duration_sec: 180 }],
     },
@@ -1640,6 +1641,9 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Calf raise (holding chair back)", sets: 3, reps: 15, rest_sec: 40 },
         { exercise: "Single-leg balance hold (wall support)", sets: 3, reps: 1, rest_sec: 30 },
         { exercise: "Overhead press (light dumbbells, seated)", sets: 3, reps: 10, rest_sec: 45 },
+        // A strong trunk is what keeps a stumble from becoming a fall, and
+        // seated work makes it accessible to anyone unsteady on their feet.
+        { exercise: "Seated march", sets: 3, reps: 20, rest_sec: 40 },
       ],
       cooldown: [{ exercise: "Seated stretching — hip flexors, chest, hamstrings", duration_sec: 240 }],
     },

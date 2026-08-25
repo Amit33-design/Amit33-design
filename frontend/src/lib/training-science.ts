@@ -39,48 +39,211 @@ export const MUSCLE_LABEL: Record<Muscle, string> = {
  */
 interface MuscleMap { primary: Muscle[]; secondary?: Muscle[] }
 
-const EXERCISE_MUSCLES: Record<string, MuscleMap> = {
-  // push
-  "push-up": { primary: ["chest"], secondary: ["triceps", "shoulders", "core"] },
-  "wall push-up": { primary: ["chest"], secondary: ["triceps", "shoulders"] },
-  "dumbbell bench press": { primary: ["chest"], secondary: ["triceps", "shoulders"] },
-  "chest press": { primary: ["chest"], secondary: ["triceps", "shoulders"] },
-  "overhead press": { primary: ["shoulders"], secondary: ["triceps", "core"] },
-  "shoulder press": { primary: ["shoulders"], secondary: ["triceps"] },
-  "lateral raise": { primary: ["shoulders"] },
-  "triceps extension": { primary: ["triceps"] },
-  "dips": { primary: ["triceps"], secondary: ["chest", "shoulders"] },
-  // pull
-  "dumbbell row": { primary: ["back"], secondary: ["biceps"] },
-  "resistance band row": { primary: ["back"], secondary: ["biceps"] },
-  "seated band row": { primary: ["back"], secondary: ["biceps"] },
-  "bent-over row": { primary: ["back"], secondary: ["biceps"] },
-  "lat pulldown": { primary: ["back"], secondary: ["biceps"] },
-  "pull-up": { primary: ["back"], secondary: ["biceps", "core"] },
-  "bicep curl": { primary: ["biceps"] },
-  "face pull": { primary: ["shoulders"], secondary: ["back"] },
-  // legs
-  "bodyweight squat": { primary: ["quads"], secondary: ["glutes", "core"] },
-  "goblet squat": { primary: ["quads"], secondary: ["glutes", "core"] },
-  "barbell squat": { primary: ["quads"], secondary: ["glutes", "core"] },
-  "leg press": { primary: ["quads"], secondary: ["glutes"] },
-  "reverse lunges": { primary: ["quads"], secondary: ["glutes", "hamstrings"] },
-  "lunges": { primary: ["quads"], secondary: ["glutes", "hamstrings"] },
-  "step-up": { primary: ["quads"], secondary: ["glutes"] },
-  "romanian deadlift": { primary: ["hamstrings"], secondary: ["glutes", "back"] },
-  "deadlift": { primary: ["hamstrings"], secondary: ["glutes", "back", "core"] },
-  "glute bridge": { primary: ["glutes"], secondary: ["hamstrings"] },
-  "hip thrust": { primary: ["glutes"], secondary: ["hamstrings"] },
-  "chair-supported sit-to-stand": { primary: ["quads"], secondary: ["glutes"] },
-  "seated leg extension": { primary: ["quads"] },
-  "calf raise": { primary: ["calves"] },
-  // core
-  "plank hold": { primary: ["core"] },
-  "plank": { primary: ["core"] },
-  "dead bug": { primary: ["core"] },
-  "bird dog": { primary: ["core"], secondary: ["back"] },
-  "russian twist": { primary: ["core"] },
+/** Kit someone might actually own. `bodyweight` means none at all. */
+export type Equipment =
+  | "bodyweight" | "dumbbells" | "barbell" | "bench" | "resistance_band"
+  | "chair" | "yoga_mat" | "pull_up_bar" | "kettlebell";
+
+export const EQUIPMENT_LABEL: Record<Equipment, string> = {
+  bodyweight: "No equipment", dumbbells: "Dumbbells", barbell: "Barbell",
+  bench: "Bench", resistance_band: "Resistance band", chair: "Sturdy chair",
+  yoga_mat: "Yoga mat", pull_up_bar: "Pull-up bar", kettlebell: "Kettlebell",
 };
+
+/** Joints and areas people commonly need to work around. */
+export type Limitation = "knee" | "shoulder" | "lower_back" | "wrist" | "hip" | "neck" | "balance";
+
+export const LIMITATION_LABEL: Record<Limitation, string> = {
+  knee: "Knee pain", shoulder: "Shoulder pain", lower_back: "Lower-back pain",
+  wrist: "Wrist pain", hip: "Hip pain", neck: "Neck pain", balance: "Poor balance / fall risk",
+};
+
+export interface ExerciseDef {
+  name: string;
+  primary: Muscle[];
+  secondary?: Muscle[];
+  /** every item must be available for the exercise to be offered */
+  equipment: Equipment[];
+  /** limitations that make this movement a poor choice */
+  avoid?: Limitation[];
+  /** shown when this is offered as a swap */
+  note?: string;
+}
+
+/**
+ * Exercise library with the kit each movement needs and the joints it tends to
+ * aggravate. This is what makes a plan usable in a real home: a prescription
+ * for a barbell squat is worthless to someone with a mat and a chair, and
+ * telling a person with knee pain to do jump squats is worse than worthless.
+ */
+export const EXERCISE_LIBRARY: ExerciseDef[] = [
+  // ── Chest / push ──────────────────────────────────────────────────────────
+  { name: "Wall push-up", primary: ["chest"], secondary: ["triceps", "shoulders"], equipment: ["bodyweight"], note: "Gentlest push-up progression — upright against a wall." },
+  { name: "Incline push-up", primary: ["chest"], secondary: ["triceps", "shoulders"], equipment: ["bodyweight"], avoid: ["wrist"], note: "Hands on a counter or sturdy chair; easier than the floor." },
+  { name: "Push-up", primary: ["chest"], secondary: ["triceps", "shoulders", "core"], equipment: ["bodyweight"], avoid: ["wrist", "shoulder"] },
+  { name: "Knee push-up", primary: ["chest"], secondary: ["triceps", "shoulders"], equipment: ["bodyweight"], avoid: ["wrist", "knee"] },
+  { name: "Dumbbell bench press", primary: ["chest"], secondary: ["triceps", "shoulders"], equipment: ["dumbbells", "bench"], avoid: ["shoulder"] },
+  { name: "Dumbbell chest press (floor)", primary: ["chest"], secondary: ["triceps", "shoulders"], equipment: ["dumbbells"], note: "Floor limits how far the shoulder travels — kinder than a bench press." },
+  { name: "Resistance band chest press", primary: ["chest"], secondary: ["triceps", "shoulders"], equipment: ["resistance_band"], note: "Can be done seated; easy on the joints." },
+
+  // ── Back / pull ───────────────────────────────────────────────────────────
+  { name: "Resistance band row", primary: ["back"], secondary: ["biceps"], equipment: ["resistance_band"], note: "Anchor the band at door height, or sit and loop it round your feet." },
+  { name: "Seated band row", primary: ["back"], secondary: ["biceps"], equipment: ["resistance_band", "chair"], avoid: [], note: "Fully seated — no load on the lower back." },
+  { name: "Dumbbell row", primary: ["back"], secondary: ["biceps"], equipment: ["dumbbells"], avoid: ["lower_back"] },
+  { name: "Dumbbell row (supported on chair)", primary: ["back"], secondary: ["biceps"], equipment: ["dumbbells", "chair"], note: "One hand braced on the chair takes the strain off your back." },
+  { name: "Bent-over dumbbell row", primary: ["back"], secondary: ["biceps"], equipment: ["dumbbells"], avoid: ["lower_back"] },
+  { name: "Pull-up", primary: ["back"], secondary: ["biceps", "core"], equipment: ["pull_up_bar"], avoid: ["shoulder"] },
+  { name: "Superman hold", primary: ["back"], secondary: ["glutes"], equipment: ["yoga_mat"], avoid: ["lower_back"], note: "No equipment beyond a mat." },
+  { name: "Towel row (isometric)", primary: ["back"], secondary: ["biceps"], equipment: ["bodyweight"], note: "Pull a towel apart hard against itself — surprisingly effective with nothing at all." },
+
+  // ── Shoulders / arms ──────────────────────────────────────────────────────
+  { name: "Overhead press", primary: ["shoulders"], secondary: ["triceps", "core"], equipment: ["dumbbells"], avoid: ["shoulder", "neck"] },
+  { name: "Overhead press (light dumbbells, seated)", primary: ["shoulders"], secondary: ["triceps"], equipment: ["dumbbells", "chair"], avoid: ["shoulder"] },
+  { name: "Band overhead press", primary: ["shoulders"], secondary: ["triceps"], equipment: ["resistance_band"], avoid: ["shoulder"] },
+  { name: "Lateral raise", primary: ["shoulders"], equipment: ["dumbbells"], avoid: ["shoulder"] },
+  { name: "Front raise (water bottles)", primary: ["shoulders"], equipment: ["bodyweight"], note: "Two filled bottles work perfectly well as light weights." },
+  { name: "Pike push-up", primary: ["shoulders"], secondary: ["triceps"], equipment: ["bodyweight"], avoid: ["wrist", "shoulder"] },
+  { name: "Bicep curl", primary: ["biceps"], equipment: ["dumbbells"] },
+  { name: "Band bicep curl", primary: ["biceps"], equipment: ["resistance_band"] },
+  { name: "Triceps extension", primary: ["triceps"], equipment: ["dumbbells"], avoid: ["shoulder", "wrist"] },
+  { name: "Chair dips", primary: ["triceps"], secondary: ["chest", "shoulders"], equipment: ["chair"], avoid: ["shoulder", "wrist"] },
+
+  // ── Quads / squat pattern ─────────────────────────────────────────────────
+  { name: "Sit-to-stand (chair squat)", primary: ["quads"], secondary: ["glutes"], equipment: ["chair"], note: "Safest squat pattern — the chair is there if you need it." },
+  { name: "Bodyweight squat", primary: ["quads"], secondary: ["glutes", "core"], equipment: ["bodyweight"], avoid: ["knee"] },
+  { name: "Wall sit", primary: ["quads"], equipment: ["bodyweight"], note: "Static hold — no knee bending under load, easier on sore joints." },
+  { name: "Goblet squat", primary: ["quads"], secondary: ["glutes", "core"], equipment: ["dumbbells"], avoid: ["knee"] },
+  { name: "Barbell squat", primary: ["quads"], secondary: ["glutes", "core"], equipment: ["barbell"], avoid: ["knee", "lower_back"] },
+  { name: "Reverse lunge", primary: ["quads"], secondary: ["glutes", "hamstrings"], equipment: ["bodyweight"], avoid: ["knee", "balance"] },
+  { name: "Step-up", primary: ["quads"], secondary: ["glutes"], equipment: ["chair"], avoid: ["knee", "balance"] },
+  { name: "Seated leg extension", primary: ["quads"], equipment: ["chair"], note: "Fully seated and gentle — a good knee-friendly option." },
+
+  // ── Hamstrings / glutes / hinge ───────────────────────────────────────────
+  { name: "Glute bridge", primary: ["glutes"], secondary: ["hamstrings"], equipment: ["yoga_mat"], note: "Lying on your back — no balance or joint loading required." },
+  { name: "Single-leg glute bridge", primary: ["glutes"], secondary: ["hamstrings"], equipment: ["yoga_mat"] },
+  { name: "Hip thrust", primary: ["glutes"], secondary: ["hamstrings"], equipment: ["bench"] },
+  { name: "Romanian deadlift", primary: ["hamstrings"], secondary: ["glutes", "back"], equipment: ["dumbbells"], avoid: ["lower_back"] },
+  { name: "Dumbbell deadlift", primary: ["hamstrings"], secondary: ["glutes", "back"], equipment: ["dumbbells"], avoid: ["lower_back"] },
+  { name: "Standing hamstring curl", primary: ["hamstrings"], equipment: ["bodyweight"], note: "Hold a chair for balance; no load on the spine." },
+  { name: "Band leg curl", primary: ["hamstrings"], equipment: ["resistance_band"] },
+
+  // ── Calves ────────────────────────────────────────────────────────────────
+  { name: "Calf raise (holding chair back)", primary: ["calves"], equipment: ["chair"] },
+  { name: "Calf raise", primary: ["calves"], equipment: ["bodyweight"], avoid: ["balance"] },
+  { name: "Seated calf raise", primary: ["calves"], equipment: ["chair"], note: "Seated version for anyone unsteady on their feet." },
+
+  // ── Core ──────────────────────────────────────────────────────────────────
+  { name: "Plank hold", primary: ["core"], equipment: ["yoga_mat"], avoid: ["wrist", "lower_back"] },
+  { name: "Dead bug", primary: ["core"], equipment: ["yoga_mat"], note: "Back stays flat on the floor throughout — very lower-back friendly." },
+  { name: "Bird dog", primary: ["core"], secondary: ["back"], equipment: ["yoga_mat"], avoid: ["wrist"] },
+  { name: "Seated march", primary: ["core"], equipment: ["chair"], note: "Core work you can do sitting down." },
+  { name: "Standing side bend", primary: ["core"], equipment: ["bodyweight"] },
+];
+
+/** Fast lookup built from the library above, so there is one source of truth. */
+const EXERCISE_MUSCLES: Record<string, MuscleMap> = Object.fromEntries(
+  EXERCISE_LIBRARY.map((e) => [e.name.toLowerCase(), { primary: e.primary, secondary: e.secondary }])
+);
+
+// Aliases for names that appear in workout templates but describe a movement
+// already in the library, so volume counting and swapping both still resolve.
+const ALIASES: Record<string, string> = {
+  "push-ups (knee or full)": "push-up",
+  "push-up (any variation)": "push-up",
+  "push-up (incline / standard / decline)": "push-up",
+  "push-up + shoulder tap": "push-up",
+  "plank + shoulder tap": "plank hold",
+  "plank": "plank hold",
+  "core: dead bug": "dead bug",
+  "chair-supported sit-to-stand": "sit-to-stand (chair squat)",
+  "bodyweight squat (slow 3-sec descent)": "bodyweight squat",
+  "barbell / db squat": "goblet squat",
+  "dumbbell squat to press": "goblet squat",
+  "jump squats (20 s on / 10 s off)": "bodyweight squat",
+  "reverse lunges": "reverse lunge",
+  "reverse lunge (alternating)": "reverse lunge",
+  "walking lunges": "reverse lunge",
+  "dumbbell row (alternating)": "dumbbell row",
+  "resistance band chest press (seated)": "resistance band chest press",
+  "romanian deadlift (light)": "romanian deadlift",
+  "leg curl (or nordic curl)": "standing hamstring curl",
+  "calf raises (weighted)": "calf raise",
+  "glute bridge (floor)": "glute bridge",
+  "glute bridge (floor or bed)": "glute bridge",
+  "setu bandhasana (bridge pose)": "glute bridge",
+  "bridge pose (hip opener)": "glute bridge",
+  "shoulder press (seated)": "overhead press (light dumbbells, seated)",
+  "superman hold (back)": "superman hold",
+  "pike push-up (shoulders)": "pike push-up",
+};
+
+function canonical(exercise: string): string {
+  const key = exercise.toLowerCase().trim();
+  return ALIASES[key] ?? key;
+}
+
+/** The library entry for an exercise name, if we know the movement. */
+export function exerciseDef(exercise: string): ExerciseDef | null {
+  const key = canonical(exercise);
+  const exact = EXERCISE_LIBRARY.find((e) => e.name.toLowerCase() === key);
+  if (exact) return exact;
+  return EXERCISE_LIBRARY.find((e) => key.includes(e.name.toLowerCase())) ?? null;
+}
+
+export interface Substitution {
+  name: string;
+  reason: string;
+  equipment: Equipment[];
+  note?: string;
+}
+
+/**
+ * Alternatives that train the same muscles with the kit someone actually owns
+ * and without aggravating the joints they've flagged. Ranked so the closest
+ * match to the original movement comes first, then the simplest kit.
+ */
+export function substituteExercise(
+  exercise: string,
+  opts: { equipment?: Equipment[]; limitations?: Limitation[]; limit?: number } = {}
+): { original: ExerciseDef | null; blocked: "equipment" | "limitation" | null; options: Substitution[] } {
+  const owned = new Set<Equipment>(opts.equipment?.length ? opts.equipment : ["bodyweight"]);
+  owned.add("bodyweight"); // you always have your own body
+  const limits = new Set<Limitation>(opts.limitations ?? []);
+  const original = exerciseDef(exercise);
+
+  const hasKit = (e: ExerciseDef) => e.equipment.every((q) => owned.has(q));
+  const isSafe = (e: ExerciseDef) => !(e.avoid ?? []).some((a) => limits.has(a));
+
+  let blocked: "equipment" | "limitation" | null = null;
+  if (original) {
+    if (!hasKit(original)) blocked = "equipment";
+    else if (!isSafe(original)) blocked = "limitation";
+  }
+
+  const targets = new Set(original?.primary ?? []);
+  const options = EXERCISE_LIBRARY
+    .filter((e) => e.name !== original?.name && hasKit(e) && isSafe(e))
+    .map((e) => {
+      const overlap = e.primary.filter((m) => targets.has(m)).length;
+      const assists = (e.secondary ?? []).filter((m) => targets.has(m)).length;
+      // prefer same primary muscle, then the least equipment needed
+      const score = overlap * 10 + assists * 3 - e.equipment.filter((q) => q !== "bodyweight").length;
+      return { e, overlap, score };
+    })
+    .filter((r) => r.overlap > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, opts.limit ?? 4)
+    .map(({ e }) => ({
+      name: e.name,
+      equipment: e.equipment,
+      note: e.note,
+      reason: `Works ${e.primary.map((m) => MUSCLE_LABEL[m].toLowerCase()).join(" and ")}${
+        e.equipment.every((q) => q === "bodyweight") ? ", no equipment needed" : ` using ${e.equipment.map((q) => EQUIPMENT_LABEL[q].toLowerCase()).join(" + ")}`
+      }`,
+    }));
+
+  return { original, blocked, options };
+}
 
 /** Best-effort muscle lookup — exercise names vary across templates. */
 export function musclesFor(exercise: string): MuscleMap | null {

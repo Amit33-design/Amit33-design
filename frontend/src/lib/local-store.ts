@@ -248,3 +248,39 @@ export function loggedExercises(): string[] {
 export function hasLiftLog(): boolean {
   return readLifts().length > 0;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Training setup — what kit you own, what joints to work around, and any
+// exercise swaps you've chosen. Device-local like everything else.
+// ─────────────────────────────────────────────────────────────────────────────
+const TRAINING_PREFS_KEY = "health-copilot-training-prefs";
+
+export interface TrainingPrefs {
+  equipment: string[];
+  limitations: string[];
+  /** original exercise name -> the substitute the user picked */
+  swaps: Record<string, string>;
+}
+
+const DEFAULT_PREFS: TrainingPrefs = { equipment: ["bodyweight"], limitations: [], swaps: {} };
+
+export function getTrainingPrefs(): TrainingPrefs {
+  const p = readJson<Partial<TrainingPrefs>>(TRAINING_PREFS_KEY, {});
+  return {
+    equipment: p.equipment?.length ? p.equipment : DEFAULT_PREFS.equipment,
+    limitations: p.limitations ?? [],
+    swaps: p.swaps ?? {},
+  };
+}
+
+export function saveTrainingPrefs(prefs: TrainingPrefs): void {
+  writeJson(TRAINING_PREFS_KEY, prefs);
+}
+
+export function setExerciseSwap(original: string, replacement: string | null): TrainingPrefs {
+  const prefs = getTrainingPrefs();
+  if (replacement) prefs.swaps[original] = replacement;
+  else delete prefs.swaps[original];
+  saveTrainingPrefs(prefs);
+  return prefs;
+}
