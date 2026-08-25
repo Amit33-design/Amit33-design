@@ -146,3 +146,105 @@ export function markReminderFired(date: string, time: string, med: string): bool
   writeJson(MED_FIRED_KEY, next);
   return true;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Strength logging — weight and reps per exercise, device-local
+//
+// This is what turns a workout list into progressive overload: without a record
+// of what you lifted last time, an app can only ever repeat the same session.
+// ─────────────────────────────────────────────────────────────────────────────
+const LIFT_LOG_KEY = "health-copilot-lift-log";
+
+export interface LiftSet {
+  /** ISO date the set was performed */
+  date: string;
+  exercise: string;
+  weight_kg: number;
+  reps: number;
+}
+
+export interface ExerciseHistory {
+  exercise: string;
+  sessions: { date: string; best_weight: number; best_reps: number; sets: number }[];
+  /** heaviest set most recently performed */
+  last?: { date: string; weight_kg: number; reps: number };
+  /** consecutive sessions at the same top weight — drives the deload trigger */
+  weeks_at_same_load: number;
+}
+
+function readLifts(): LiftSet[] {
+  return readJson<LiftSet[]>(LIFT_LOG_KEY, []);
+}
+
+export function logLiftSet(entry: LiftSet): void {
+  const all = readLifts();
+  all.push(entry);
+  // keep the store bounded — a year of training is plenty of history
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  writeJson(LIFT_LOG_KEY, all.filter((s) => s.date >= cutoffStr));
+}
+
+export function removeLastLiftSet(exercise: string, date: string): void {
+  const all = readLifts();
+  for (let i = all.length - 1; i >= 0; i--) {
+    if (all[i].exercise === exercise && all[i].date === date) {
+      all.splice(i, 1);
+      break;
+    }
+  }
+  writeJson(LIFT_LOG_KEY, all);
+}
+
+export function getSetsFor(exercise: string, date: string): LiftSet[] {
+  return readLifts().filter((s) => s.exercise === exercise && s.date === date);
+}
+
+/** Per-session bests for one exercise, newest first. */
+export function getExerciseHistory(exercise: string): ExerciseHistory {
+  const sets = readLifts().filter((s) => s.exercise === exercise);
+  const byDate = new Map<string, LiftSet[]>();
+  for (const s of sets) {
+    if (!byDate.has(s.date)) byDate.set(s.date, []);
+    byDate.get(s.date)!.push(s);
+  }
+  const sessions = [...byDate.entries()]
+    .map(([date, rows]) => {
+      // "best" set is the heaviest; ties broken by reps
+      const best = rows.reduce((a, b) =>
+        b.weight_kg > a.weight_kg || (b.weight_kg === a.weight_kg && b.reps > a.reps) ? b : a
+      );
+      return { date, best_weight: best.weight_kg, best_reps: best.reps, sets: rows.length };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  let weeksAtSameLoad = 0;
+  if (sessions.length) {
+    const topWeight = sessions[0].best_weight;
+    for (const s of sessions) {
+      if (s.best_weight === topWeight) weeksAtSameLoad += 1;
+      else break;
+    }
+  }
+
+  const last = sessions.length
+    ? { date: sessions[0].date, weight_kg: sessions[0].best_weight, reps: sessions[0].best_reps }
+    : undefined;
+
+  return { exercise, sessions, last, weeks_at_same_load: weeksAtSameLoad };
+}
+
+/** Every exercise the user has ever logged, most recently trained first. */
+export function loggedExercises(): string[] {
+  const seen = new Map<string, string>();
+  for (const s of readLifts()) {
+    const prev = seen.get(s.exercise);
+    if (!prev || s.date > prev) seen.set(s.exercise, s.date);
+  }
+  return [...seen.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([e]) => e);
+}
+
+export function hasLiftLog(): boolean {
+  return readLifts().length > 0;
+}

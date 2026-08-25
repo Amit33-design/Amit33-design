@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { TrainingDosePanel } from "@/components/dashboard/TrainingDosePanel";
+import { ExerciseLogger } from "@/components/dashboard/ExerciseLogger";
 
 const DAY_LABELS: Record<string, string> = {
   monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
@@ -148,14 +149,27 @@ export default function WorkoutsPage() {
                                   <div className="space-y-2">
                                     {exercises.map((ex: unknown, i: number) => {
                                       const exercise = ex as Record<string, unknown>;
+                                      // Only resistance work gets a weight log —
+                                      // timed cardio and stretches have nothing to progress.
+                                      const loggable = section === "main_circuit" && Boolean(exercise.sets) && Boolean(exercise.reps);
                                       return (
-                                        <div key={i} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl text-sm">
-                                          <span className="font-medium text-gray-900">{String(exercise.exercise)}</span>
-                                          <span className="text-gray-500 text-xs">
-                                            {exercise.sets && exercise.reps ? `${exercise.sets}×${exercise.reps}` : ""}
-                                            {exercise.duration_sec ? `${exercise.duration_sec}s` : ""}
-                                            {exercise.rest_sec ? ` · ${exercise.rest_sec}s rest` : ""}
-                                          </span>
+                                        <div key={i} className="py-2 px-3 bg-gray-50 rounded-xl text-sm">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium text-gray-900">{String(exercise.exercise)}</span>
+                                            <span className="text-gray-500 text-xs shrink-0">
+                                              {exercise.sets && exercise.reps ? `${exercise.sets}×${exercise.reps}` : ""}
+                                              {exercise.duration_sec ? `${exercise.duration_sec}s` : ""}
+                                              {exercise.rest_sec ? ` · ${exercise.rest_sec}s rest` : ""}
+                                            </span>
+                                          </div>
+                                          {loggable && (
+                                            <ExerciseLogger
+                                              exercise={String(exercise.exercise)}
+                                              targetSets={Number(exercise.sets)}
+                                              targetReps={Number(exercise.reps)}
+                                              level={String(plan?.fitness_level || "beginner")}
+                                            />
+                                          )}
                                         </div>
                                       );
                                     })}

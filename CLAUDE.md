@@ -27,7 +27,7 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 | `lib/adaptive-tdee.ts` | Solves real expenditure from logged intake + weight trend. OLS slope on RAW weights (EWMA only for display — fitting the smoothed series biases slope toward zero and inflates targets), `blendTdee` confidence-weights vs formula, `paceFeedback` nudges. |
 | `lib/training-science.ts` | Exercise dose layer: exercise→muscle map, weekly set volume, e1RM (Brzycki/Epley), progression + stall-triggered deload, HR zones (Tanaka), step target. |
 | `lib/recipes-data.ts` | 45+ recipes keyed by food id **without** `food-` prefix |
-| `lib/local-store.ts` | localStorage progress persistence (`health-copilot-progress`) |
+| `lib/local-store.ts` | localStorage: progress (`health-copilot-progress`), medications (`-med-log`/`-med-reminders`), **strength sets** (`-lift-log`: `logLiftSet`/`getExerciseHistory`/`weeks_at_same_load`) |
 | `lib/api-client.ts` | demo-mode router → engine + local-store |
 | `lib/constants.ts` | goals, conditions, activity levels, cuisines, diets, medications |
 | `app/dashboard/*` | overview, nutrition, workouts, lifestyle, recipes, progress, report, ask |
@@ -46,13 +46,13 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 ```bash
 cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.test.ts
 ```
-45 tests covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
+53 tests (2 files) covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
 macro safety (BMR floor, 25% max deficit, protein RISES in deficit, +-150 kcal clamp — use an active profile
 so the floor doesn't mask the clamp), dietician composition rules, micronutrients (DASH 1500mg cap, iron raised
 for plant/menstruating, no false "over" for omega-3/plant iron, vegan B12 -> supplement advice, free sugars
 exclude whole fruit, protein-per-meal spread, GL band), training dose (no untrained muscle except calves,
 half-credit secondary movers, 1RM refused >10 reps, deload on stall not calendar, step target <= 8000,
-HTN cardio caution, Tanaka HRmax).
+HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — stub localStorage via a MemoryStorage on BOTH `globalThis.window` and `globalThis.localStorage`, since the store guards on `typeof window`).
 
 ## How the meal engine works (current design)
 
@@ -62,6 +62,8 @@ HTN cardio caution, Tanaka HRmax).
 4. **Phase 3 materialise**: `toMealItem(food, slot, scale)` → scaled qty/macros + `serving_scale`; plan returns `fit` {calories, protein, carbs, fat, overall %} shown as "Plan Match" strip on nutrition page.
 
 ## Changelog (newest first)
+
+- **2026-07-08 (5)** Per-exercise strength logging — activates the progression engine that was written but dormant. `local-store.ts` gains `logLiftSet`/`removeLastLiftSet`/`getSetsFor`/`getExerciseHistory`/`loggedExercises` (key `health-copilot-lift-log`, pruned to 365 days). `getExerciseHistory` returns per-session bests (heaviest set, ties broken by reps) plus `weeks_at_same_load`, which is what feeds `progressionAdvice`'s stall-triggered deload. New `ExerciseLogger` component renders inline under each **main-circuit exercise that has sets AND reps** (timed cardio/stretches get no logger — nothing to progress); it prefills from last session, shows e1RM, the progression prescription, and a recent-sessions strip. Verified in browser: 60kg x 10 -> 80kg e1RM (Epley), and a seeded 3-session stall correctly prescribes the deload. GOTCHA: workout templates are date-seeded, so a browser test must read the rendered exercise name before seeding history for it.
 
 - **2026-07-08 (4)** Adaptive TDEE (research P0 #1) — expenditure measured from the user's own logs instead of Mifflin-St Jeor. `computeAdaptiveTdee(logs)`: EWMA for *display* trend weight, **OLS slope on raw weights** for the rate (fitting the lagging EWMA under-states loss → inflates the target; simulation caught this as a −7% systematic error, fixed to −2%). `TDEE = meanIntake − kgPerDay×7700`. Confidence from span (28d) × density (14 logs); `blendTdee` weights measured vs formula and caps movement at ±25%. Rejects results outside 900–6000 kcal. Replaces the old crude ±100 nudge; `paceFeedback` now handles pace separately. KEY INSIGHT (in code comments + UI): self-report under-reporting of 10–30% **cancels** — a consistently low log yields a proportionally low expenditure and the prescribed deficit is still right; verified by test. New `MetabolismCard` on Progress page shows measured vs formula, trend weight, confidence, pace verdict.
 
@@ -85,12 +87,11 @@ HTN cardio caution, Tanaka HRmax).
 ## Improvement Backlog (next iterations — keep updated)
 
 1. **Diet-phase state machine** — cut → maintenance → reverse → bulk, with rule-triggered diet breaks after N weeks in deficit (Carbon Diet Coach's differentiator).
-3. **Leucine / DIAAS protein quality for plant eaters** — plant proteins score <75 DIAAS alone; complementarity (dal+rice) pushes blends higher. Would sharpen the per-meal protein check we already ship.
-4. **Per-exercise logging + progressive overload UI** — `training-science.ts` has `estimate1RM` and `progressionAdvice` ready, but nothing logs weight/reps yet. Needs a workout-logging surface in local-store.
-5. **Equipment/injury-aware exercise substitution** — `EXERCISE_MUSCLES` map exists; add `equipment[]`/`contraindications[]` and a one-tap swap.
-6. **Calves under-trained in ~8% of profiles** — minor; add a calf movement to more templates if it matters.
-7. **Cross-device sync** — needs a real backend; localStorage is single-device.
-8. **EmailJS setup** — user still needs the 3 env vars in Vercel for email sending to go live.
+2. **Leucine / DIAAS protein quality for plant eaters** — plant proteins score <75 DIAAS alone; complementarity (dal+rice) pushes blends higher. Would sharpen the per-meal protein check we already ship.
+3. **Equipment/injury-aware exercise substitution** — `EXERCISE_MUSCLES` map exists; add `equipment[]`/`contraindications[]` and a one-tap swap.
+4. **Calves under-trained in ~8% of profiles** — minor; add a calf movement to more templates if it matters.
+5. **Cross-device sync** — needs a real backend; localStorage is single-device.
+6. **EmailJS setup** — user still needs the 3 env vars in Vercel for email sending to go live.
 
 ### Explicitly do NOT build (research-backed)
 - **n-6:n-3 ratio as a target** — the ratio hypothesis is being dismantled; track absolute EPA+DHA instead.
@@ -100,6 +101,7 @@ HTN cardio caution, Tanaka HRmax).
 - **Claiming to compute a personal MRV** — no app can measure it; use volume ranges.
 
 ### Done (moved from backlog)
+- ~~Per-exercise logging + progressive overload UI~~ ✓ 2026-07-08 (5)
 - ~~Adaptive TDEE from logged data~~ ✓ 2026-07-08 (4)
 - ~~Grocery raw-ingredient decomposition (🧾 per dish via recipes data)~~ ✓ 2026-07-07 (6)
 - ~~Plan-aware AI Copilot (answerHealthQuestion)~~ ✓ 2026-07-07 (6)

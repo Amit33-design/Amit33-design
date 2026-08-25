@@ -114,7 +114,7 @@ const VOLUME_RANGE: Record<Muscle, [number, number]> = {
 };
 
 export function weeklyVolume(
-  days: { is_rest_day?: boolean; templates?: { instructions?: { main_circuit?: { exercise: string; sets?: number }[] } }[] }[]
+  days: { is_rest_day?: boolean; templates?: { instructions?: { main_circuit?: { exercise: string; sets?: number; duration_sec?: number }[] } }[] }[]
 ): VolumeRow[] {
   const tally = {} as Record<Muscle, number>;
   for (const day of days) {
