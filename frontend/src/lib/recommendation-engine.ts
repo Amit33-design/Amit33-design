@@ -14,6 +14,7 @@
  */
 
 import { getMicros, Micros } from "./nutrition-data";
+import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -1421,6 +1422,8 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Seated band row", sets: 3, reps: 12, rest_sec: 60 },
         { exercise: "Standing heel-to-toe balance", sets: 2, reps: 10, rest_sec: 45 },
         { exercise: "Seated leg extension", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Glute bridge (floor)", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Calf raise (holding chair back)", sets: 2, reps: 15, rest_sec: 40 },
       ],
       cooldown: [{ exercise: "Gentle seated stretching + breathing", duration_sec: 180 }],
     },
@@ -1613,9 +1616,12 @@ const WORKOUTS: ExerciseTemplate[] = [
       warmup: [{ exercise: "Seated marching + shoulder rolls", duration_sec: 300 }],
       main_circuit: [
         { exercise: "Sit-to-stand (chair squat)", sets: 3, reps: 10, rest_sec: 60 },
-        { exercise: "Dumbbell bicep curl (light)", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Dumbbell row (supported on chair)", sets: 3, reps: 12, rest_sec: 45 },
         { exercise: "Resistance band chest press (seated)", sets: 3, reps: 12, rest_sec: 45 },
-        { exercise: "Mini band side steps", sets: 3, reps: 15, rest_sec: 45 },
+        // Posterior chain and calves are what catch you when you stumble —
+        // most senior programmes skip them and train only the front of the leg.
+        { exercise: "Glute bridge (floor or bed)", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Calf raise (holding chair back)", sets: 3, reps: 15, rest_sec: 40 },
         { exercise: "Single-leg balance hold (wall support)", sets: 3, reps: 1, rest_sec: 30 },
         { exercise: "Overhead press (light dumbbells, seated)", sets: 3, reps: 10, rest_sec: 45 },
       ],
@@ -1694,6 +1700,17 @@ function fitnessLevel(input: OnboardingInput): string {
   return "intermediate";
 }
 
+interface WorkoutDayTemplate {
+  id: string;
+  name: string;
+  fitness_level: string;
+  goal_type: string;
+  duration_min: number;
+  equipment: string[];
+  description: string;
+  instructions: ExerciseTemplate["instructions"];
+}
+
 export function generateWorkoutPlan(input: OnboardingInput) {
   const level = fitnessLevel(input);
   const goal = input.goal_type || "weight_loss";
@@ -1715,13 +1732,50 @@ export function generateWorkoutPlan(input: OnboardingInput) {
 
   const dayNames = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   const rand = seededRandom(daySeed(7) + hashStr(goal + level + conditions.join("")));
-  const rotated = [...eligible].sort(() => rand() - 0.5);
+  const shuffled = [...eligible].sort(() => rand() - 0.5);
 
-  let ti = 0;
+  // Pick each day's session for weekly muscle coverage rather than at random.
+  // Rotating templates blindly can leave a whole muscle group untrained all
+  // week — the plan looks busy but the dose for that muscle is zero. At each
+  // step we choose the session that best serves the least-trained muscles,
+  // which is what a coach does when laying out a week.
+  const setsSoFar: Record<string, number> = {};
+  const templateSets = (t: ExerciseTemplate): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const move of t.instructions.main_circuit) {
+      if (!move.sets) continue;
+      const map = musclesFor(move.exercise);
+      if (!map) continue;
+      for (const m of map.primary) out[m] = (out[m] ?? 0) + move.sets;
+      for (const m of map.secondary || []) out[m] = (out[m] ?? 0) + move.sets * 0.5;
+    }
+    return out;
+  };
+  const pickNext = (used: Set<string>): ExerciseTemplate => {
+    let best = shuffled[0];
+    let bestScore = -Infinity;
+    for (const t of shuffled) {
+      const contrib = templateSets(t);
+      // reward volume delivered to muscles that are currently behind
+      let score = 0;
+      for (const [muscle, sets] of Object.entries(contrib)) {
+        const have = setsSoFar[muscle] ?? 0;
+        score += sets / (1 + have); // diminishing value once a muscle is covered
+      }
+      if (used.has(t.id)) score -= 1.5; // prefer variety across the week
+      if (score > bestScore) { bestScore = score; best = t; }
+    }
+    return best;
+  };
+
+  const usedIds = new Set<string>();
   const days = dayNames.map((day, idx) => {
-    if (!trainingDays[idx]) return { day, is_rest_day: true, templates: [] as unknown[] };
-    const tmpl = rotated[ti % rotated.length];
-    ti += 1;
+    if (!trainingDays[idx]) {
+      return { day, is_rest_day: true, templates: [] as WorkoutDayTemplate[] };
+    }
+    const tmpl = pickNext(usedIds);
+    usedIds.add(tmpl.id);
+    for (const [m, s] of Object.entries(templateSets(tmpl))) setsSoFar[m] = (setsSoFar[m] ?? 0) + s;
     return {
       day,
       is_rest_day: false,
@@ -1738,7 +1792,27 @@ export function generateWorkoutPlan(input: OnboardingInput) {
     };
   });
 
-  return { week_start: new Date().toISOString().slice(0, 10), fitness_level: level, ai_summary: null, days };
+  // Training dose layer: what actually drives results over weeks, rather than
+  // what a single session contains.
+  const volume = weeklyVolume(days);
+  const cardio = cardioZones(input.age || 40, conditions);
+  const steps = stepTarget(input.age || 40, input.activity_level || "moderate");
+  const underworked = volume.filter((v) => v.status === "under").map((v) => v.label);
+
+  return {
+    week_start: new Date().toISOString().slice(0, 10),
+    fitness_level: level,
+    ai_summary: null,
+    days,
+    weekly_volume: volume,
+    volume_note: underworked.length
+      ? `${underworked.slice(0, 3).join(", ")} ${underworked.length === 1 ? "is" : "are"} getting less weekly work than the range that reliably builds strength. Adding a set or two to those movements matters more than adding whole sessions — once weekly volume is matched, how you split it across days makes little difference.`
+      : "Every major muscle group is inside its weekly working range. Keep the load progressing rather than adding more sets.",
+    cardio_zones: cardio.zones,
+    cardio_caution: cardio.caution,
+    step_target: steps.target,
+    step_rationale: steps.rationale,
+  };
 }
 
 export function generateTodayWorkout(input: OnboardingInput) {

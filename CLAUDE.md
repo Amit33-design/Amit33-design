@@ -23,6 +23,8 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 | File | What it is |
 |---|---|
 | `lib/recommendation-engine.ts` (~1200 lines) | THE core: ~95-food library, condition rules, Mifflin-St Jeor macros, 3-phase meal generator (select → portion-scale → materialise), workout templates |
+| `lib/nutrition-data.ts` | Per-serving micronutrients for all 116 foods (Na, K, Ca, Fe, B12, vit D, Mg, omega-3, satfat, sugar, NOVA). `getMicros(id, group, cal)` falls back to group profile if a food is missing. |
+| `lib/training-science.ts` | Exercise dose layer: exercise→muscle map, weekly set volume, e1RM (Brzycki/Epley), progression + stall-triggered deload, HR zones (Tanaka), step target. |
 | `lib/recipes-data.ts` | 45+ recipes keyed by food id **without** `food-` prefix |
 | `lib/local-store.ts` | localStorage progress persistence (`health-copilot-progress`) |
 | `lib/api-client.ts` | demo-mode router → engine + local-store |
@@ -43,7 +45,13 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 ```bash
 cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.test.ts
 ```
-11 tests: 768-combo sweep (0 crashes, 0 empty slots, CKD cap ≤ 0.75g/kg×1.15, avg fit ≥ 85%, no GI≥70 for T2D), safe calorie floor, ±150 kcal adjustment clamp, goal coverage, ≥5 alternatives, alt portion-scaling, muscle-gain protein ≤ 1.15× target, no egg dishes for Indian vegetarians, weekly variety + grocery aggregation.
+37 tests covering: 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
+macro safety (BMR floor, 25% max deficit, protein RISES in deficit, +-150 kcal clamp — use an active profile
+so the floor doesn't mask the clamp), dietician composition rules, micronutrients (DASH 1500mg cap, iron raised
+for plant/menstruating, no false "over" for omega-3/plant iron, vegan B12 -> supplement advice, free sugars
+exclude whole fruit, protein-per-meal spread, GL band), training dose (no untrained muscle except calves,
+half-credit secondary movers, 1RM refused >10 reps, deload on stall not calendar, step target <= 8000,
+HTN cardio caution, Tanaka HRmax).
 
 ## How the meal engine works (current design)
 
@@ -53,6 +61,11 @@ cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.t
 4. **Phase 3 materialise**: `toMealItem(food, slot, scale)` → scaled qty/macros + `serving_scale`; plan returns `fit` {calories, protein, carbs, fat, overall %} shown as "Plan Match" strip on nutrition page.
 
 ## Changelog (newest first)
+
+- **2026-07-08 (3)** Competitive benchmark (Cronometer/MacroFactor/MFP/Zoe/Fitbod/January AI/HealthifyMe) → built the clinical layer they lack.
+  NUTRITION: `nutrition-data.ts` (116 foods x 11 micronutrients). `computeMicroTargets` personalises by age/sex/diet/condition (DASH 1500mg; iron x1.8 plant, higher for menstruating women; CKD K restriction; satfat 6% for hyperlipidemia). Sodium now in **mg not categorical** — this exposed that our own HTN plans ran 70% over the DASH limit we claimed; fixed via mg-level scoring penalty + explicit low-sodium-cooking model (nova>=3 dishes get 62.5% of listed Na, surfaced to user). `atRiskNutrients()` drives bounded micro boosts in `preferenceScore` (caps matter — uncapped omega-3 boost made flax appear 6x/week and broke the variety test). Free sugars exclude whole fruit/plain dairy. "over" only fires against real ULs (omega-3/plant iron have none). Protein/kg RISES in deficit (capped 1.9 general / 2.2 active), BMR + 25%-deficit floors. Per-meal protein spread (~0.4g/kg) — fixing breakfast anchors took main meals meeting threshold 5/12 -> 10/12. GL attenuated for protein/fat, reported as band. Na:K ratio. `nutrient_actions` gives dietitian advice incl. honest "supplement B12" for vegans.
+  EXERCISE: `training-science.ts`. Weekly sets/muscle with half-credit secondaries revealed **muscle-gain plans trained Back 0 sets/week** — fixed by replacing random template rotation with greedy coverage-aware selection (Back 0->12). Senior templates gained glute bridge + calf raise (posterior chain matters for falls). e1RM refuses >10 reps. Deload triggers on 3-week stall, NOT calendar (scheduled deloads can blunt strength). Cardio = weekly easy/hard distribution, not "zone 2 is magic". Step target 7-8k, not 10k.
+  UI: `NutrientPanel` (nutrition page), `TrainingDosePanel` (workouts page). 37 tests, browser-verified.
 
 - **2026-07-08 (2)** Report weekly section + Q&A follow-up chips + date-seed robustness: report page (screen + PDF + email HTML) gains "Week at a Glance" table (day × breakfast/lunch/dinner mains) + grocery categories; `askHealthCopilot(input, msg)` wraps answerHealthQuestion returning `{response, suggested_questions}` (intent-based, personalised with a food from the user's own alternatives) — ask page chips refresh after every answer ("Ask next:"). Engine: protein-overshoot trim now drops smallest protein dish when portion floors bottom out, then last-resort half-portion trim guarantees ≤1.15× on ANY date seed (date rollover had flaked CI at 1.153×); muscle test now sweeps all 7 day offsets. GOTCHA: engine tests are date-seeded — new dates rotate different foods, so bounds must hold across offsets, not just today.
 - **2026-07-08** Medication tracker + reminders on Progress page: `local-store.ts` med APIs (getUserMedications reads onboarding store, getMedsTaken/toggleMedTaken per-date log `health-copilot-med-log`, getMedAdherence, reminder settings `health-copilot-med-reminders`, markReminderFired dedupe). `MedicationTracker` component (checklist w/ icons+notes, 7-day adherence dots, reminder toggle w/ Notification permission, per-med time inputs seeded from `MED_DEFAULT_TIMES` in constants — clinical defaults e.g. levothyroxine 06:30, statins 21:00). `MedicationReminders` invisible runner in dashboard layout fires browser notifications (30s poll, fires up to 3h late, skips taken doses). Notifications only fire while app is open (no backend/service worker). Playwright-verified end-to-end.
@@ -68,11 +81,21 @@ cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.t
 
 ## Improvement Backlog (next iterations — keep updated)
 
-1. ~~Report/email weekly section~~ ✓ 2026-07-08 (2) — moved to Done below.
-2. **Warfarin leafy-green consistency** — would need week-level coordination (same greens portion daily); day-seeded generation makes this non-trivial. Summary note exists.
-3. **Cross-device sync** — would need real backend/login; localStorage is single-device (documented on Progress page).
-4. **EmailJS setup** — user still needs to add the 3 env vars in Vercel for email sending to go live.
-5. **Q&A follow-ups** — answerHealthQuestion could suggest dynamic follow-up chips (api response has suggested_questions field the ask page may not render yet).
+1. **Adaptive TDEE from logged data** — research P0 #1. Reverse-calculate expenditure from intake + weight-trend (EWMA smoother) over 14–28 days instead of Mifflin-St Jeor. Beats every predictive equation and wearable (18% mean overestimate vs doubly-labelled water) and is robust to the 10–30% under-reporting all self-report carries. We currently do a crude ±100 kcal nudge.
+2. **Diet-phase state machine** — cut → maintenance → reverse → bulk, with rule-triggered diet breaks after N weeks in deficit (Carbon Diet Coach's differentiator).
+3. **Leucine / DIAAS protein quality for plant eaters** — plant proteins score <75 DIAAS alone; complementarity (dal+rice) pushes blends higher. Would sharpen the per-meal protein check we already ship.
+4. **Per-exercise logging + progressive overload UI** — `training-science.ts` has `estimate1RM` and `progressionAdvice` ready, but nothing logs weight/reps yet. Needs a workout-logging surface in local-store.
+5. **Equipment/injury-aware exercise substitution** — `EXERCISE_MUSCLES` map exists; add `equipment[]`/`contraindications[]` and a one-tap swap.
+6. **Calves under-trained in ~8% of profiles** — minor; add a calf movement to more templates if it matters.
+7. **Cross-device sync** — needs a real backend; localStorage is single-device.
+8. **EmailJS setup** — user still needs the 3 env vars in Vercel for email sending to go live.
+
+### Explicitly do NOT build (research-backed)
+- **n-6:n-3 ratio as a target** — the ratio hypothesis is being dismantled; track absolute EPA+DHA instead.
+- **CGM for non-diabetics** — 2026 evidence synthesis found no health benefit; Zoe dropped its glucose test in Sept 2025.
+- **Calorie-density-only food colours (Noom-style)** — misclassifies nuts, olive oil, avocado, oily fish.
+- **Adding wearable "calories burned" back to the eating budget** — 15–52% error erases the whole deficit.
+- **Claiming to compute a personal MRV** — no app can measure it; use volume ranges.
 
 ### Done (moved from backlog)
 - ~~Grocery raw-ingredient decomposition (🧾 per dish via recipes data)~~ ✓ 2026-07-07 (6)

@@ -5,8 +5,12 @@ import {
   generateWeeklyPlan,
   answerHealthQuestion,
   computeMicroTargets,
+  generateWorkoutPlan,
   OnboardingInput,
 } from "../recommendation-engine";
+import {
+  weeklyVolume, estimate1RM, progressionAdvice, stepTarget, cardioZones, maxHeartRate,
+} from "../training-science";
 
 const baseInput: OnboardingInput = {
   age: 45, gender: "male", weight_kg: 80, height_cm: 175,
@@ -293,6 +297,74 @@ describe("micronutrient analysis", () => {
     const plan = generateMealPlan({ ...baseInput, conditions: ["T2D"] });
     expect(["low", "moderate", "high"]).toContain(plan.glycemic_load.band);
     expect(plan.glycemic_load.note).toMatch(/range|estimate/i);
+  });
+});
+
+describe("training prescription", () => {
+  const profile = (over: Partial<OnboardingInput>): OnboardingInput => ({ ...baseInput, ...over });
+
+  it("never leaves a major muscle group untrained across the week", () => {
+    const cases = [
+      profile({ goal_type: "muscle_gain", activity_level: "active", age: 28 }),
+      profile({ goal_type: "healthy_aging", age: 68, activity_level: "sedentary" }),
+      profile({ goal_type: "blood_pressure_management", conditions: ["HTN"], age: 58 }),
+    ];
+    for (const p of cases) {
+      const plan = generateWorkoutPlan(p);
+      const untrained = plan.weekly_volume.filter((v) => v.sets === 0 && v.muscle !== "calves");
+      expect(untrained.map((v) => v.label), `${p.goal_type}`).toEqual([]);
+    }
+  });
+
+  it("counts secondary movers at half credit", () => {
+    // a row builds back fully and biceps partially
+    const rows = weeklyVolume([
+      { templates: [{ instructions: { main_circuit: [{ exercise: "dumbbell row", sets: 4 }] } }] },
+    ]);
+    expect(rows.find((r) => r.muscle === "back")!.sets).toBe(4);
+    expect(rows.find((r) => r.muscle === "biceps")!.sets).toBe(2);
+  });
+
+  it("ignores timed cardio and mobility work as strength volume", () => {
+    const rows = weeklyVolume([
+      { templates: [{ instructions: { main_circuit: [{ exercise: "brisk walk", duration_sec: 900 }] } }] },
+    ]);
+    expect(rows.every((r) => r.sets === 0)).toBe(true);
+  });
+
+  it("refuses to estimate 1RM outside the reliable rep range", () => {
+    expect(estimate1RM(60, 5).value).toBeGreaterThan(60);
+    expect(estimate1RM(60, 8).value).toBeGreaterThan(60);
+    const tooMany = estimate1RM(40, 15);
+    expect(tooMany.value).toBeNull();
+    expect(tooMany.note).toMatch(/unreliable/i);
+  });
+
+  it("triggers a deload from stalled progress, not the calendar", () => {
+    const stalled = progressionAdvice({ weeksAtSameLoad: 3, lastReps: 8, targetRepRange: [8, 12], level: "intermediate" });
+    expect(stalled.action).toBe("deload");
+    const progressing = progressionAdvice({ weeksAtSameLoad: 1, lastReps: 12, targetRepRange: [8, 12], level: "intermediate" });
+    expect(progressing.action).toBe("add_load");
+    const midRange = progressionAdvice({ weeksAtSameLoad: 1, lastReps: 9, targetRepRange: [8, 12], level: "intermediate" });
+    expect(midRange.action).toBe("add_reps");
+  });
+
+  it("sets an evidence-based step target rather than 10,000", () => {
+    expect(stepTarget(35, "moderate").target).toBeLessThanOrEqual(8000);
+    expect(stepTarget(70, "moderate").target).toBeLessThan(stepTarget(35, "moderate").target);
+  });
+
+  it("warns off high-intensity cardio for blood-pressure and heart conditions", () => {
+    const flagged = cardioZones(58, ["HTN"]);
+    expect(flagged.caution).toBeTruthy();
+    expect(flagged.caution!.toLowerCase()).toContain("doctor");
+    expect(cardioZones(30, []).caution).toBeUndefined();
+  });
+
+  it("uses an age-accurate max heart rate", () => {
+    // Tanaka runs above 220-age for older adults, which is the point
+    expect(maxHeartRate(70)).toBeGreaterThan(220 - 70);
+    expect(maxHeartRate(25)).toBeGreaterThan(180);
   });
 });
 

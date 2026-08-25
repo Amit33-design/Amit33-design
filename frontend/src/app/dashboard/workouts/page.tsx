@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { TrainingDosePanel } from "@/components/dashboard/TrainingDosePanel";
 
 const DAY_LABELS: Record<string, string> = {
   monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
@@ -42,10 +43,21 @@ export default function WorkoutsPage() {
             <span className={cn("metric-chip border", FITNESS_BADGE_COLORS[plan.fitness_level as string] || "bg-gray-50 text-gray-600 border-gray-200")}>
               {String(plan.fitness_level || "beginner").replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())} Level
             </span>
-            <span className="text-xs text-gray-400">Condition-safe template selection</span>
+            <span className="text-xs text-gray-400">Condition-safe, dosed for weekly volume</span>
           </div>
         )}
       </div>
+
+      {!loading && plan && (
+        <TrainingDosePanel
+          volume={(plan.weekly_volume as Parameters<typeof TrainingDosePanel>[0]["volume"]) || []}
+          volumeNote={plan.volume_note as string | undefined}
+          zones={plan.cardio_zones as Parameters<typeof TrainingDosePanel>[0]["zones"]}
+          caution={plan.cardio_caution as string | undefined}
+          stepTarget={plan.step_target as number | undefined}
+          stepRationale={plan.step_rationale as string | undefined}
+        />
+      )}
 
       {loading ? (
         <div className="space-y-4">
