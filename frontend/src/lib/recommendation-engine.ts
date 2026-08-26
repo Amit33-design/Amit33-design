@@ -68,6 +68,8 @@ export interface OnboardingInput {
   measured_tdee?: number | null;
   /** 0–1 trust in `measured_tdee`; blends it against the formula estimate */
   tdee_confidence?: number;
+  /** deliberate diet-phase shift (maintenance break, reverse) — not clamped */
+  phase_shift?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -417,9 +419,13 @@ export function computeMacros(input: OnboardingInput) {
   // limits apply: never prescribe below resting metabolic rate, and never let
   // the deficit exceed ~25% of maintenance (roughly 1% of bodyweight a week).
   const safeFloor = Math.round(Math.max(absoluteFloor, bmr, tdee * 0.75) / 10) * 10;
-  // progress feedback: nudge from logged weight trend, clamped to ±150 kcal
+  // Progress feedback is a gentle correction and is clamped so the target never
+  // lurches. A diet-phase change is a deliberate decision — a maintenance break
+  // has to actually cancel the deficit, or the app would prescribe a break and
+  // then hand out cutting calories anyway — so it is applied outside the clamp.
   const trendAdj = Math.max(-150, Math.min(150, input.calorie_adjustment ?? 0));
-  const rawTarget = Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0) + trendAdj) / 10) * 10;
+  const phaseAdj = input.phase_shift ?? 0;
+  const rawTarget = Math.round((tdee + (GOAL_CAL_ADJ[goal] ?? 0) + trendAdj + phaseAdj) / 10) * 10;
   const calories = Math.max(safeFloor, rawTarget);
   const floor_applied = calories > rawTarget;
 

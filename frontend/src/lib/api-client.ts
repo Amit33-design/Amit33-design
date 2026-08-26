@@ -5,8 +5,9 @@ import {
   generateWeeklyPlan, generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
   askHealthCopilot,
 } from "./recommendation-engine";
-import { saveProgressEntry, getLocalProgressHistory } from "./local-store";
+import { saveProgressEntry, getLocalProgressHistory, getDietPhase, setDietPhase } from "./local-store";
 import { computeAdaptiveTdee, paceFeedback, AdaptiveTdee } from "./adaptive-tdee";
+import { assessPhase, phaseForGoal, phaseCalorieShift, DietPhase } from "./diet-phase";
 
 // Demo mode: static GitHub Pages build has no backend. Set at build time.
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
@@ -42,8 +43,14 @@ function getOnboardingInput(): OnboardingInput {
       goal_type,
       ...(() => {
         const sig = progressSignals(goal_type, num(p.weight_kg, fallback.weight_kg));
+        // A maintenance break or reverse phase overrides the goal's deficit,
+        // otherwise the app would prescribe a break and then hand out cutting
+        // calories anyway.
+        const stored = getDietPhase(phaseForGoal(goal_type));
+        const shift = phaseCalorieShift(stored.phase as DietPhase, goal_type);
         return {
           calorie_adjustment: sig.calorie_adjustment,
+          phase_shift: shift,
           measured_tdee: sig.measured_tdee,
           tdee_confidence: sig.tdee_confidence,
         };
@@ -172,6 +179,30 @@ export const api = {
 
   getProgressTrends: (userId: string) =>
     DEMO_MODE ? Promise.resolve({}) : apiFetch(`/progress/${userId}/trends`),
+
+  /** Which part of the diet cycle the user is in, and whether to move on. */
+  getDietPhase: (userId: string) => {
+    if (!DEMO_MODE) return apiFetch(`/progress/${userId}/phase`);
+    const input = getOnboardingInput();
+    const { logs } = getLocalProgressHistory(120);
+    const adaptive = computeAdaptiveTdee(logs);
+    const macros = computeMacros(input);
+    const state = getDietPhase(phaseForGoal(input.goal_type));
+    const assessment = assessPhase({
+      state: { phase: state.phase as DietPhase, started: state.started },
+      goal: input.goal_type,
+      measuredTdee: adaptive.tdee,
+      formulaTdee: macros.tdee_predicted,
+      tdeeConfidence: adaptive.confidence,
+      weeklyChangeKg: adaptive.weekly_change_kg,
+    });
+    return Promise.resolve({ state, assessment });
+  },
+
+  setDietPhase: (userId: string, phase: string) =>
+    DEMO_MODE
+      ? Promise.resolve(setDietPhase(phase))
+      : apiFetch(`/progress/${userId}/phase`, { method: "POST", body: JSON.stringify({ phase }) }),
 
   /** Expenditure measured from the user's own logs, plus pace feedback. */
   getMetabolism: (userId: string) => {

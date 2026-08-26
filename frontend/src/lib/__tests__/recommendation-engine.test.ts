@@ -61,6 +61,17 @@ describe("computeMacros", () => {
     expect(computeMacros({ ...active, calorie_adjustment: -999 }).calories).toBe(base - 150);
   });
 
+  it("lets a diet-phase change actually cancel the deficit, unlike the pace nudge", () => {
+    // The +-150 clamp exists to stop the weight-trend feedback lurching. A
+    // maintenance break is a deliberate decision and must not be clamped, or
+    // the app would prescribe a break and then hand out cutting calories.
+    const active: OnboardingInput = { ...baseInput, activity_level: "very_active" };
+    const cut = computeMacros(active).calories;
+    expect(computeMacros({ ...active, phase_shift: 400 }).calories).toBe(cut + 400);
+    // the pace nudge is still clamped
+    expect(computeMacros({ ...active, calorie_adjustment: 999 }).calories).toBe(cut + 150);
+  });
+
   it("never prescribes below BMR or a 25% deficit, whatever the adjustment", () => {
     const profiles: OnboardingInput[] = [
       baseInput,

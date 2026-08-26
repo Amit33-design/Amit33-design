@@ -25,6 +25,7 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 | `lib/recommendation-engine.ts` (~1200 lines) | THE core: ~95-food library, condition rules, Mifflin-St Jeor macros, 3-phase meal generator (select → portion-scale → materialise), workout templates |
 | `lib/protein-quality.ts` | DIAAS + leucine per source; `analyseMealProtein` credits grain+pulse complementarity, flags meals under the ~2.5g leucine threshold; `analyseDayProtein` gives usable-protein score + diet-aware advice. |
 | `lib/nutrition-data.ts` | Per-serving micronutrients for all 137 foods (Na, K, Ca, Fe, B12, vit D, Mg, omega-3, satfat, sugar, NOVA). `getMicros(id, group, cal)` falls back to group profile if a food is missing. |
+| `lib/diet-phase.ts` | cut/maintenance/reverse/bulk state machine. `assessPhase` uses measured-vs-formula TDEE (<92% after 6+ weeks) to detect real metabolic adaptation and urge a break; `phaseCalorieShift` cancels the deficit during a break. Phase stored in `health-copilot-diet-phase`. |
 | `lib/adaptive-tdee.ts` | Solves real expenditure from logged intake + weight trend. OLS slope on RAW weights (EWMA only for display — fitting the smoothed series biases slope toward zero and inflates targets), `blendTdee` confidence-weights vs formula, `paceFeedback` nudges. |
 | `lib/training-science.ts` | Exercise dose layer: `EXERCISE_LIBRARY` (single source of truth — name/primary/secondary/equipment/avoid; `EXERCISE_MUSCLES` + `musclesFor` derive from it, `ALIASES` maps template names to canonical movements), `substituteExercise` (equipment+injury-aware swaps), exercise→muscle map, weekly set volume, e1RM (Brzycki/Epley), progression + stall-triggered deload, HR zones (Tanaka), step target. |
 | `lib/recipes-data.ts` | 116 recipes keyed by food id **without** `food-` prefix. 19 ready-to-eat whole foods (fruit/nuts/curd/tea) intentionally have none — they render the green "no cooking needed" card. |
@@ -47,13 +48,13 @@ AI-powered personal health platform (demo mode, no backend): condition-aware mea
 ```bash
 cd frontend && npm test   # vitest — src/lib/__tests__/recommendation-engine.test.ts
 ```
-70 tests (4 files) covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
+83 tests (5 files) covering: adaptive TDEE (simulated users with known true expenditure — recovers within 10%, under-reporting cancels in the final target, refuses impossible values, stays silent under ~2 weeks of data), 768-combo sweep (0 crashes, 0 empty slots, CKD cap, avg fit >= 85%, no GI>=70 for T2D),
 macro safety (BMR floor, 25% max deficit, protein RISES in deficit, +-150 kcal clamp — use an active profile
 so the floor doesn't mask the clamp), dietician composition rules, micronutrients (DASH 1500mg cap, iron raised
 for plant/menstruating, no false "over" for omega-3/plant iron, vegan B12 -> supplement advice, free sugars
 exclude whole fruit, protein-per-meal spread, GL band), training dose (no untrained muscle except calves,
 half-credit secondary movers, 1RM refused >10 reps, deload on stall not calendar, step target <= 8000,
-HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — stub localStorage via a MemoryStorage on BOTH `globalThis.window` and `globalThis.localStorage`, since the store guards on `typeof window`), and exercise substitution (`exercise-swap.test.ts` — equipment blocking, injury blocking, same-muscle alternatives, every muscle has a home-friendly option, alias resolution), and **choice coverage** (every cuisine x diet x condition x slot must offer >=10 choices; >=7 distinct dishes per slot across a week; **no dish auto-served >4x/week on ANY diet x cuisine** — testing only the default diet hid a 7x vegan repeat), and protein quality (`protein-quality.test.ts` — dal < paneer usability, complementarity beats either alone, leucine threshold, real plans >=70% usable).
+HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — stub localStorage via a MemoryStorage on BOTH `globalThis.window` and `globalThis.localStorage`, since the store guards on `typeof window`), and exercise substitution (`exercise-swap.test.ts` — equipment blocking, injury blocking, same-muscle alternatives, every muscle has a home-friendly option, alias resolution), and **choice coverage** (every cuisine x diet x condition x slot must offer >=10 choices; >=7 distinct dishes per slot across a week; **no dish auto-served >4x/week on ANY diet x cuisine** — testing only the default diet hid a 7x vegan repeat), and protein quality (`protein-quality.test.ts` — dal < paneer usability, complementarity beats either alone, leucine threshold, real plans >=70% usable), and diet phases (`diet-phase.test.ts` — adaptation detection needs 6+ weeks AND confidence >=0.5, long-cut urging, 2-week break return, honest reverse-diet framing, phase shift cancels deficit).
 
 ## How the meal engine works (current design)
 
@@ -63,6 +64,10 @@ HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — 
 4. **Phase 3 materialise**: `toMealItem(food, slot, scale)` → scaled qty/macros + `serving_scale`; plan returns `fit` {calories, protein, carbs, fat, overall %} shown as "Plan Match" strip on nutrition page.
 
 ## Changelog (newest first)
+
+- **2026-07-08 (9)** Diet-phase state machine (last substantive backlog item). `diet-phase.ts`: cut → maintenance → reverse → bulk. Because adaptive TDEE now MEASURES expenditure, adaptation is **observed not assumed** — `measuredTdee/formulaTdee < 0.92` after 6+ weeks cutting (and confidence >=0.5) triggers an urgent "take a break" with the actual % shortfall. Also urges at 12 weeks, suggests at 8, flags 4-week stalls. Maintenance returns to cut after 2 weeks. `DietPhaseCard` on Progress page shows burn-vs-predicted bar + one-tap phase switch; phase + history in `health-copilot-diet-phase`.
+  **BUG FOUND & FIXED:** the phase shift (+400 for a maintenance break) was being squashed by the ±150 `calorie_adjustment` clamp meant for the gentle weight-trend nudge — so the app would prescribe a break then hand out near-cutting calories (1850→2000 instead of 2250). Added a SEPARATE `phase_shift` input applied outside the clamp. Test locks both behaviours.
+  Honest framing kept in copy: reverse dieting says "no good evidence food repairs metabolism — this is about not overshooting"; diet-break rationale leans on adherence as much as the (small) trial literature.
 
 - **2026-07-08 (8)** Protein QUALITY for plant eaters (backlog #2). New `protein-quality.ts`: DIAAS + leucine per source (dairy 1.10-1.15, soy 0.90, legumes 0.65, grains 0.45), `analyseMealProtein` credits **grain+pulse complementarity** (each >=3g protein → paired portion re-scored 0.55→0.80, the dal-chawal mechanism) and flags meals under the ~2.5g leucine threshold for muscle protein synthesis. Measured: Indian vegan 79% usable vs vegetarian 93% — the plant penalty is real. Vegan breakfasts sat at 2.26-2.48g leucine, JUST under threshold. **Fix that worked: added `soy-milk` (fortified) + `tofu-oats-bowl`** → vegan usable 79→85%, repair-triggering meals 16/21→21/21, AND B12 0→2.3µg (fixed the critical deficiency too). A DIAAS scoring boost in `preferenceScore` was tried and REMOVED — it changed nothing (composition/complementarity dominates); plant per-meal protein target ×1.1 kept instead.
   THREE VARIETY BUGS this exposed: (1) anchor selection hard-filtered `p >= perMealProtein*0.55` then took [0] — where one food cleared the bar it was served 7/7 days (Med veg egg-omelette) regardless of penalty; now a +6 score bonus, not a gate. (2) linear weekly penalty → escalating `pow(usage,1.7)*3.5`. (3) Added a HARD `WEEKLY_AUTO_CAP = 4` filter on `ranked` — tuning coefficients could never guarantee it where a slot has few eligible foods. Capped dishes stay as swap options. Result: most-repeated dish 7x → 2-4x, 54-79 distinct dishes/week. Also: vegan B12 action now fires even when the target is MET, explaining it comes from fortification not plants.
@@ -94,10 +99,9 @@ HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — 
 
 ## Improvement Backlog (next iterations — keep updated)
 
-1. **Diet-phase state machine** — cut → maintenance → reverse → bulk, with rule-triggered diet breaks after N weeks in deficit (Carbon Diet Coach's differentiator).
-2. **Calves under-trained in ~8% of profiles** — minor; add a calf movement to more templates if it matters.
-3. **Cross-device sync** — needs a real backend; localStorage is single-device.
-4. **EmailJS setup** — user still needs the 3 env vars in Vercel for email sending to go live.
+1. **Calves under-trained in ~8% of profiles** — minor; add a calf movement to more templates if it matters.
+2. **Cross-device sync** — needs a real backend; localStorage is single-device.
+3. **EmailJS setup** — user still needs the 3 env vars in Vercel for email sending to go live.
 
 ### Explicitly do NOT build (research-backed)
 - **n-6:n-3 ratio as a target** — the ratio hypothesis is being dismantled; track absolute EPA+DHA instead.
@@ -107,6 +111,7 @@ HTN cardio caution, Tanaka HRmax), and strength logging (`lift-log.test.ts` — 
 - **Claiming to compute a personal MRV** — no app can measure it; use volume ranges.
 
 ### Done (moved from backlog)
+- ~~Diet-phase state machine (cut/maintenance/reverse/bulk + adaptation-triggered breaks)~~ ✓ 2026-07-08 (9)
 - ~~Leucine/DIAAS protein quality for plant eaters~~ ✓ 2026-07-08 (8)
 - ~~Equipment/injury-aware exercise substitution~~ ✓ 2026-07-08 (6)
 - ~~Per-exercise logging + progressive overload UI~~ ✓ 2026-07-08 (5)

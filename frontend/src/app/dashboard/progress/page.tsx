@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { MetabolismCard } from "@/components/dashboard/MetabolismCard";
+import { DietPhaseCard } from "@/components/dashboard/DietPhaseCard";
 
 interface ProgressLog {
   log_date: string;
@@ -32,6 +33,7 @@ export default function ProgressPage() {
     bp_systolic: "", bp_diastolic: "", blood_sugar_fasting: "", blood_sugar_post_meal: "", notes: "",
   });
   const [metabolism, setMetabolism] = useState<Record<string, unknown> | null>(null);
+  const [phase, setPhase] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -44,6 +46,7 @@ export default function ProgressPage() {
       setLoading(false);
     });
     api.getMetabolism(userId).then((m) => setMetabolism(m as Record<string, unknown>));
+    api.getDietPhase(userId).then((p) => setPhase(p as Record<string, unknown>));
   }, [router, userId]);
 
   const handleSave = async () => {
@@ -205,6 +208,19 @@ export default function ProgressPage() {
           {saved ? "✓ Saved!" : saving ? "Saving..." : "Log Today's Data"}
         </button>
       </div>
+
+      {/* Diet phase */}
+      {phase && phase.assessment ? (
+        <DietPhaseCard
+          assessment={phase.assessment as Parameters<typeof DietPhaseCard>[0]["assessment"]}
+          onSetPhase={(next) => {
+            if (!userId) return;
+            api.setDietPhase(userId, next).then(() =>
+              api.getDietPhase(userId).then((p) => setPhase(p as Record<string, unknown>))
+            );
+          }}
+        />
+      ) : null}
 
       {/* Measured metabolism */}
       {metabolism && metabolism.adaptive ? (

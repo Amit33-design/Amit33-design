@@ -284,3 +284,36 @@ export function setExerciseSwap(original: string, replacement: string | null): T
   saveTrainingPrefs(prefs);
   return prefs;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Diet phase — which part of the cycle the user is in, and since when
+// ─────────────────────────────────────────────────────────────────────────────
+const PHASE_KEY = "health-copilot-diet-phase";
+
+export interface StoredPhase {
+  phase: string;
+  started: string;
+  /** past phases, newest last — lets the user see their own cycle */
+  history: { phase: string; started: string; ended: string }[];
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+export function getDietPhase(fallbackPhase: string): StoredPhase {
+  const stored = readJson<Partial<StoredPhase>>(PHASE_KEY, {});
+  if (!stored.phase || !stored.started) {
+    return { phase: fallbackPhase, started: today(), history: [] };
+  }
+  return { phase: stored.phase, started: stored.started, history: stored.history ?? [] };
+}
+
+export function setDietPhase(phase: string): StoredPhase {
+  const current = readJson<Partial<StoredPhase>>(PHASE_KEY, {});
+  const history = current.history ?? [];
+  if (current.phase && current.started && current.phase !== phase) {
+    history.push({ phase: current.phase, started: current.started, ended: today() });
+  }
+  const next: StoredPhase = { phase, started: today(), history: history.slice(-12) };
+  writeJson(PHASE_KEY, next);
+  return next;
+}
