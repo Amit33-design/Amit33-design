@@ -132,6 +132,7 @@ export default function NutritionPage() {
             glycemicLoad={plan?.glycemic_load as { value: number; band: string; note: string } | undefined}
             naK={plan?.na_k_ratio as { ratio: number; status: string } | undefined}
             proteinDistribution={plan?.protein_distribution as Parameters<typeof NutrientPanel>[0]["proteinDistribution"]}
+            proteinQuality={plan?.protein_quality as Parameters<typeof NutrientPanel>[0]["proteinQuality"]}
           />
 
           {/* Meal plan */}

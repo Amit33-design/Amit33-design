@@ -2047,4 +2047,35 @@ export const RECIPES: Record<string, Recipe> = {
     tip: "Beans plus avocado gives around 13g protein and 11g fibre — one of the most satiating vegan breakfasts there is.",
   },
 
+  "soy-milk": {
+    prep: 2, cook: 0, servings: 1, difficulty: "easy",
+    ingredients: [
+      "1 glass (250 ml) fortified soy milk, unsweetened",
+      "Optional: pinch of cardamom or a little turmeric",
+    ],
+    steps: [
+      "Check the label says fortified — with vitamin B12 and calcium.",
+      "Drink chilled, warm with cardamom, or use it in oats, smoothies and tea.",
+    ],
+    tip: "The single most useful item on a vegan shopping list: soy is the one plant protein complete on its own, and the fortified version supplies the B12 and calcium that plant foods otherwise can't.",
+  },
+
+  "tofu-oats-bowl": {
+    prep: 5, cook: 12, servings: 1, difficulty: "easy",
+    ingredients: [
+      "½ cup rolled oats",
+      "150g firm tofu, crumbled",
+      "1 cup chopped vegetables (spinach, tomato, capsicum)",
+      "1 tsp oil, ½ tsp cumin, ¼ tsp turmeric, pepper",
+      "Coriander and lemon to finish",
+    ],
+    steps: [
+      "Dry-roast the oats 2 minutes until they smell nutty; set aside.",
+      "Crumble the tofu into hot oil with cumin and turmeric; cook 4 minutes without stirring much so it browns.",
+      "Add the vegetables, then the oats and 1 cup hot water.",
+      "Simmer 4–5 minutes until thick. Finish with coriander, lemon and plenty of pepper.",
+    ],
+    tip: "Around 22g of protein and enough leucine to actually trigger muscle repair — which most vegan breakfasts fall just short of.",
+  },
+
 };

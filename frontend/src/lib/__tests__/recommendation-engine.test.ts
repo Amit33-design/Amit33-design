@@ -236,15 +236,21 @@ describe("dietician composition rules", () => {
     }
   });
 
-  it("no dish is served more than 4 times in a week", () => {
-    const week = generateWeeklyPlan(baseInput);
-    const counts = new Map<string, number>();
-    for (const d of week.days)
-      for (const meal of d.plan.meals)
-        for (const item of meal.items)
-          counts.set(item.food.id, (counts.get(item.food.id) ?? 0) + 1);
-    for (const [id, count] of counts) {
-      expect(count, `${id} served ${count}× this week`).toBeLessThanOrEqual(4);
+  it("no dish is served more than 4 times in a week, on any diet", () => {
+    // Vegan menus have the fewest high-protein options, so they are where
+    // monotony shows up first — testing only the default diet missed it.
+    for (const protein_pref of DIETS) {
+      for (const cuisine of CUISINES) {
+        const week = generateWeeklyPlan({ ...baseInput, protein_pref, cuisine, goal_type: "muscle_gain" });
+        const counts = new Map<string, number>();
+        for (const d of week.days)
+          for (const meal of d.plan.meals)
+            for (const item of meal.items)
+              counts.set(item.food.id, (counts.get(item.food.id) ?? 0) + 1);
+        for (const [id, count] of counts) {
+          expect(count, `${protein_pref}/${cuisine}: ${id} served ${count}× this week`).toBeLessThanOrEqual(4);
+        }
+      }
     }
   });
 });
@@ -285,12 +291,15 @@ describe("micronutrient analysis", () => {
     }
   });
 
-  it("tells vegans to supplement B12 rather than pretending food covers it", () => {
-    const plan = generateMealPlan({ ...baseInput, protein_pref: "vegan" });
-    const b12 = plan.nutrient_actions.find((a) => a.nutrient === "Vitamin B12");
-    expect(b12).toBeTruthy();
-    expect(b12!.severity).toBe("critical");
-    expect(b12!.detail.toLowerCase()).toContain("supplement");
+  it("is honest with vegans that B12 never comes from the plants themselves", () => {
+    // Whether the plan happens to meet the target through fortified food or
+    // falls short, a vegan must always be told where B12 actually comes from.
+    for (let day = 0; day < 7; day++) {
+      const plan = generateMealPlan({ ...baseInput, protein_pref: "vegan" }, day);
+      const b12 = plan.nutrient_actions.find((a) => a.nutrient === "Vitamin B12");
+      expect(b12, `no B12 guidance on day ${day}`).toBeTruthy();
+      expect(b12!.detail.toLowerCase()).toMatch(/supplement|fortified/);
+    }
   });
 
   it("excludes whole-fruit sugars from the free-sugar count", () => {

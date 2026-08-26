@@ -16,6 +16,7 @@
 import { getMicros, Micros } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
+import { analyseDayProtein } from "./protein-quality";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -222,6 +223,9 @@ const FOODS: Food[] = [
   { id: "sabudana-khichdi", name: "Sabudana Khichdi with Peanuts", local: "Sabudana", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 280, p: 7, c: 45, f: 9, fiber: 3, gi: 60, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Energy", "Fasting Friendly"] },
   { id: "masala-oats", name: "Savoury Masala Oats", local: "Masala Oats", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast", "dinner"], qty: 200, cal: 215, p: 8, c: 36, f: 5, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Quick"] },
 
+  { id: "soy-milk", name: "Fortified Soy Milk", local: "Soya Doodh", group: "protein", cuisines: ALL, diet: "vegan", slots: ["breakfast", "mid_morning", "evening_snack"], qty: 250, cal: 110, p: 8, c: 9, f: 4, fiber: 1, gi: 34, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "B12 Fortified", "Calcium Fortified", "Low GI"] },
+  { id: "tofu-oats-bowl", name: "Savoury Tofu & Oats Bowl", group: "protein", cuisines: ["indian", "western"], diet: "vegan", slots: ["breakfast"], qty: 250, cal: 320, p: 22, c: 34, f: 11, fiber: 7, gi: 48, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "High Fiber", "Muscle Recovery"] },
+
   // ── Mediterranean / Western vegan breakfasts (measured gap) ───────────────
   { id: "overnight-oats-vegan", name: "Overnight Oats with Berries & Chia", group: "grains", cuisines: ["western", "mediterranean"], diet: "vegan", slots: ["breakfast"], qty: 250, cal: 290, p: 10, c: 45, f: 9, fiber: 9, gi: 45, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Omega-3", "Make Ahead"] },
   { id: "tofu-scramble-med", name: "Mediterranean Tofu Scramble", group: "protein", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 220, p: 19, c: 9, f: 13, fiber: 4, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Plant-Based", "Iron"] },
@@ -272,7 +276,8 @@ function preferenceScore(
   conditions: string[],
   goal: string,
   medications: string[] = [],
-  deficitFocus: (keyof Micros)[] = []
+  deficitFocus: (keyof Micros)[] = [],
+  plantForward = false
 ): number {
   let s = 0;
   for (const c of conditions) {
@@ -568,6 +573,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const proteinCap = conditions.includes("CKD");
   const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
   const deficitFocus = atRiskNutrients(input);
+  const plantForward = ["vegan", "vegetarian"].includes(input.protein_pref || "");
   let dayProtein = 0;
   const usedIds = new Set<string>(); // global dedupe → more variety across slots
 
@@ -593,14 +599,25 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       .map((food) => ({
         food,
         score:
-          preferenceScore(food, conditions, goal, input.medications, deficitFocus) +
+          preferenceScore(food, conditions, goal, input.medications, deficitFocus, plantForward) +
           rand() * 4 -
-          (weeklyUsage?.get(food.id) ?? 0) * 3,
+          // Escalating, not linear: repeating a dish a second time is fine,
+          // a fifth time is monotony. Vegan menus have fewer high-protein
+          // options, so a flat penalty let the same two dishes win every day.
+          Math.pow(weeklyUsage?.get(food.id) ?? 0, 1.7) * 3.5,
       }))
       .sort((a, b) => b.score - a.score);
 
-    // for the auto-picked plan, prefer foods not already used in another slot
-    const ranked = rankedAll.filter((r) => !usedIds.has(r.food.id));
+    // For the auto-picked plan, skip foods already used elsewhere today, and
+    // hard-cap how often a dish can be auto-served in one week. The ranking
+    // penalty alone could not guarantee this: where a slot has few eligible
+    // foods, one dish would still win every day. Capped dishes stay available
+    // as swap options — this limits what we put on the plate, not what the
+    // user may choose.
+    const WEEKLY_AUTO_CAP = 4;
+    const ranked = rankedAll.filter(
+      (r) => !usedIds.has(r.food.id) && (weeklyUsage?.get(r.food.id) ?? 0) < WEEKLY_AUTO_CAP
+    );
 
     const targetCal = macros.calories * slotDef.share;
     // big calorie targets get one extra item per slot — portion scaling alone
@@ -635,9 +652,19 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     // not just whichever anchor ranked highest. Breakfast is where plans
     // usually fall short, and a carb-led breakfast wastes an anabolic window.
     if (slotDef.needsAnchor) {
-      const perMealProtein = macros.protein_per_meal_g;
-      const strong = ranked.filter((r) => r.food.anchor && r.food.p >= perMealProtein * 0.55);
-      const anchor = strong[0] || ranked.find((r) => r.food.anchor);
+      // Plant proteins carry less leucine per gram, so a plant-based meal needs
+      // a somewhat larger serving to cross the threshold that actually switches
+      // on muscle repair. Aiming ~15% higher is what closes that gap.
+      const perMealProtein = macros.protein_per_meal_g * (plantForward ? 1.1 : 1);
+      // Prefer an anchor that can carry the meal's protein, but as a bonus
+      // rather than a hard filter. Filtering first meant that when only one
+      // food cleared the bar it was served every single day, however stale —
+      // the variety penalty could never outweigh a gate it wasn't allowed
+      // through.
+      const anchor = ranked
+        .filter((r) => r.food.anchor)
+        .map((r) => ({ r, s: r.score + (r.food.p >= perMealProtein * 0.55 ? 6 : 0) }))
+        .sort((a, b) => b.s - a.s)[0]?.r;
       if (anchor) tryAdd(anchor.food);
       // top up with a second protein source when the first can't carry the meal
       const slotProtein = () => picked.reduce((s, f) => s + f.p, 0);
@@ -895,6 +922,9 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const nutrient_actions = buildNutrientActions(input, nutrients, lowSodiumCooking);
   const protein_distribution = analyseProteinDistribution(meals, macros.protein_per_meal_g);
   const na_k_ratio = sodiumPotassiumRatio(micros);
+  // Protein quality: grams are not equivalent, and plant eaters need the
+  // complementarity story rather than just a number they appear to be hitting.
+  const protein_quality = analyseDayProtein(meals, input.protein_pref || "vegetarian");
 
   return {
     id: `demo-plan-${goal}-${cuisine}-${input.protein_pref}-d${dayOffset}`,
@@ -913,6 +943,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     nutrient_actions,
     glycemic_load,
     protein_distribution,
+    protein_quality,
     na_k_ratio,
     low_sodium_cooking: lowSodiumCooking,
   };
@@ -1095,6 +1126,15 @@ function buildNutrientActions(
   const get = (k: keyof Micros) => nutrients.find((n) => n.key === k);
 
   const b12 = get("b12_ug");
+  if (b12 && b12.status !== "low" && diet === "vegan") {
+    // Meeting B12 on a vegan diet always depends on fortification or a
+    // supplement — never on the plants themselves. Saying so matters, because
+    // dropping the fortified item silently reopens a deficiency that takes
+    // years to show up and can cause permanent nerve damage.
+    out.push({ nutrient: "Vitamin B12", severity: "tip",
+      headline: "Your B12 is covered — by fortified food, not by the plants",
+      detail: "Today's plan reaches the B12 requirement through fortified soy milk. No plant food makes B12 on its own, so if you switch to an unfortified milk or skip it, that intake disappears. Check the label says fortified, or take a supplement (250 µg daily, or 2500 µg weekly) as a reliable backstop." });
+  }
   if (b12 && b12.status === "low") {
     out.push(
       diet === "vegan"

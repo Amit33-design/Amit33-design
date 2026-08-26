@@ -33,6 +33,16 @@ interface Props {
     main_meals: number;
     verdict: string;
   };
+  proteinQuality?: {
+    total_protein_g: number;
+    usable_protein_g: number;
+    quality_score: number;
+    meals_triggering: number;
+    main_meals: number;
+    headline: string;
+    advice: string | null;
+    meals: { slot: string; leucine_g: number; triggers_synthesis: boolean; complementary: boolean }[];
+  };
 }
 
 const SEVERITY = {
@@ -46,7 +56,7 @@ const SLOT_SHORT: Record<string, string> = {
   evening_snack: "Snack", dinner: "Dinner",
 };
 
-export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDistribution }: Props) {
+export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDistribution, proteinQuality }: Props) {
   const [openWhy, setOpenWhy] = useState<string | null>(null);
   if (!nutrients?.length) return null;
 
@@ -138,6 +148,46 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
               ))}
             </div>
             <p className="text-xs text-gray-600 leading-relaxed">{proteinDistribution.verdict}</p>
+
+            {proteinQuality && proteinQuality.total_protein_g > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                  <span className="text-xs font-bold text-gray-700">Protein your body can use</span>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-lg text-xs font-black",
+                    proteinQuality.quality_score >= 85 ? "bg-emerald-100 text-emerald-700"
+                      : proteinQuality.quality_score >= 70 ? "bg-amber-100 text-amber-700"
+                      : "bg-orange-100 text-orange-700"
+                  )}>
+                    {proteinQuality.usable_protein_g}g of {proteinQuality.total_protein_g}g
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
+                  <div className="h-full bg-violet-500 rounded-full" style={{ width: `${Math.min(100, proteinQuality.quality_score)}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {proteinQuality.meals
+                    .filter((m) => ["breakfast", "lunch", "dinner"].includes(m.slot))
+                    .map((m) => (
+                      <span key={m.slot} className={cn(
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                        m.triggers_synthesis ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
+                      )}>
+                        {SLOT_SHORT[m.slot] || m.slot} {m.leucine_g}g leucine{m.complementary ? " · paired" : ""}
+                      </span>
+                    ))}
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Grams of protein aren&apos;t equal — the body can only build with what supplies every essential amino
+                  acid, and each meal needs about 2.5g of leucine to switch muscle repair on.
+                </p>
+                {proteinQuality.advice && (
+                  <p className="text-[11px] text-violet-800 bg-violet-50 border border-violet-100 rounded-lg p-2 mt-2 leading-relaxed">
+                    {proteinQuality.advice}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

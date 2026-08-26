@@ -185,6 +185,9 @@ export const NUTRIENTS: Record<string, NutrientTuple> = {
   "sabudana-khichdi":  [320, 320,  40, 1.4, 0.0, 0.0, 60, 0.04,  1.6, 2.0, 3],
   "masala-oats":       [300, 320,  50, 2.6, 0.0, 0.0, 95, 0.08,  0.9, 3.0, 2],
 
+  "soy-milk":          [ 90, 300, 300, 1.0, 2.4, 2.5, 40, 0.10,  0.5, 5.0, 3],
+  "tofu-oats-bowl":    [280, 560, 420, 5.0, 0.0, 0.0,140, 0.20,  1.8, 2.0, 2],
+
   // ── Mediterranean / Western vegan breakfasts ──────────────────────────────
   "overnight-oats-vegan":[ 30, 380, 160, 2.8, 0.0, 0.0,120, 2.20, 1.0, 9.0, 1],
   "tofu-scramble-med": [280, 480, 400, 4.4, 0.0, 0.0, 90, 0.35,  1.9, 3.0, 2],
