@@ -12,6 +12,14 @@ function cap(s: string) { return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.
 interface MealSlot { slot: string; slot_calories: number; slot_protein_g: number; items: { food: { name: string } }[]; }
 
 /* ─── email HTML builder ───────────────────────────────────────────────────── */
+interface ClinicalLite {
+  nutrients?: { key: string; label: string; unit: string; actual: number; target: number; isLimit: boolean; status: string }[];
+  actions?: { nutrient: string; severity: string; headline: string; detail: string }[];
+  proteinQuality?: { total_protein_g: number; usable_protein_g: number; quality_score: number; meals_triggering: number; main_meals: number };
+  glycemicLoad?: { value: number; band: string };
+  naK?: { ratio: number; status: string };
+}
+
 interface WeeklyLite {
   days: { date: string; weekday_short: string; plan: { meals: MealSlot[] } }[];
   grocery: { label: string; items: { name: string; times: number }[] }[];
@@ -21,13 +29,64 @@ function buildEmailHtml(opts: {
   name: string; goal: string; conditionLabels: string[];
   cal: number; protein: number; carbs: number; fat: number;
   meals: MealSlot[]; logs: ReturnType<typeof getLocalProgressHistory>["logs"];
-  date: string; weekly: WeeklyLite | null;
+  date: string; weekly: WeeklyLite | null; clinical: ClinicalLite | null;
 }) {
-  const { name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs, date, weekly } = opts;
+  const { name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs, date, weekly, clinical } = opts;
   const slotIcons: Record<string, string> = { breakfast: "🌅", mid_morning: "🍎", lunch: "☀️", evening_snack: "🌤", dinner: "🌙" };
 
   const mainsOf = (dayMeals: MealSlot[], slot: string) =>
     dayMeals.find((mm) => mm.slot === slot)?.items.slice(0, 2).map((i) => i.food?.name).filter(Boolean).join(", ") || "—";
+
+  const statusColour = (st: string) =>
+    st === "low" ? "#ea580c" : st === "over" ? "#dc2626" : "#16a34a";
+  const statusWord = (st: string, isLimit: boolean) =>
+    st === "low" ? "below target" : st === "over" ? (isLimit ? "over limit" : "high") : isLimit ? "within limit" : "on target";
+
+  const clinicalSection = clinical?.nutrients?.length
+    ? `
+    <!-- Clinical detail -->
+    <div style="padding:0 32px 24px">
+      <h2 style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e293b">🔬 &nbsp;Nutrient Detail</h2>
+      <p style="margin:0 0 12px;font-size:12px;color:#94a3b8">Vitamins and minerals against targets set from age, sex, diet and medical conditions.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tbody>
+          ${clinical.nutrients.map((n) => `
+          <tr>
+            <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;color:#374151">${n.label}${n.isLimit ? " <span style='color:#94a3b8;font-size:11px'>(limit)</span>" : ""}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;text-align:right;color:#1e293b;font-weight:600">${n.actual} / ${n.target} ${n.unit}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;text-align:right;color:${statusColour(n.status)};font-weight:600;font-size:12px">${statusWord(n.status, n.isLimit)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+      ${clinical.proteinQuality ? `
+      <div style="background:#f5f3ff;border-radius:12px;padding:12px 14px;margin-top:12px">
+        <div style="font-size:13px;font-weight:700;color:#5b21b6;margin-bottom:4px">Protein quality</div>
+        <div style="font-size:12px;color:#374151;line-height:1.6">
+          About <strong>${clinical.proteinQuality.usable_protein_g}g of ${clinical.proteinQuality.total_protein_g}g</strong> is in a form the body can readily use
+          (${clinical.proteinQuality.quality_score}%), with ${clinical.proteinQuality.meals_triggering} of ${clinical.proteinQuality.main_meals} main meals carrying enough leucine to trigger muscle repair.
+        </div>
+      </div>` : ""}
+      ${clinical.glycemicLoad || clinical.naK ? `
+      <div style="display:flex;gap:10px;margin-top:10px">
+        ${clinical.glycemicLoad ? `<div style="flex:1;background:#f0f9ff;border-radius:12px;padding:12px 14px">
+          <div style="font-size:11px;color:#075985;font-weight:700">GLYCEMIC LOAD</div>
+          <div style="font-size:18px;font-weight:800;color:#0284c7;text-transform:capitalize">${clinical.glycemicLoad.value} · ${clinical.glycemicLoad.band}</div>
+        </div>` : ""}
+        ${clinical.naK ? `<div style="flex:1;background:#f0fdf4;border-radius:12px;padding:12px 14px">
+          <div style="font-size:11px;color:#166534;font-weight:700">SODIUM : POTASSIUM</div>
+          <div style="font-size:18px;font-weight:800;color:#16a34a">${clinical.naK.ratio} : 1</div>
+        </div>` : ""}
+      </div>` : ""}
+      ${clinical.actions?.length ? `
+      <div style="margin-top:14px">
+        ${clinical.actions.map((a) => `
+        <div style="background:${a.severity === "critical" ? "#fef2f2" : a.severity === "watch" ? "#fffbeb" : "#f0f9ff"};border-radius:12px;padding:12px 14px;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:3px">${a.severity === "critical" ? "🚨" : a.severity === "watch" ? "⚠️" : "💡"} ${a.headline}</div>
+          <div style="font-size:12px;color:#374151;line-height:1.6">${a.detail}</div>
+        </div>`).join("")}
+      </div>` : ""}
+    </div>`
+    : "";
 
   const weeklySection = weekly
     ? `
@@ -157,6 +216,8 @@ function buildEmailHtml(opts: {
       </table>
     </div>
 
+    ${clinicalSection}
+
     ${weeklySection}
 
     <!-- Progress -->
@@ -260,6 +321,16 @@ export default function ReportPage() {
   const carbs   = Math.round((macros as Record<string, number>)?.carbs_g    || 0);
   const fat     = Math.round((macros as Record<string, number>)?.fat_g      || 0);
   const meals   = (mealPlan?.meals as MealSlot[]) || [];
+  // The clinical layer is the part a doctor actually wants to see.
+  const clinical: ClinicalLite | null = mealPlan
+    ? {
+        nutrients: mealPlan.nutrients as ClinicalLite["nutrients"],
+        actions: mealPlan.nutrient_actions as ClinicalLite["actions"],
+        proteinQuality: mealPlan.protein_quality as ClinicalLite["proteinQuality"],
+        glycemicLoad: mealPlan.glycemic_load as ClinicalLite["glycemicLoad"],
+        naK: mealPlan.na_k_ratio as ClinicalLite["naK"],
+      }
+    : null;
   const date    = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
   const name    = String(summary?.name || "User");
   const goal    = String(summary?.primary_goal || "—");
@@ -281,7 +352,7 @@ export default function ReportPage() {
     setEmailStatus("idle");
     try {
       const emailjs = (await import("@emailjs/browser")).default;
-      const html = buildEmailHtml({ name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs: recentLogs, date, weekly });
+      const html = buildEmailHtml({ name, goal, conditionLabels, cal, protein, carbs, fat, meals, logs: recentLogs, date, weekly, clinical });
       await emailjs.send(serviceId, templateId, {
         to_email:     email,
         to_name:      name,
@@ -500,6 +571,82 @@ export default function ReportPage() {
               ))}
             </div>
           </section>
+
+          {/* Clinical detail — the part a doctor wants */}
+          {clinical?.nutrients?.length ? (
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center text-lg">🔬</div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">Nutrient Detail</h2>
+                  <p className="text-xs text-slate-400">Targets set from age, sex, diet and medical conditions</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto rounded-2xl mb-3" style={{ background: "#f8fafc" }}>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {clinical.nutrients.map((n) => (
+                      <tr key={n.key} className="border-t border-slate-100 first:border-t-0">
+                        <td className="px-4 py-2 text-slate-700">
+                          {n.label}
+                          {n.isLimit && <span className="text-slate-400 text-xs"> (limit)</span>}
+                        </td>
+                        <td className="px-4 py-2 text-right font-semibold text-slate-900 whitespace-nowrap">
+                          {n.actual} / {n.target} {n.unit}
+                        </td>
+                        <td className={`px-4 py-2 text-right text-xs font-semibold whitespace-nowrap ${
+                          n.status === "low" ? "text-orange-600" : n.status === "over" ? "text-red-600" : "text-emerald-600"
+                        }`}>
+                          {n.status === "low" ? "below target" : n.status === "over" ? (n.isLimit ? "over limit" : "high") : n.isLimit ? "within limit" : "on target"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3 mb-3">
+                {clinical.proteinQuality && (
+                  <div className="rounded-2xl p-3" style={{ background: "#f5f3ff" }}>
+                    <div className="text-[10px] font-bold text-violet-800 uppercase tracking-wide">Usable protein</div>
+                    <div className="text-lg font-black text-violet-700">
+                      {clinical.proteinQuality.usable_protein_g}g / {clinical.proteinQuality.total_protein_g}g
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {clinical.proteinQuality.meals_triggering} of {clinical.proteinQuality.main_meals} meals trigger muscle repair
+                    </div>
+                  </div>
+                )}
+                {clinical.glycemicLoad && (
+                  <div className="rounded-2xl p-3" style={{ background: "#f0f9ff" }}>
+                    <div className="text-[10px] font-bold text-sky-800 uppercase tracking-wide">Glycemic load</div>
+                    <div className="text-lg font-black text-sky-700 capitalize">
+                      {clinical.glycemicLoad.value} · {clinical.glycemicLoad.band}
+                    </div>
+                  </div>
+                )}
+                {clinical.naK && (
+                  <div className="rounded-2xl p-3" style={{ background: "#f0fdf4" }}>
+                    <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Sodium : potassium</div>
+                    <div className="text-lg font-black text-emerald-700">{clinical.naK.ratio} : 1</div>
+                  </div>
+                )}
+              </div>
+
+              {clinical.actions?.map((a) => (
+                <div
+                  key={a.headline}
+                  className="rounded-2xl p-3 mb-2"
+                  style={{ background: a.severity === "critical" ? "#fef2f2" : a.severity === "watch" ? "#fffbeb" : "#f0f9ff" }}
+                >
+                  <div className="text-sm font-bold text-slate-900 mb-0.5">
+                    {a.severity === "critical" ? "🚨" : a.severity === "watch" ? "⚠️" : "💡"} {a.headline}
+                  </div>
+                  <div className="text-xs text-slate-700 leading-relaxed">{a.detail}</div>
+                </div>
+              ))}
+            </section>
+          ) : null}
 
           {/* Week at a glance + grocery */}
           {weekly && (

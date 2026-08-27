@@ -211,13 +211,20 @@ describe("dietician composition rules", () => {
     { ...baseInput, cuisine: "western", protein_pref: "vegan", goal_type: "fat_loss", conditions: ["HTN"] },
   ];
 
-  it("lunch and dinner always include a vegetable dish", () => {
-    for (const input of PROFILES) {
-      const plan = generateMealPlan(input);
-      for (const slot of ["lunch", "dinner"]) {
-        const meal = plan.meals.find((mm) => mm.slot === slot)!;
-        const hasVeg = meal.items.some((i) => i.food.food_group === "vegetable");
-        expect(hasVeg, `${slot} missing vegetable for ${input.cuisine}/${input.protein_pref}`).toBe(true);
+  it("lunch and dinner always include real vegetable content", () => {
+    // A composite dish such as a grilled-vegetable quinoa bowl counts on its
+    // own — forcing a side salad onto it would be daft — so the check is for
+    // vegetable content rather than a separate dish in the vegetable group.
+    for (const cuisine of CUISINES) {
+      for (const protein_pref of DIETS) {
+        for (let day = 0; day < 7; day++) {
+          const plan = generateMealPlan({ ...baseInput, cuisine, protein_pref }, day);
+          for (const slot of ["lunch", "dinner"]) {
+            const meal = plan.meals.find((mm) => mm.slot === slot)!;
+            const hasVeg = meal.items.some((i) => i.food.has_veg);
+            expect(hasVeg, `${cuisine}/${protein_pref} d${day} ${slot}: ${meal.items.map((i) => i.food.name).join(" + ")}`).toBe(true);
+          }
+        }
       }
     }
   });
@@ -534,6 +541,42 @@ describe("answerHealthQuestion (plan-aware Q&A)", () => {
     const plan = generateMealPlan(baseInput);
     const dinner = plan.meals.find((mm) => mm.slot === "dinner")!;
     expect(a).toContain(dinner.items[0].food.name);
+  });
+
+  it("answers micronutrient questions from the plan's real numbers", () => {
+    const vegan: OnboardingInput = { ...baseInput, protein_pref: "vegan", gender: "female", age: 35 };
+    const cases: [string, RegExp][] = [
+      ["am I getting enough B12?", /b12/i],
+      ["is my iron ok?", /iron/i],
+      ["how much salt am I eating?", /sodium/i],
+      ["how much vitamin D?", /vitamin d/i],
+      ["am I getting enough calcium?", /calcium/i],
+    ];
+    for (const [q, expected] of cases) {
+      const a = answerHealthQuestion(vegan, q);
+      expect(a, `"${q}" did not mention the nutrient`).toMatch(expected);
+      // it must quote a real figure against a target, not hand-wave
+      expect(a, `"${q}" gave no numbers`).toMatch(/\d+(\.\d+)?\s*(mg|µg|g)/);
+      expect(a, `"${q}" fell through to the generic overview`).not.toContain("I'm answering from your actual profile");
+    }
+  });
+
+  it("does not claim a shortfall meets the target", () => {
+    // the "good" band starts at 70%, but the wording must still be truthful
+    const a = answerHealthQuestion({ ...baseInput, protein_pref: "vegan" }, "how much vitamin D am I getting?");
+    if (/well short|% of/.test(a)) expect(a).not.toMatch(/\bmeets\b/);
+  });
+
+  it("explains plant protein quality rather than deflecting", () => {
+    const a = answerHealthQuestion({ ...baseInput, protein_pref: "vegan" }, "is plant protein enough for muscle?");
+    expect(a).toMatch(/lysine|methionine|leucine/i);
+    expect(a).not.toContain("I'm answering from your actual profile");
+  });
+
+  it("answers plateau questions with the diet-phase reasoning", () => {
+    const a = answerHealthQuestion(baseInput, "why have I stopped losing weight?");
+    expect(a).toMatch(/break|maintenance/i);
+    expect(a).not.toContain("I'm answering from your actual profile");
   });
 
   it("falls back to a personalised overview, never a generic canned line", () => {
