@@ -543,6 +543,13 @@ function buildFoodObj(food: Food, scale: number) {
     is_low_gi: food.gi ? food.gi < 55 : false,
     is_high_fiber: food.fiber * scale >= 5,
     has_veg: !!food.hasVeg || food.group === "vegetable",
+    // Clinical flags, exposed so safety rules can be verified end to end and
+    // the UI can explain why a food was chosen.
+    sodium_level: food.sodium,
+    oxalate_level: food.oxalate,
+    satfat_level: food.satfat,
+    is_goitrogenic: !!food.goitrogen,
+    is_high_potassium: !!food.highK,
   };
 }
 

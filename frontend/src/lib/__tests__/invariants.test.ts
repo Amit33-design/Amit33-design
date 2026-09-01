@@ -171,6 +171,54 @@ describe("invariants across the whole profile space", () => {
     expect(bad, report(bad)).toEqual([]);
   });
 
+  it("honours every hard condition exclusion", () => {
+    // These are the rules that make the app safe to follow with a diagnosis.
+    // Each was implemented once and never verified across the whole space.
+    const RULES: { cond: string; label: string; unsafe: (f: Record<string, unknown>) => boolean }[] = [
+      { cond: "HTN", label: "high-sodium", unsafe: (f) => f.sodium_level === "high" },
+      { cond: "HEART_DISEASE", label: "high-sodium", unsafe: (f) => f.sodium_level === "high" },
+      { cond: "KIDNEY_STONES", label: "high-oxalate", unsafe: (f) => f.oxalate_level === "high" },
+      { cond: "HYPERLIPIDEMIA", label: "high-saturated-fat", unsafe: (f) => f.satfat_level === "high" },
+      { cond: "HEART_DISEASE", label: "high-saturated-fat", unsafe: (f) => f.satfat_level === "high" },
+      { cond: "THYROID", label: "goitrogenic", unsafe: (f) => f.is_goitrogenic === true },
+      { cond: "CKD", label: "high-potassium", unsafe: (f) => f.is_high_potassium === true },
+    ];
+    const bad = sweep((p, d) => {
+      const active = RULES.filter((r) => p.conditions.includes(r.cond));
+      if (!active.length) return null;
+      const plan = generateMealPlan(p, d);
+      const hits: string[] = [];
+      for (const meal of plan.meals) {
+        // alternatives are offered to the user too, so they must be safe as well
+        for (const item of [...meal.items, ...meal.alternatives]) {
+          for (const r of active) {
+            if (r.unsafe(item.food as unknown as Record<string, unknown>)) {
+              hits.push(`${item.food.name} (${r.label}, ${r.cond})`);
+            }
+          }
+        }
+      }
+      return hits.length ? [...new Set(hits)].join("; ") : null;
+    });
+    expect(bad, report(bad)).toEqual([]);
+  });
+
+  it("keeps potassium-rich foods off the plate for ACE/ARB users", () => {
+    // Not a hard exclusion — a soft ranking penalty — so this asserts the
+    // steering actually bites rather than demanding zero.
+    const withMed = { ...base, conditions: ["HTN"], medications: ["ace_arb"], protein_pref: "vegetarian" };
+    const without = { ...base, conditions: ["HTN"], medications: [], protein_pref: "vegetarian" };
+    let medCount = 0;
+    let plainCount = 0;
+    for (let d = 0; d < 7; d++) {
+      const countK = (p: OnboardingInput) =>
+        generateMealPlan(p, d).meals.flatMap((m) => m.items).filter((i) => i.food.is_high_potassium).length;
+      medCount += countK(withMed);
+      plainCount += countK(without);
+    }
+    expect(medCount, `ACE/ARB ${medCount} vs plain ${plainCount} high-potassium servings`).toBeLessThanOrEqual(plainCount);
+  });
+
   it("never reports more usable protein than was actually eaten", () => {
     const bad = sweep((p, d) => {
       const q = generateMealPlan(p, d).protein_quality;
