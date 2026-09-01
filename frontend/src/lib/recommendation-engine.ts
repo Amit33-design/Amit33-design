@@ -628,6 +628,11 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     const ranked = rankedAll.filter(
       (r) => !usedIds.has(r.food.id) && (weeklyUsage?.get(r.food.id) ?? 0) < WEEKLY_AUTO_CAP
     );
+    // Same pool with only the same-day dedupe relaxed — used as a last resort
+    // when a plate would otherwise go without vegetables entirely.
+    const sameDayRelaxed = rankedAll.filter(
+      (r) => (weeklyUsage?.get(r.food.id) ?? 0) < WEEKLY_AUTO_CAP
+    );
 
     const targetCal = macros.calories * slotDef.share;
     // big calorie targets get one extra item per slot — portion scaling alone
@@ -640,12 +645,18 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     let anchors = 0;
     const groupCount: Record<string, number> = {};
 
-    const tryAdd = (food: Food): boolean => {
+    const tryAdd = (food: Food, forVegetable = false): boolean => {
       if (picked.includes(food)) return false;
       if (food.anchor && anchors >= maxAnchors) return false;
-      // meal composition: don't stack the same food group on one plate
-      const cap = (SLOT_GROUP_CAPS[food.group] ?? 1) + (highCal && HIGH_CAL_BONUS_GROUPS.has(food.group) ? 1 : 0);
-      if ((groupCount[food.group] ?? 0) >= cap) return false;
+      // Meal composition: don't stack the same food group on one plate. The
+      // one exception is a dish being added specifically to get vegetables
+      // onto the plate — a tofu-and-spinach stir-fry is filed under protein,
+      // and refusing it on that basis leaves the meal with no vegetables at
+      // all, which is the worse outcome.
+      if (!forVegetable) {
+        const cap = (SLOT_GROUP_CAPS[food.group] ?? 1) + (highCal && HIGH_CAL_BONUS_GROUPS.has(food.group) ? 1 : 0);
+        if ((groupCount[food.group] ?? 0) >= cap) return false;
+      }
       // never blow the daily protein ceiling (critical for CKD)
       if (food.p >= 8 && dayProtein + food.p > proteinCeiling) return false;
       picked.push(food);
@@ -696,6 +707,22 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
         if (r.food.group !== group) continue;
         if (tryAdd(r.food)) return true;
       }
+      // fall back to a composite dish that carries real vegetable content
+      if (group === "vegetable") {
+        for (const r of ranked) {
+          if (!r.food.hasVeg) continue;
+          if (tryAdd(r.food, true)) return true;
+        }
+        // Last resort: allow a vegetable already eaten earlier today. The
+        // same-day dedupe exists for variety, but a main meal with no
+        // vegetables at all is a worse outcome than eating a sabzi twice.
+        // The weekly cap still applies — relaxing that instead just moves the
+        // monotony from one day to the whole week.
+        for (const r of sameDayRelaxed) {
+          if (r.food.group !== "vegetable" && !r.food.hasVeg) continue;
+          if (tryAdd(r.food, true)) return true;
+        }
+      }
       return false;
     };
     if (slotDef.slot === "lunch" || slotDef.slot === "dinner") {
@@ -708,6 +735,36 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       if (picked.length >= maxItems) break;
       if (cal >= targetCal * 0.92 && picked.length >= (slotDef.needsAnchor ? 2 : 1)) break;
       tryAdd(r.food);
+    }
+
+    // Guarantee the slot is not empty. Under a tight renal protein ceiling with
+    // a narrow menu — Mediterranean vegan with kidney disease, say — every
+    // remaining food can be refused for pushing the day over its protein cap,
+    // and the user is handed a plan with no dinner at all. A small portion is
+    // always better than nothing, and the portion-scaling pass trims the day
+    // back under the cap afterwards.
+    if (picked.length === 0) {
+      const leanest = [...ranked].sort((a, b) => a.food.p - b.food.p)[0];
+      if (leanest) {
+        picked.push(leanest.food);
+        usedIds.add(leanest.food.id);
+        cal += leanest.food.cal;
+        dayProtein += leanest.food.p;
+        groupCount[leanest.food.group] = (groupCount[leanest.food.group] ?? 0) + 1;
+      }
+      // main meals still deserve a vegetable alongside it
+      if ((slotDef.slot === "lunch" || slotDef.slot === "dinner") && !picked.some((f) => f.group === "vegetable" || f.hasVeg)) {
+        const veg =
+          ranked.find((r) => (r.food.group === "vegetable" || r.food.hasVeg) && !picked.includes(r.food)) ??
+          sameDayRelaxed.find((r) => (r.food.group === "vegetable" || r.food.hasVeg) && !picked.includes(r.food));
+        if (veg) {
+          picked.push(veg.food);
+          usedIds.add(veg.food.id);
+          cal += veg.food.cal;
+          dayProtein += veg.food.p;
+          groupCount[veg.food.group] = (groupCount[veg.food.group] ?? 0) + 1;
+        }
+      }
     }
 
     const pickedIds = new Set(picked.map((f) => f.id));
@@ -767,6 +824,17 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // Calorie lever — fill the remaining calories with the energy foods.
   steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
 
+  // A dish may be the only thing bringing vegetables to a main meal even when
+  // it is filed under protein — palak dal, tofu and spinach, a vegetable kofta.
+  // Every drop pass has to respect that, or the plate quietly loses its
+  // vegetables after selection has already guaranteed them.
+  const carriesLastVegetable = (e: Entry) => {
+    const sel = selected[e.slotIdx];
+    if (!["lunch", "dinner"].includes(sel.slotDef.slot)) return false;
+    if (!(e.food.group === "vegetable" || e.food.hasVeg)) return false;
+    return sel.picked.filter((f) => f.group === "vegetable" || f.hasVeg).length <= 1;
+  };
+
   // If still well over target (very low-calorie plans), drop the lowest-priority
   // energy items until we're within reach, then re-steer.
   let guard = 0;
@@ -775,12 +843,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       .filter((e) => {
         const slotPicked = selected[e.slotIdx].picked;
         const minItems = selected[e.slotIdx].slotDef.needsAnchor ? 2 : 1;
-        // never drop a main meal's only vegetable — cut denser items instead
-        const isLastVeg =
-          e.food.group === "vegetable" &&
-          ["lunch", "dinner"].includes(selected[e.slotIdx].slotDef.slot) &&
-          slotPicked.filter((f) => f.group === "vegetable").length <= 1;
-        return !isLastVeg && slotPicked.length > minItems && slotPicked.includes(e.food);
+        return !carriesLastVegetable(e) && slotPicked.length > minItems && slotPicked.includes(e.food);
       })
       .sort((a, b) => a.dropRank - b.dropRank);
     if (!droppable.length) break;
@@ -814,7 +877,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
         .filter((e) => {
           const s = selected[e.slotIdx];
           const minItems = s.slotDef.needsAnchor ? 2 : 1;
-          return s.picked.includes(e.food) && s.picked.length > minItems;
+          return !carriesLastVegetable(e) && s.picked.includes(e.food) && s.picked.length > minItems;
         })
         .sort((a, b) => a.food.p * a.scale - b.food.p * b.scale);
       if (!cand.length) break;
@@ -877,7 +940,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       const cand = entries
         .filter((e) => {
           const s = selected[e.slotIdx];
-          return e.food.p >= 6 && s.picked.includes(e.food) && s.picked.length > 1;
+          return !carriesLastVegetable(e) && e.food.p >= 6 && s.picked.includes(e.food) && s.picked.length > 1;
         })
         .sort((a, b) => b.food.p * b.scale - a.food.p * a.scale);
       if (!cand.length) break;
@@ -1380,12 +1443,55 @@ export function generateWeeklyPlan(input: OnboardingInput) {
 
   const avgFit = Math.round(days.reduce((s, d) => s + d.plan.fit.overall, 0) / days.length);
 
+  // Nutrient consistency across the week. A single day short of iron is noise —
+  // bodies buffer day to day. Being short five days out of seven is a pattern,
+  // and it is the pattern that actually shows up in bloodwork. Judging a diet
+  // on one day's numbers is the mistake most trackers encourage.
+  const nutrientDays = new Map<string, { label: string; unit: string; isLimit: boolean; low: number; over: number; total: number; sum: number; target: number }>();
+  for (const day of days) {
+    for (const n of day.plan.nutrients) {
+      const row = nutrientDays.get(n.key) ?? {
+        label: n.label, unit: n.unit, isLimit: n.isLimit, low: 0, over: 0, total: 0, sum: 0, target: n.target,
+      };
+      row.total += 1;
+      row.sum += n.actual;
+      if (n.status === "low") row.low += 1;
+      if (n.status === "over") row.over += 1;
+      nutrientDays.set(n.key, row);
+    }
+  }
+  const nutrient_consistency = [...nutrientDays.entries()]
+    .map(([key, r]) => {
+      const daysOff = r.isLimit ? r.over : r.low;
+      const pattern: "consistent" | "occasional" | "fine" =
+        daysOff >= 4 ? "consistent" : daysOff >= 2 ? "occasional" : "fine";
+      return {
+        key,
+        label: r.label,
+        unit: r.unit,
+        isLimit: r.isLimit,
+        target: r.target,
+        average: Math.round((r.sum / r.total) * 10) / 10,
+        days_off: daysOff,
+        days_total: r.total,
+        pattern,
+        message:
+          pattern === "consistent"
+            ? `${r.isLimit ? "Over the limit" : "Short"} on ${daysOff} of ${r.total} days — this is a pattern worth acting on, not a one-off.`
+            : pattern === "occasional"
+              ? `${r.isLimit ? "Over" : "Short"} on ${daysOff} of ${r.total} days. Bodies buffer day to day, so occasional dips are normal.`
+              : `Steady across the week, averaging ${Math.round((r.sum / r.total) * 10) / 10}${r.unit}.`,
+      };
+    })
+    .sort((a, b) => b.days_off - a.days_off);
+
   return {
     week_start: days[0].date,
     week_end: days[6].date,
     avg_fit: avgFit,
     days,
     grocery,
+    nutrient_consistency,
   };
 }
 

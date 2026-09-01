@@ -22,12 +22,18 @@ interface WeekDay {
   plan: { meals: WeekMeal[]; total_calories: number; total_protein_g: number; fit: { overall: number } };
 }
 interface GroceryItem { food_id: string; name: string; local: string | null; total_qty_g: number; times: number }
+interface ConsistencyRow {
+  key: string; label: string; unit: string; isLimit: boolean; target: number;
+  average: number; days_off: number; days_total: number;
+  pattern: "consistent" | "occasional" | "fine"; message: string;
+}
 interface WeeklyPlan {
   week_start: string;
   week_end: string;
   avg_fit: number;
   days: WeekDay[];
   grocery: { label: string; items: GroceryItem[] }[];
+  nutrient_consistency: ConsistencyRow[];
 }
 
 export default function WeeklyPlanPage() {
@@ -160,6 +166,75 @@ export default function WeeklyPlanPage() {
               </div>
             </div>
           )}
+
+          {/* Nutrient patterns across the week */}
+          {week.nutrient_consistency?.length ? (() => {
+            const flagged = week.nutrient_consistency.filter((n) => n.pattern !== "fine");
+            const steady = week.nutrient_consistency.length - flagged.length;
+            return (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📈</span>
+                    <span className="font-bold text-gray-900 text-sm">Nutrient Patterns This Week</span>
+                  </div>
+                  <span className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-black",
+                    flagged.length === 0 ? "bg-emerald-100 text-emerald-700"
+                      : flagged.some((n) => n.pattern === "consistent") ? "bg-orange-100 text-orange-700"
+                      : "bg-amber-100 text-amber-700"
+                  )}>
+                    {steady}/{week.nutrient_consistency.length} steady
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mb-4">
+                  One low day is noise — your body buffers day to day. A nutrient that&apos;s short most of the week is
+                  the pattern that actually shows up in bloodwork.
+                </p>
+
+                {flagged.length === 0 ? (
+                  <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                    ✅ Every nutrient stayed on target across all seven days.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {flagged.map((n) => (
+                      <div
+                        key={n.key}
+                        className={cn(
+                          "rounded-xl border p-3",
+                          n.pattern === "consistent" ? "border-orange-200 bg-orange-50/60" : "border-amber-200 bg-amber-50/50"
+                        )}
+                      >
+                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                          <span className="text-sm font-bold text-gray-900">
+                            {n.pattern === "consistent" ? "🔴" : "🟡"} {n.label}
+                          </span>
+                          <span className="text-xs font-bold text-gray-600 tabular-nums whitespace-nowrap">
+                            avg {n.average}{n.unit} vs {n.target}{n.unit}
+                          </span>
+                        </div>
+                        <div className="flex gap-1 my-1.5">
+                          {Array.from({ length: n.days_total }).map((_, i) => (
+                            <span
+                              key={i}
+                              className={cn(
+                                "h-1.5 flex-1 rounded-full",
+                                i < n.days_off
+                                  ? n.pattern === "consistent" ? "bg-orange-400" : "bg-amber-400"
+                                  : "bg-emerald-400"
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-700 leading-relaxed">{n.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })() : null}
 
           {/* Grocery list */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-card">
