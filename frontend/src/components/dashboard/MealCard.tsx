@@ -17,6 +17,12 @@ interface FoodItem {
   glycemic_index?: number;
   is_low_gi?: boolean;
   is_high_fiber?: boolean;
+  sodium_level?: "low" | "med" | "high";
+  oxalate_level?: "low" | "high";
+  satfat_level?: "low" | "med" | "high";
+  is_goitrogenic?: boolean;
+  is_high_potassium?: boolean;
+  has_veg?: boolean;
 }
 
 interface MealItemData {
@@ -45,9 +51,30 @@ interface MealCardProps {
   mealSlot: MealSlot;
   onExplainFood?: (foodId: string) => void;
   expanded?: boolean;
+  /** condition codes, so each food can show why it is safe for this person */
+  conditions?: string[];
 }
 
-export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = false }: MealCardProps) {
+/**
+ * Badges that speak to this user's diagnosis rather than generic nutrition
+ * facts. "Low sodium" means little on its own; "keeps your blood pressure
+ * plan on track" is why the food is on the plate. Only conditions the user
+ * actually has produce a badge, so the row stays short and meaningful.
+ */
+function clinicalBadges(food: FoodItem, conditions: string[]): string[] {
+  const out: string[] = [];
+  const has = (c: string) => conditions.includes(c);
+
+  if ((has("HTN") || has("HEART_DISEASE")) && food.sodium_level === "low") out.push("Low sodium · BP-friendly");
+  if (has("KIDNEY_STONES") && food.oxalate_level === "low") out.push("Low oxalate · stone-safe");
+  if ((has("HYPERLIPIDEMIA") || has("HEART_DISEASE")) && food.satfat_level === "low") out.push("Low saturated fat");
+  if (has("CKD") && food.is_high_potassium === false) out.push("Kidney-friendly potassium");
+  if (has("THYROID") && food.is_goitrogenic === false) out.push("No goitrogens");
+  if ((has("T2D") || has("PREDIABETES")) && food.is_low_gi) out.push("Low GI · steady blood sugar");
+  return out;
+}
+
+export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = false, conditions = [] }: MealCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [items, setItems] = useState<MealItemData[]>(mealSlot.items);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
@@ -124,19 +151,24 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                 </div>
               </div>
 
-              {/* Explanation badges */}
-              {item.reason_tags && item.reason_tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {item.reason_tags.map((tag) => (
-                    <ExplainBadge key={tag} text={tag} variant="positive" />
-                  ))}
-                  {item.food.is_low_gi && <ExplainBadge text="Low GI" variant="positive" />}
-                  {item.food.is_high_fiber && <ExplainBadge text="High Fiber" variant="positive" />}
-                  {item.food.glycemic_index && (
-                    <ExplainBadge text={`GI: ${item.food.glycemic_index}`} variant="neutral" />
-                  )}
-                </div>
-              )}
+              {/* Why this food is here — condition-specific reasons first */}
+              {(() => {
+                const clinical = clinicalBadges(item.food, conditions);
+                const generic = (item.reason_tags || []).slice(0, clinical.length ? 2 : 4);
+                if (!clinical.length && !generic.length) return null;
+                return (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {clinical.map((text) => (
+                      <ExplainBadge key={text} text={text} variant="positive" />
+                    ))}
+                    {generic.map((tag) => (
+                      <ExplainBadge key={tag} text={tag} variant="neutral" />
+                    ))}
+                    {!clinical.length && item.food.is_low_gi && <ExplainBadge text="Low GI" variant="positive" />}
+                    {!clinical.length && item.food.is_high_fiber && <ExplainBadge text="High Fiber" variant="positive" />}
+                  </div>
+                );
+              })()}
 
               <div className="flex items-center gap-4 mt-1">
                 {/* AI reason or explain button */}

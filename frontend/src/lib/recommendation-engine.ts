@@ -1024,6 +1024,8 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     total_fat_g,
     total_fiber_g,
     ai_summary: buildSummary(input, macros),
+    /** conditions this plan was built for — lets the UI explain each choice */
+    conditions,
     meals,
     macro_targets: macros,
     fit,

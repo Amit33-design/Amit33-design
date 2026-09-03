@@ -22,6 +22,7 @@ export default function NutritionPage() {
   const macros = plan?.macro_targets as Record<string, number> | undefined;
   const fit = plan?.fit as { calories: number; protein: number; carbs: number; fat: number; overall: number } | undefined;
   const meals = (plan?.meals as unknown[]) || [];
+  const planConditions = (plan?.conditions as string[]) || [];
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
@@ -143,6 +144,7 @@ export default function NutritionPage() {
                 <MealCard
                   key={(meal as Record<string, unknown>).slot as string}
                   mealSlot={meal as Parameters<typeof MealCard>[0]["mealSlot"]}
+                  conditions={planConditions}
                   expanded
                 />
               ))}

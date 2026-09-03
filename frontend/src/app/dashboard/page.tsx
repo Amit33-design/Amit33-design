@@ -231,6 +231,7 @@ export default function DashboardPage() {
               <MealCard
                 key={(meal as Record<string, unknown>).slot as string}
                 mealSlot={meal as Parameters<typeof MealCard>[0]["mealSlot"]}
+                conditions={conditions}
               />
             ))}
           </div>
