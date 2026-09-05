@@ -75,22 +75,23 @@ export default function LifestylePage() {
       <div className="space-y-6">
         {/* Sleep */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Average Sleep Hours per Night</label>
+          <label htmlFor="lifestyle-sleep" className="block text-sm font-semibold text-gray-700 mb-2">Average Sleep Hours per Night</label>
           <div className="flex items-center gap-3">
             <input
+              id="lifestyle-sleep"
               type="range"
               min={3}
               max={12}
               step={0.5}
               value={lifestyle.sleep_hours || 7}
               onChange={(e) => setLifestyle({ sleep_hours: Number(e.target.value) })}
-              className="flex-1 accent-sky-500"
+              className="flex-1 h-11 accent-sky-700 cursor-pointer"
             />
             <span className="w-16 text-center text-xl font-bold text-gray-900">
               {lifestyle.sleep_hours || 7}h
             </span>
           </div>
-          <div className="mt-1 text-xs text-gray-400">Recommended: 7–9 hours for adults</div>
+          <div className="mt-1 text-xs text-gray-500">Recommended: 7–9 hours for adults</div>
         </div>
 
         {/* Stress */}
@@ -135,8 +136,9 @@ export default function LifestylePage() {
 
         {/* Alcohol */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Alcohol Consumption (units/week)</label>
+          <label htmlFor="lifestyle-alcohol" className="block text-sm font-semibold text-gray-700 mb-2">Alcohol Consumption (units/week)</label>
           <input
+            id="lifestyle-alcohol"
             type="number"
             min={0}
             max={50}
@@ -145,13 +147,14 @@ export default function LifestylePage() {
             placeholder="0"
             className="w-full md:w-40 px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none transition-all text-gray-900"
           />
-          <div className="text-xs text-gray-400 mt-1">Safe limit: 14 units/week. 1 unit = 1 small beer or glass of wine.</div>
+          <div className="text-xs text-gray-500 mt-1">Safe limit: 14 units/week. 1 unit = 1 small beer or glass of wine.</div>
         </div>
 
         {/* Water */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Daily Water Intake (liters)</label>
+          <label htmlFor="lifestyle-water" className="block text-sm font-semibold text-gray-700 mb-2">Daily Water Intake (liters)</label>
           <input
+            id="lifestyle-water"
             type="number"
             min={0}
             max={10}
@@ -177,8 +180,8 @@ export default function LifestylePage() {
             className={cn(
               "flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg transition-all",
               !submitting
-                ? "bg-gradient-to-r from-emerald-500 to-sky-600 text-white hover:scale-105 shadow-glow-green"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                ? "bg-gradient-to-r from-emerald-700 to-sky-700 text-white hover:scale-105 shadow-glow-green"
+                : "bg-gray-200 text-gray-500 cursor-not-allowed"
             )}
           >
             {submitting ? (

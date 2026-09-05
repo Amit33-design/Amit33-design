@@ -40,7 +40,7 @@ export function MedicationTracker() {
         <div className="font-bold text-gray-900 mb-1">💊 Medication Tracker</div>
         <p className="text-sm text-gray-500">
           You haven&apos;t added any medications to your profile. Add them in{" "}
-          <Link href="/onboarding/conditions" className="text-sky-600 font-semibold hover:text-sky-700">
+          <Link href="/onboarding/conditions" className="text-sky-700 font-semibold hover:text-sky-900">
             your health profile
           </Link>{" "}
           to track daily doses and get reminders here.
@@ -85,7 +85,7 @@ export function MedicationTracker() {
       <div className="p-6 pb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="font-bold text-gray-900">💊 Medication Tracker</div>
-          <div className="text-xs text-gray-400 mt-0.5">Check off each dose — saved on this device</div>
+          <div className="text-xs text-gray-500 mt-0.5">Check off each dose — saved on this device</div>
         </div>
         {allDone ? (
           <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">✓ All taken today</span>
@@ -121,9 +121,9 @@ export function MedicationTracker() {
                 <span className={cn("block text-sm font-semibold", done ? "text-emerald-800" : "text-gray-900")}>
                   {info?.label || code}
                 </span>
-                <span className="block text-xs text-gray-400 truncate">{info?.note}</span>
+                <span className="block text-xs text-gray-500 truncate">{info?.note}</span>
               </span>
-              <span className="text-xs text-gray-400 shrink-0">
+              <span className="text-xs text-gray-500 shrink-0">
                 ⏰ {reminders.times[code] || MED_DEFAULT_TIMES[code] || "08:00"}
               </span>
             </button>
@@ -145,14 +145,14 @@ export function MedicationTracker() {
                     "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
                     ratio >= 1 ? "bg-emerald-500 text-white"
                       : ratio > 0 ? "bg-amber-200 text-amber-800"
-                      : "bg-gray-100 text-gray-400",
+                      : "bg-gray-100 text-gray-600",
                     isToday && "ring-2 ring-violet-400"
                   )}
                   title={`${day.date}: ${Math.round(ratio * 100)}%`}
                 >
                   {ratio >= 1 ? "✓" : ratio > 0 ? Math.round(ratio * 100) + "%" : "–"}
                 </div>
-                <span className="text-[10px] text-gray-400">
+                <span className="text-[10px] text-gray-500">
                   {new Date(day.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "narrow" })}
                 </span>
               </div>
@@ -166,22 +166,28 @@ export function MedicationTracker() {
         <div className="flex items-center justify-between gap-3 mb-2">
           <div>
             <div className="text-sm font-bold text-gray-900">🔔 Reminder notifications</div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-600">
               Browser notification at each medication&apos;s time while healthCopilot is open.
             </div>
           </div>
+          {/* The switch stays visually 48x24; the button around it is padded out
+              to a 44px touch target, which is what an older thumb needs. */}
           <button
             onClick={handleEnableReminders}
-            className={cn(
-              "relative w-12 h-6 rounded-full transition-all shrink-0",
-              reminders.enabled ? "bg-emerald-500" : "bg-gray-300"
-            )}
+            className="shrink-0 flex items-center justify-center h-11 w-11 -my-2.5 rounded-full"
             aria-label="Toggle medication reminders"
+            role="switch"
+            aria-checked={reminders.enabled}
           >
             <span className={cn(
-              "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all",
-              reminders.enabled ? "left-6" : "left-0.5"
-            )} />
+              "relative block w-12 h-6 rounded-full transition-all",
+              reminders.enabled ? "bg-emerald-500" : "bg-gray-300"
+            )}>
+              <span className={cn(
+                "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all",
+                reminders.enabled ? "left-6" : "left-0.5"
+              )} />
+            </span>
           </button>
         </div>
 

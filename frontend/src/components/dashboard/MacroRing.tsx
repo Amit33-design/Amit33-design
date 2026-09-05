@@ -1,6 +1,6 @@
 "use client";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { MACRO_COLORS } from "@/lib/constants";
+import { MACRO_COLORS, MACRO_TEXT_COLORS } from "@/lib/constants";
 import { formatCalories } from "@/lib/utils";
 
 interface MacroRingProps {
@@ -64,7 +64,7 @@ export function MacroRing({
         {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <div className="text-2xl font-black text-gray-900">{formatCalories(calories)}</div>
-          <div className="text-xs text-gray-400 font-medium">kcal</div>
+          <div className="text-xs text-gray-500 font-medium">kcal</div>
           <div className="text-xs text-gray-500 mt-0.5">{Math.round(caloriePct)}% of goal</div>
         </div>
       </div>
@@ -72,15 +72,15 @@ export function MacroRing({
       {/* Legend */}
       <div className="grid grid-cols-3 gap-3 w-full">
         {[
-          { label: "Protein", value: protein, color: MACRO_COLORS.protein, target: targetProtein },
-          { label: "Carbs",   value: carbs,   color: MACRO_COLORS.carbs,   target: targetCarbs },
-          { label: "Fat",     value: fat,      color: MACRO_COLORS.fat,     target: targetFat },
+          { label: "Protein", value: protein, color: MACRO_TEXT_COLORS.protein, target: targetProtein },
+          { label: "Carbs",   value: carbs,   color: MACRO_TEXT_COLORS.carbs,   target: targetCarbs },
+          { label: "Fat",     value: fat,      color: MACRO_TEXT_COLORS.fat,     target: targetFat },
         ].map((m) => (
           <div key={m.label} className="text-center">
             <div className="text-lg font-black" style={{ color: m.color }}>{Math.round(m.value)}g</div>
             <div className="text-xs text-gray-500 font-medium">{m.label}</div>
             {m.target && (
-              <div className="text-xs text-gray-400 mt-0.5">/ {Math.round(m.target)}g</div>
+              <div className="text-xs text-gray-500 mt-0.5">/ {Math.round(m.target)}g</div>
             )}
           </div>
         ))}

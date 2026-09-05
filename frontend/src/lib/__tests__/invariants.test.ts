@@ -159,6 +159,43 @@ describe("invariants across the whole profile space", () => {
     expect(bad, report(bad)).toEqual([]);
   });
 
+  // generateWeeklyPlan always starts at today, so the check above only ever
+  // exercises one of the engine's date seeds. A dish served twice in a single
+  // day (the vegetable guarantee relaxes the same-day dedupe) counted once
+  // against the weekly cap, so a dish sitting at 3 uses could finish the week
+  // at 5 — invisible until the calendar happened to line up, which is how it
+  // shipped. Rebuilding the week from a sliding start date makes the guard
+  // hold whatever day the suite runs on. Vegan and vegetarian menus are the
+  // narrow ones, so that is where the cap gets stressed.
+  it("holds the weekly repetition cap from any start date", () => {
+    const tight: OnboardingInput[] = [];
+    for (const cuisine of CUISINES)
+      for (const protein_pref of ["vegan", "vegetarian"])
+        for (const goal_type of ["weight_loss", "muscle_gain"])
+          for (const conditions of [[], ["CKD"], ["T2D"]])
+            tight.push({ ...base, cuisine, protein_pref, goal_type, conditions });
+
+    const bad: string[] = [];
+    for (const p of tight) {
+      for (let start = 0; start < 14; start++) {
+        const usage = new Map<string, number>();
+        const counts = new Map<string, number>();
+        for (let d = 0; d < 7; d++) {
+          for (const meal of generateMealPlan(p, start + d, usage).meals)
+            for (const item of meal.items) {
+              const id = item.food.id.replace(/^food-/, "");
+              usage.set(id, (usage.get(id) ?? 0) + 1);
+              counts.set(item.food.name, (counts.get(item.food.name) ?? 0) + 1);
+            }
+        }
+        for (const [name, n] of counts) {
+          if (n > 4) bad.push(`${p.cuisine}/${p.protein_pref}/${p.goal_type} from day ${start}: ${name} served ${n}×`);
+        }
+      }
+    }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
   it("reports nutrient patterns for every weekly plan", () => {
     const bad: string[] = [];
     for (const p of profiles().filter((_, i) => i % 8 === 0)) {

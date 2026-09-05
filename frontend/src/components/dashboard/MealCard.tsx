@@ -115,10 +115,10 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex gap-3 text-sm text-gray-400">
+          <div className="hidden sm:flex gap-3 text-sm text-gray-500">
             <span className="text-violet-600 font-semibold">{Math.round(slotProtein)}g protein</span>
           </div>
-          <div className={cn("text-gray-400 transition-transform", expanded && "rotate-180")}>▼</div>
+          <div className={cn("text-gray-500 transition-transform", expanded && "rotate-180")}>▼</div>
         </div>
       </button>
 
@@ -132,7 +132,7 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{item.food.name}</span>
                     {item.food.name_local && (
-                      <span className="text-sm text-gray-400">({item.food.name_local})</span>
+                      <span className="text-sm text-gray-500">({item.food.name_local})</span>
                     )}
                   </div>
                   <div className="text-sm text-gray-500 mt-0.5">
@@ -146,8 +146,8 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                 </div>
                 <div className="text-right text-sm shrink-0">
                   <div className="text-violet-600 font-bold">{Math.round(item.protein_g)}g P</div>
-                  <div className="text-sky-600 font-bold">{Math.round(item.carbs_g)}g C</div>
-                  <div className="text-orange-500 font-bold">{Math.round(item.fat_g)}g F</div>
+                  <div className="text-sky-700 font-bold">{Math.round(item.carbs_g)}g C</div>
+                  <div className="text-orange-700 font-bold">{Math.round(item.fat_g)}g F</div>
                 </div>
               </div>
 
@@ -179,7 +179,7 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                 ) : onExplainFood && (
                   <button
                     onClick={() => onExplainFood(item.food.id)}
-                    className="text-xs text-violet-600 hover:text-violet-800 font-medium flex items-center gap-1"
+                    className="text-xs text-violet-700 hover:text-violet-900 font-medium flex items-center gap-1 min-h-[44px] inline-flex items-center py-2"
                   >
                     🤖 Ask AI why this was recommended →
                   </button>
@@ -188,7 +188,7 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                 {availableAlts.length > 0 && (
                   <button
                     onClick={() => setSwapIndex(swapIndex === index ? null : index)}
-                    className="text-xs text-sky-600 hover:text-sky-800 font-semibold flex items-center gap-1"
+                    className="text-xs text-sky-700 hover:text-sky-900 font-semibold flex items-center gap-1 min-h-[44px] inline-flex items-center py-2"
                   >
                     ⇄ {swapIndex === index ? "Close options" : "Swap / more options"}
                   </button>
@@ -210,13 +210,13 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-gray-900 text-sm">{alt.food.name}</span>
-                          <span className="text-xs text-gray-400 shrink-0">{formatCalories(alt.calories)} kcal</span>
+                          <span className="text-xs text-gray-500 shrink-0">{formatCalories(alt.calories)} kcal</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
                           {Math.round(alt.protein_g)}g P · {Math.round(alt.carbs_g)}g C · {Math.round(alt.fat_g)}g F
                         </div>
                         {alt.reason_tags?.length > 0 && (
-                          <div className="text-[11px] text-emerald-600 mt-1 truncate">
+                          <div className="text-[11px] text-emerald-700 mt-1 truncate">
                             {alt.reason_tags.slice(0, 3).join(" · ")}
                           </div>
                         )}

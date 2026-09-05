@@ -54,13 +54,13 @@ export function TrainingSetup({ onChange }: { onChange?: () => void }) {
             <span className="text-lg">🎒</span>
             <span className="font-bold text-gray-900 text-sm">Your Equipment &amp; Limitations</span>
           </div>
-          <div className="text-xs text-gray-400 mt-0.5">
+          <div className="text-xs text-gray-500 mt-0.5">
             {kitCount === 0 ? "No equipment" : `${kitCount} item${kitCount > 1 ? "s" : ""}`}
             {limitations.length > 0 && ` · working around ${limitations.map((l) => LIMITATION_LABEL[l].toLowerCase()).join(", ")}`}
             {" · tap to change"}
           </div>
         </div>
-        <span className={cn("text-gray-400 transition-transform text-sm", open && "rotate-180")}>▼</span>
+        <span className={cn("text-gray-500 transition-transform text-sm", open && "rotate-180")}>▼</span>
       </button>
 
       {open && (

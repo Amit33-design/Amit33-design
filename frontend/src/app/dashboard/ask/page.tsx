@@ -91,17 +91,17 @@ export default function AICopilotPage() {
     <div className="flex flex-col h-screen md:h-[calc(100vh-0px)]">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-sky-600 flex items-center justify-center text-white text-xl">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-700 to-sky-700 flex items-center justify-center text-white text-xl">
           🤖
         </div>
         <div>
           <div className="font-bold text-gray-900">healthCopilot AI</div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-gray-500">
             Aware of your conditions, goals, and today&apos;s plan
           </div>
         </div>
         <div className="ml-auto">
-          <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+          <span className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow" />
             Health Rules Active
           </span>
@@ -119,7 +119,7 @@ export default function AICopilotPage() {
             )}
           >
             {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-sky-600 flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-700 to-sky-700 flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5">
                 🤖
               </div>
             )}
@@ -127,7 +127,7 @@ export default function AICopilotPage() {
               className={cn(
                 "max-w-2xl rounded-2xl px-5 py-4 text-sm leading-relaxed",
                 msg.role === "user"
-                  ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white"
+                  ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white"
                   : "bg-white border border-gray-100 shadow-card text-gray-700"
               )}
             >
@@ -145,7 +145,7 @@ export default function AICopilotPage() {
               )}
             </div>
             {msg.role === "user" && (
-              <div className="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600 text-sm flex-shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center text-sky-700 text-sm flex-shrink-0 mt-0.5">
                 👤
               </div>
             )}
@@ -157,7 +157,7 @@ export default function AICopilotPage() {
       {/* Suggested questions — refreshed after every answer to stay contextual */}
       {suggested.length > 0 && !loading && (
         <div className="px-6 py-3 bg-white border-t border-gray-100">
-          <div className="text-xs text-gray-400 font-medium mb-2">
+          <div className="text-xs text-gray-500 font-medium mb-2">
             {messages.length < 3 ? "Suggested questions:" : "Ask next:"}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -165,7 +165,7 @@ export default function AICopilotPage() {
               <button
                 key={q}
                 onClick={() => sendMessage(q)}
-                className="px-3 py-1.5 bg-violet-50 text-violet-700 rounded-xl text-xs font-medium border border-violet-200 hover:bg-violet-100 transition-colors"
+                className="px-3.5 py-2.5 min-h-[40px] bg-violet-50 text-violet-700 rounded-xl text-xs font-medium border border-violet-200 hover:bg-violet-100 transition-colors"
               >
                 {q}
               </button>
@@ -183,6 +183,7 @@ export default function AICopilotPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
             placeholder="Ask about your nutrition, exercise, or health plan..."
+            aria-label="Ask a question about your health plan"
             className="flex-1 px-5 py-3.5 rounded-2xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none text-sm bg-gray-50 text-gray-900"
           />
           <button
@@ -191,8 +192,8 @@ export default function AICopilotPage() {
             className={cn(
               "px-5 py-3.5 rounded-2xl font-bold text-sm transition-all",
               input.trim() && !loading && userId
-                ? "bg-gradient-to-r from-violet-500 to-sky-600 text-white hover:opacity-90 shadow-glow-purple"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                ? "bg-gradient-to-r from-violet-700 to-sky-700 text-white hover:opacity-90 shadow-glow-purple"
+                : "bg-gray-100 text-gray-500 cursor-not-allowed"
             )}
           >
             {loading ? (
@@ -200,7 +201,7 @@ export default function AICopilotPage() {
             ) : "Send"}
           </button>
         </div>
-        <div className="text-xs text-gray-400 mt-2 text-center">
+        <div className="text-xs text-gray-500 mt-2 text-center">
           Educational use only — not medical advice. Consult your healthcare provider for clinical decisions.
         </div>
       </div>

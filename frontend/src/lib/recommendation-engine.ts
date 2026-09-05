@@ -579,6 +579,14 @@ const SLOT_GROUP_CAPS: Record<string, number> = {
 // groups allowed one extra dish per meal when the calorie target is very high
 const HIGH_CAL_BONUS_GROUPS = new Set(["grains", "dairy", "nuts", "protein"]);
 
+/**
+ * The most times one dish may be AUTO-served in a rolling week. The ranking
+ * penalty alone could not guarantee this: where a slot has few eligible foods,
+ * one dish would still win every day. Capped dishes stay available as swap
+ * options — this limits what we put on the plate, not what the user may choose.
+ */
+const WEEKLY_AUTO_CAP = 4;
+
 export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUsage?: Map<string, number>) {
   const macros = computeMacros(input);
   const cuisine = input.cuisine || "indian";
@@ -593,6 +601,13 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const plantForward = ["vegan", "vegetarian"].includes(input.protein_pref || "");
   let dayProtein = 0;
   const usedIds = new Set<string>(); // global dedupe → more variety across slots
+  // How many times each dish is already on TODAY's plan. The same-day dedupe
+  // is deliberately relaxed in a few places (a main meal must not go without
+  // vegetables), so a dish can legitimately be served twice in one day — and
+  // then the weekly cap has to count both, or a dish sitting at 3 uses can
+  // finish the week at 5.
+  const dayUsage = new Map<string, number>();
+  const weekCount = (id: string) => (weeklyUsage?.get(id) ?? 0) + (dayUsage.get(id) ?? 0);
 
   // ── Phase 1: SELECT which foods go in each slot (base 1× serving) ──────────
   const selected = SLOTS.map((slotDef, idx) => {
@@ -631,15 +646,12 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     // foods, one dish would still win every day. Capped dishes stay available
     // as swap options — this limits what we put on the plate, not what the
     // user may choose.
-    const WEEKLY_AUTO_CAP = 4;
     const ranked = rankedAll.filter(
-      (r) => !usedIds.has(r.food.id) && (weeklyUsage?.get(r.food.id) ?? 0) < WEEKLY_AUTO_CAP
+      (r) => !usedIds.has(r.food.id) && weekCount(r.food.id) < WEEKLY_AUTO_CAP
     );
     // Same pool with only the same-day dedupe relaxed — used as a last resort
     // when a plate would otherwise go without vegetables entirely.
-    const sameDayRelaxed = rankedAll.filter(
-      (r) => (weeklyUsage?.get(r.food.id) ?? 0) < WEEKLY_AUTO_CAP
-    );
+    const sameDayRelaxed = rankedAll.filter((r) => weekCount(r.food.id) < WEEKLY_AUTO_CAP);
 
     const targetCal = macros.calories * slotDef.share;
     // big calorie targets get one extra item per slot — portion scaling alone
@@ -654,6 +666,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
 
     const tryAdd = (food: Food, forVegetable = false): boolean => {
       if (picked.includes(food)) return false;
+      if (weekCount(food.id) >= WEEKLY_AUTO_CAP) return false;
       if (food.anchor && anchors >= maxAnchors) return false;
       // Meal composition: don't stack the same food group on one plate. The
       // one exception is a dish being added specifically to get vegetables
@@ -668,6 +681,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       if (food.p >= 8 && dayProtein + food.p > proteinCeiling) return false;
       picked.push(food);
       usedIds.add(food.id);
+      dayUsage.set(food.id, (dayUsage.get(food.id) ?? 0) + 1);
       cal += food.cal;
       dayProtein += food.p;
       groupCount[food.group] = (groupCount[food.group] ?? 0) + 1;
@@ -755,6 +769,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       if (leanest) {
         picked.push(leanest.food);
         usedIds.add(leanest.food.id);
+        dayUsage.set(leanest.food.id, (dayUsage.get(leanest.food.id) ?? 0) + 1);
         cal += leanest.food.cal;
         dayProtein += leanest.food.p;
         groupCount[leanest.food.group] = (groupCount[leanest.food.group] ?? 0) + 1;
@@ -767,6 +782,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
         if (veg) {
           picked.push(veg.food);
           usedIds.add(veg.food.id);
+          dayUsage.set(veg.food.id, (dayUsage.get(veg.food.id) ?? 0) + 1);
           cal += veg.food.cal;
           dayProtein += veg.food.p;
           groupCount[veg.food.group] = (groupCount[veg.food.group] ?? 0) + 1;

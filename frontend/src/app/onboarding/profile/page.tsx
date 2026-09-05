@@ -32,8 +32,9 @@ export default function ProfilePage() {
         {/* Name & Email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Name (optional)</label>
+            <label htmlFor="profile-name" className="block text-sm font-semibold text-gray-700 mb-2">Name (optional)</label>
             <input
+              id="profile-name"
               type="text"
               value={profile.name}
               onChange={(e) => setProfile({ name: e.target.value })}
@@ -42,8 +43,9 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email (optional)</label>
+            <label htmlFor="profile-email" className="block text-sm font-semibold text-gray-700 mb-2">Email (optional)</label>
             <input
+              id="profile-email"
               type="email"
               value={profile.email}
               onChange={(e) => setProfile({ email: e.target.value })}
@@ -55,8 +57,9 @@ export default function ProfilePage() {
 
         {/* Age */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Age <span className="text-red-500">*</span></label>
+          <label htmlFor="profile-age" className="block text-sm font-semibold text-gray-700 mb-2">Age <span className="text-red-500">*</span></label>
           <input
+            id="profile-age"
             type="number"
             value={profile.age}
             onChange={(e) => setProfile({ age: Number(e.target.value) })}
@@ -91,11 +94,12 @@ export default function ProfilePage() {
         {/* Height & Weight */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="profile-height" className="block text-sm font-semibold text-gray-700 mb-2">
               Height (cm) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
+                id="profile-height"
                 type="number"
                 value={profile.height_cm}
                 onChange={(e) => setProfile({ height_cm: Number(e.target.value) })}
@@ -104,15 +108,16 @@ export default function ProfilePage() {
                 max={300}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none transition-all text-gray-900"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">cm</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">cm</span>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="profile-weight" className="block text-sm font-semibold text-gray-700 mb-2">
               Weight (kg) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
+                id="profile-weight"
                 type="number"
                 value={profile.weight_kg}
                 onChange={(e) => setProfile({ weight_kg: Number(e.target.value) })}
@@ -121,7 +126,7 @@ export default function ProfilePage() {
                 max={500}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none transition-all text-gray-900"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">kg</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">kg</span>
             </div>
           </div>
         </div>
@@ -132,7 +137,7 @@ export default function ProfilePage() {
             <span className="text-2xl">📊</span>
             <div>
               <div className="font-bold text-sky-800">BMI: {bmi}</div>
-              <div className="text-sm text-sky-600">
+              <div className="text-sm text-sky-700">
                 {Number(bmi) < 18.5 ? "Underweight" : Number(bmi) < 25 ? "Normal weight ✓" : Number(bmi) < 30 ? "Overweight" : "Obese"}
                 {" "}— used to calibrate calorie targets
               </div>
@@ -146,8 +151,8 @@ export default function ProfilePage() {
           className={cn(
             "w-full md:w-auto px-8 py-4 rounded-xl font-bold text-lg transition-all",
             isValid
-              ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:scale-105 shadow-glow-blue"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:scale-105 shadow-glow-blue"
+              : "bg-gray-100 text-gray-500 cursor-not-allowed"
           )}
         >
           Continue to Activity →

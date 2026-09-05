@@ -66,13 +66,13 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="text-sm text-gray-400 font-medium">{todayDate}</div>
+          <div className="text-sm text-gray-500 font-medium">{todayDate}</div>
           <h1 className="text-2xl md:text-3xl font-black text-gray-900">
             {summary?.name ? `Welcome back, ${summary.name}` : "Your Health Dashboard"}
           </h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/dashboard/ask" className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-sky-600 text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+          <Link href="/dashboard/ask" className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-700 to-sky-700 text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
             🤖 Ask AI
           </Link>
           <Link href="/dashboard/report" className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
@@ -117,10 +117,10 @@ export default function DashboardPage() {
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Calorie Target",  value: macroTargets ? `${formatCalories(macroTargets.calories)} kcal` : "—", icon: "🔥", color: "text-orange-600" },
+          { label: "Calorie Target",  value: macroTargets ? `${formatCalories(macroTargets.calories)} kcal` : "—", icon: "🔥", color: "text-orange-700" },
           { label: "Protein Target",  value: macroTargets ? `${Math.round(macroTargets.protein_g)}g` : "—",        icon: "💪", color: "text-violet-600" },
-          { label: "Carb Target",     value: macroTargets ? `${Math.round(macroTargets.carbs_g)}g` : "—",          icon: "🌾", color: "text-sky-600" },
-          { label: "Goal",            value: summary?.primary_goal ? String(summary.primary_goal).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "—", icon: "🎯", color: "text-emerald-600" },
+          { label: "Carb Target",     value: macroTargets ? `${Math.round(macroTargets.carbs_g)}g` : "—",          icon: "🌾", color: "text-sky-700" },
+          { label: "Goal",            value: summary?.primary_goal ? String(summary.primary_goal).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "—", icon: "🎯", color: "text-emerald-700" },
         ].map((stat) => (
           <div key={stat.label} className="stat-card">
             <div className="text-2xl mb-2">{stat.icon}</div>
@@ -148,7 +148,7 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-400 mb-5">Plan vs Target</div>
+          <div className="text-xs text-gray-500 mb-5">Plan vs Target</div>
           {mealPlan ? (
             <MacroRing
               calories={(mealPlan.total_calories as number) || 0}
@@ -170,9 +170,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="font-bold text-gray-900">Today&apos;s Workout</div>
-              <div className="text-xs text-gray-400">{new Date().toLocaleDateString("en-US", { weekday: "long" })}</div>
+              <div className="text-xs text-gray-500">{new Date().toLocaleDateString("en-US", { weekday: "long" })}</div>
             </div>
-            <Link href="/dashboard/workouts" className="text-sm text-sky-600 font-semibold hover:text-sky-700">
+            <Link href="/dashboard/workouts" className="text-sm text-sky-700 font-semibold hover:text-sky-900 inline-flex items-center min-h-[44px] px-1">
               Full plan →
             </Link>
           </div>
@@ -183,7 +183,7 @@ export default function DashboardPage() {
                 <span className="text-4xl">😴</span>
                 <div>
                   <div className="font-bold text-emerald-800">Rest Day</div>
-                  <div className="text-sm text-emerald-600">Recovery is part of training. Light stretching is encouraged.</div>
+                  <div className="text-sm text-emerald-700">Recovery is part of training. Light stretching is encouraged.</div>
                 </div>
               </div>
             ) : (
@@ -218,9 +218,9 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-black text-gray-900">Today&apos;s Meal Plan</h2>
-            <p className="text-sm text-gray-400">Condition-aware · Explainable · AI-optimized</p>
+            <p className="text-sm text-gray-500">Condition-aware · Explainable · AI-optimized</p>
           </div>
-          <Link href="/dashboard/nutrition" className="text-sm text-sky-600 font-semibold hover:text-sky-700">
+          <Link href="/dashboard/nutrition" className="text-sm text-sky-700 font-semibold hover:text-sky-900 inline-flex items-center min-h-[44px] px-1">
             Full nutrition →
           </Link>
         </div>
@@ -259,7 +259,7 @@ export default function DashboardPage() {
           >
             <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">{item.icon}</div>
             <div className="font-bold text-gray-900 text-sm">{item.label}</div>
-            <div className="text-xs text-gray-400 mt-0.5">{item.desc}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{item.desc}</div>
           </Link>
         ))}
       </div>
@@ -268,7 +268,7 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black text-gray-900">Daily Wellness Habits</h2>
-          <span className="text-xs text-gray-400">Science-backed · Build consistency</span>
+          <span className="text-xs text-gray-500">Science-backed · Build consistency</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                 "Morning walks improve mood through serotonin release for the whole day",
               ].map((tip) => (
                 <li key={tip} className="flex items-start gap-2 text-sm text-emerald-800">
-                  <span className="text-emerald-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                  <span className="text-emerald-700 mt-0.5 flex-shrink-0">✓</span>{tip}
                 </li>
               ))}
             </ul>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                 "Improves insulin sensitivity for up to 24 hours after each session",
               ].map((tip) => (
                 <li key={tip} className="flex items-start gap-2 text-sm text-violet-800">
-                  <span className="text-violet-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                  <span className="text-violet-700 mt-0.5 flex-shrink-0">✓</span>{tip}
                 </li>
               ))}
             </ul>
@@ -330,7 +330,7 @@ export default function DashboardPage() {
                 "Choose whole grains (brown rice, oats, millets) over refined carbs every time",
               ].map((tip) => (
                 <li key={tip} className="flex items-start gap-2 text-sm text-orange-800">
-                  <span className="text-orange-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                  <span className="text-orange-700 mt-0.5 flex-shrink-0">✓</span>{tip}
                 </li>
               ))}
             </ul>
@@ -352,7 +352,7 @@ export default function DashboardPage() {
                 "Small consistent habits beat intense short bursts — compound effects take 90 days",
               ].map((tip) => (
                 <li key={tip} className="flex items-start gap-2 text-sm text-sky-800">
-                  <span className="text-sky-500 mt-0.5 flex-shrink-0">✓</span>{tip}
+                  <span className="text-sky-700 mt-0.5 flex-shrink-0">✓</span>{tip}
                 </li>
               ))}
             </ul>

@@ -88,7 +88,7 @@ export default function WeeklyPlanPage() {
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link href="/dashboard/nutrition" className="text-sm text-sky-600 font-semibold hover:text-sky-700">← Today&apos;s plan</Link>
+          <Link href="/dashboard/nutrition" className="text-sm text-sky-700 font-semibold hover:text-sky-900 inline-flex items-center min-h-[44px] px-1">← Today&apos;s plan</Link>
           <h1 className="text-2xl font-black text-gray-900 mt-1">7-Day Meal Plan</h1>
           <p className="text-gray-500 text-sm mt-1">
             {week ? `${week.week_start} → ${week.week_end} · meals rotate daily so your week stays varied` : "Building your week..."}
@@ -120,12 +120,12 @@ export default function WeeklyPlanPage() {
                 className={cn(
                   "shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all",
                   i === activeDay
-                    ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white border-transparent shadow-lg shadow-violet-500/25"
+                    ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white border-transparent shadow-lg shadow-violet-500/25"
                     : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
                 )}
               >
                 <div>{i === 0 ? "Today" : d.weekday_short}</div>
-                <div className={cn("text-xs font-medium", i === activeDay ? "text-white/80" : "text-gray-400")}>
+                <div className={cn("text-xs font-medium", i === activeDay ? "text-white/90" : "text-gray-500")}>
                   {d.date.slice(5)}
                 </div>
               </button>
@@ -148,16 +148,16 @@ export default function WeeklyPlanPage() {
                     <div className="shrink-0 w-28">
                       <div className="text-lg">{MEAL_SLOT_ICONS[meal.slot] || "🍽"}</div>
                       <div className="text-sm font-bold text-gray-900">{MEAL_SLOT_LABELS[meal.slot] || meal.slot}</div>
-                      <div className="text-xs text-gray-400">{meal.slot_calories} kcal</div>
+                      <div className="text-xs text-gray-500">{meal.slot_calories} kcal</div>
                     </div>
                     <div className="flex-1 space-y-1.5">
                       {meal.items.map((item) => (
                         <div key={item.food.id + meal.slot} className="flex items-baseline justify-between gap-3 text-sm">
                           <span className="text-gray-800 font-medium">
                             {item.food.name}
-                            {item.food.name_local && <span className="text-gray-400 font-normal"> ({item.food.name_local})</span>}
+                            {item.food.name_local && <span className="text-gray-500 font-normal"> ({item.food.name_local})</span>}
                           </span>
-                          <span className="text-gray-400 text-xs shrink-0">{item.quantity_g}g · {item.calories} kcal</span>
+                          <span className="text-gray-500 text-xs shrink-0">{item.quantity_g}g · {item.calories} kcal</span>
                         </div>
                       ))}
                     </div>
@@ -187,7 +187,7 @@ export default function WeeklyPlanPage() {
                     {steady}/{week.nutrient_consistency.length} steady
                   </span>
                 </div>
-                <p className="text-xs text-gray-400 mb-4">
+                <p className="text-xs text-gray-500 mb-4">
                   One low day is noise — your body buffers day to day. A nutrient that&apos;s short most of the week is
                   the pattern that actually shows up in bloodwork.
                 </p>
@@ -241,13 +241,13 @@ export default function WeeklyPlanPage() {
             <div className="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="font-bold text-gray-900">🛒 Grocery List for the Week</div>
-                <div className="text-xs text-gray-400 mt-0.5">
+                <div className="text-xs text-gray-500 mt-0.5">
                   {totalGroceryItems} items across {week.grocery.length} categories — quantities cover all 7 days
                 </div>
               </div>
               <button
                 onClick={copyList}
-                className="px-3 py-2 rounded-xl text-sm font-semibold bg-gray-50 border border-gray-200 text-gray-700 hover:border-violet-300 transition-all"
+                className="px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-gray-50 border border-gray-200 text-gray-700 hover:border-violet-300 transition-all"
               >
                 {copied ? "✓ Copied!" : "📋 Copy list"}
               </button>
@@ -267,7 +267,7 @@ export default function WeeklyPlanPage() {
                           <div className="w-full flex items-center gap-2.5 py-1 group">
                             <button
                               onClick={() => toggleChecked(key)}
-                              className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                              className="flex items-center gap-2.5 flex-1 min-w-0 text-left py-2 min-h-[40px]"
                             >
                               <span className={cn(
                                 "w-4 h-4 rounded border flex items-center justify-center text-white text-xs shrink-0 transition-all",
@@ -275,12 +275,12 @@ export default function WeeklyPlanPage() {
                               )}>
                                 {done && "✓"}
                               </span>
-                              <span className={cn("text-sm flex-1 min-w-0", done ? "text-gray-300 line-through" : "text-gray-700")}>
+                              <span className={cn("text-sm flex-1 min-w-0", done ? "text-gray-500 line-through" : "text-gray-700")}>
                                 {item.name}
-                                {item.local && <span className="text-gray-400"> ({item.local})</span>}
+                                {item.local && <span className="text-gray-500"> ({item.local})</span>}
                               </span>
                             </button>
-                            <span className={cn("text-xs shrink-0", done ? "text-gray-300" : "text-gray-400")}>
+                            <span className="text-xs shrink-0 text-gray-500">
                               ~{item.total_qty_g}g · {item.times}×
                             </span>
                             {recipe && (
@@ -293,8 +293,8 @@ export default function WeeklyPlanPage() {
                                   })
                                 }
                                 className={cn(
-                                  "text-xs shrink-0 px-1.5 py-0.5 rounded-md font-semibold transition-all",
-                                  showingIngredients ? "bg-violet-100 text-violet-700" : "bg-gray-50 text-gray-400 hover:text-violet-600"
+                                  "text-xs shrink-0 px-2.5 min-w-[40px] min-h-[40px] rounded-md font-semibold transition-all",
+                                  showingIngredients ? "bg-violet-100 text-violet-700" : "bg-gray-50 text-gray-600 hover:text-violet-700"
                                 )}
                                 title="Show shopping ingredients for this dish"
                               >
@@ -310,7 +310,7 @@ export default function WeeklyPlanPage() {
                               <ul className="space-y-0.5">
                                 {recipe.ingredients.map((ing) => (
                                   <li key={ing} className="text-xs text-gray-600 flex gap-1.5">
-                                    <span className="text-violet-400 shrink-0">•</span>
+                                    <span className="text-violet-700 shrink-0">•</span>
                                     <span>{ing}</span>
                                   </li>
                                 ))}
@@ -325,7 +325,7 @@ export default function WeeklyPlanPage() {
               ))}
             </div>
             <div className="px-5 pb-5">
-              <div className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
+              <div className="text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
                 💡 Quantities are the total for the week based on your tuned portions. For cooked dishes, tap 🧾 to see the raw
                 ingredients to buy — the copied list includes them automatically.
               </div>

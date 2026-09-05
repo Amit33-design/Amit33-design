@@ -82,13 +82,13 @@ export function ExerciseLogger({ exercise, targetSets, targetReps, level }: Prop
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "text-xs font-semibold flex items-center gap-1.5 transition-colors",
-          todaySets.length ? "text-emerald-600 hover:text-emerald-700" : "text-violet-600 hover:text-violet-700"
+          "text-xs font-semibold flex items-center gap-1.5 transition-colors min-h-[44px] inline-flex items-center py-2",
+          todaySets.length ? "text-emerald-700 hover:text-emerald-700" : "text-violet-600 hover:text-violet-700"
         )}
       >
         {todaySets.length ? `✓ ${todaySets.length} set${todaySets.length > 1 ? "s" : ""} logged` : "🏋️ Log weight & reps"}
         {last && !open && (
-          <span className="text-gray-400 font-normal">· last {last.weight_kg}kg × {last.reps}</span>
+          <span className="text-gray-500 font-normal">· last {last.weight_kg}kg × {last.reps}</span>
         )}
       </button>
 
@@ -102,7 +102,7 @@ export function ExerciseLogger({ exercise, targetSets, targetReps, level }: Prop
                   {s.weight_kg}kg × {s.reps}
                 </span>
               ))}
-              <button onClick={undo} className="text-xs text-gray-400 hover:text-red-500 font-semibold px-1">
+              <button onClick={undo} className="text-xs text-gray-500 hover:text-red-500 font-semibold px-1">
                 undo
               </button>
             </div>
@@ -135,8 +135,8 @@ export function ExerciseLogger({ exercise, targetSets, targetReps, level }: Prop
               className={cn(
                 "px-3 py-2 rounded-lg text-sm font-bold transition-all shrink-0",
                 weight && reps
-                  ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:opacity-90"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:opacity-90"
+                  : "bg-gray-100 text-gray-500 cursor-not-allowed"
               )}
             >
               Add set
@@ -145,7 +145,7 @@ export function ExerciseLogger({ exercise, targetSets, targetReps, level }: Prop
           {targetSets && (
             <div className="text-[11px] text-gray-500">
               Target this session: {targetSets} × {targetReps} reps
-              {todaySets.length >= targetSets && <span className="text-emerald-600 font-semibold"> · all sets done ✓</span>}
+              {todaySets.length >= targetSets && <span className="text-emerald-700 font-semibold"> · all sets done ✓</span>}
             </div>
           )}
 
@@ -155,7 +155,7 @@ export function ExerciseLogger({ exercise, targetSets, targetReps, level }: Prop
               {oneRM.value !== null ? (
                 <>
                   <span className="font-bold text-gray-800">Estimated 1-rep max: {oneRM.value} kg</span>
-                  <span className="text-gray-400"> · {oneRM.formula} formula, from {last!.weight_kg}kg × {last!.reps}</span>
+                  <span className="text-gray-500"> · {oneRM.formula} formula, from {last!.weight_kg}kg × {last!.reps}</span>
                 </>
               ) : (
                 <span className="text-gray-500">{oneRM.note}</span>
@@ -181,7 +181,7 @@ export function ExerciseLogger({ exercise, targetSets, targetReps, level }: Prop
                 {history.sessions.slice(0, 6).map((s) => (
                   <span key={s.date} className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-[11px] text-gray-600">
                     <span className="font-semibold text-gray-800">{s.best_weight}kg×{s.best_reps}</span>
-                    <span className="text-gray-400"> {s.date.slice(5)}</span>
+                    <span className="text-gray-500"> {s.date.slice(5)}</span>
                   </span>
                 ))}
               </div>

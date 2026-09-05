@@ -78,7 +78,7 @@ export default function WorkoutsPage() {
             <span className={cn("metric-chip border", FITNESS_BADGE_COLORS[plan.fitness_level as string] || "bg-gray-50 text-gray-600 border-gray-200")}>
               {String(plan.fitness_level || "beginner").replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())} Level
             </span>
-            <span className="text-xs text-gray-400">Condition-safe, dosed for weekly volume</span>
+            <span className="text-xs text-gray-500">Condition-safe, dosed for weekly volume</span>
           </div>
         )}
       </div>
@@ -125,7 +125,7 @@ export default function WorkoutsPage() {
                     {DAY_LABELS[dayName]}
                   </div>
                   <div className="text-xl mt-1">{isRest ? "😴" : "💪"}</div>
-                  {isToday && <div className="text-xs text-emerald-600 font-bold mt-0.5">Today</div>}
+                  {isToday && <div className="text-xs text-emerald-700 font-bold mt-0.5">Today</div>}
                 </button>
               );
             })}
@@ -142,7 +142,7 @@ export default function WorkoutsPage() {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
                   <div className="text-5xl mb-3">😴</div>
                   <div className="font-bold text-emerald-800 text-xl mb-2">Rest & Recovery</div>
-                  <div className="text-emerald-600 text-sm max-w-md mx-auto">
+                  <div className="text-emerald-700 text-sm max-w-md mx-auto">
                     Active recovery promotes muscle repair and prevents overtraining.
                     Light stretching, yoga, or a gentle walk is encouraged.
                   </div>

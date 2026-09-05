@@ -79,8 +79,8 @@ export default function GoalsPage() {
             className={cn(
               "flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg transition-all",
               primaryGoal
-                ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:scale-105 shadow-glow-blue"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:scale-105 shadow-glow-blue"
+                : "bg-gray-100 text-gray-500 cursor-not-allowed"
             )}
           >
             Continue to Conditions →

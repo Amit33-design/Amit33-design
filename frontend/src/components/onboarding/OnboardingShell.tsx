@@ -29,13 +29,13 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center gap-3 mb-4">
             <div
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white font-bold cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold cursor-pointer"
               onClick={() => router.push("/")}
             >
               H
             </div>
             <span className="font-bold text-gray-900">healthCopilot</span>
-            <span className="text-gray-300">|</span>
+            <span className="text-gray-500">|</span>
             <span className="text-sm text-gray-500">Build Your Health Profile</span>
           </div>
 
@@ -43,7 +43,7 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
           <div className="relative">
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-sky-500 to-violet-600 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-sky-700 to-violet-700 rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -61,8 +61,8 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all",
                       step.num < currentStep && "bg-emerald-100 text-emerald-700",
-                      step.num === currentStep && "bg-gradient-to-br from-sky-500 to-violet-600 text-white shadow-glow-blue scale-110",
-                      step.num > currentStep && "bg-gray-100 text-gray-400"
+                      step.num === currentStep && "bg-gradient-to-br from-sky-700 to-violet-700 text-white shadow-glow-blue scale-110",
+                      step.num > currentStep && "bg-gray-100 text-gray-600"
                     )}
                   >
                     {step.num < currentStep ? "✓" : step.icon}
@@ -70,7 +70,7 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
                   <span
                     className={cn(
                       "text-xs font-medium hidden sm:block",
-                      step.num === currentStep ? "text-sky-600" : step.num < currentStep ? "text-emerald-600" : "text-gray-400"
+                      step.num === currentStep ? "text-sky-700" : step.num < currentStep ? "text-emerald-700" : "text-gray-500"
                     )}
                   >
                     {step.label}
@@ -85,7 +85,7 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
       {/* Content */}
       <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-10">
         <div className="mb-8">
-          <div className="text-sm text-sky-600 font-semibold mb-1">Step {currentStep} of 6</div>
+          <div className="text-sm text-sky-700 font-semibold mb-1">Step {currentStep} of 6</div>
           <h1 className="text-3xl font-black text-gray-900">{title}</h1>
           <p className="text-gray-500 mt-2">{subtitle}</p>
         </div>

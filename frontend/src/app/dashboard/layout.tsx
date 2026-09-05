@@ -4,15 +4,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MedicationReminders } from "@/components/dashboard/MedicationReminders";
 
+// `short` is what the mobile bar shows: eight equal tabs across a 390px phone
+// leave ~48px each, and the full labels truncate to "Nutri…"/"Progr…", which
+// is harder to read than a shorter word that fits.
 const NAV_ITEMS = [
-  { href: "/dashboard",            label: "Overview",   icon: "🏠" },
-  { href: "/dashboard/nutrition",  label: "Nutrition",  icon: "🥗" },
-  { href: "/dashboard/workouts",   label: "Workouts",   icon: "💪" },
-  { href: "/dashboard/lifestyle",  label: "Lifestyle",  icon: "🌿" },
-  { href: "/dashboard/recipes",   label: "Recipes",    icon: "👨‍🍳" },
-  { href: "/dashboard/progress",  label: "Progress",   icon: "📊" },
-  { href: "/dashboard/report",    label: "Report",     icon: "📋" },
-  { href: "/dashboard/ask",       label: "AI Copilot", icon: "🤖" },
+  { href: "/dashboard",            label: "Overview",   short: "Home",   icon: "🏠" },
+  { href: "/dashboard/nutrition",  label: "Nutrition",  short: "Meals",  icon: "🥗" },
+  { href: "/dashboard/workouts",   label: "Workouts",   short: "Move",   icon: "💪" },
+  { href: "/dashboard/lifestyle",  label: "Lifestyle",  short: "Life",   icon: "🌿" },
+  { href: "/dashboard/recipes",   label: "Recipes",    short: "Cook",   icon: "👨‍🍳" },
+  { href: "/dashboard/progress",  label: "Progress",   short: "Stats",  icon: "📊" },
+  { href: "/dashboard/report",    label: "Report",     short: "Report", icon: "📋" },
+  { href: "/dashboard/ask",       label: "AI Copilot", short: "AI",     icon: "🤖" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -26,10 +29,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 fixed top-0 left-0 h-full z-20">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push("/")}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white font-bold text-lg">H</div>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold text-lg">H</div>
             <div>
               <div className="font-bold text-gray-900 text-sm">healthCopilot</div>
-              <div className="text-xs text-gray-400">AI Health Platform</div>
+              <div className="text-xs text-gray-500">AI Health Platform</div>
             </div>
           </div>
         </div>
@@ -75,12 +78,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               key={item.href}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center py-2 text-xs transition-all",
-                isActive ? "text-sky-600" : "text-gray-500"
+                // basis-0 + min-w-0 so all eight tabs get an equal slice: with the
+                // default min-width:auto the wider labels refuse to shrink and
+                // squeeze "Report"/"AI" down to a 37px touch target.
+                "flex-1 basis-0 min-w-0 flex flex-col items-center justify-center py-2.5 text-xs transition-all",
+                isActive ? "text-sky-700" : "text-gray-500"
               )}
             >
               <span className="text-xl mb-0.5">{item.icon}</span>
-              <span className="font-medium">{item.label.split(" ")[0]}</span>
+              <span className="font-medium">{item.short}</span>
             </Link>
           );
         })}

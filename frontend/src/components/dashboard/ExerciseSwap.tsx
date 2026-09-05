@@ -62,13 +62,13 @@ export function ExerciseSwap({ exercise, onSwap }: Props) {
         {options.length > 0 && (
           <button
             onClick={() => setOpen((o) => !o)}
-            className="text-xs font-semibold text-sky-600 hover:text-sky-700"
+            className="text-xs font-semibold text-sky-700 hover:text-sky-900 min-h-[44px] inline-flex items-center py-2"
           >
             ⇄ {open ? "Close" : swapped ? "Change swap" : "Swap exercise"}
           </button>
         )}
         {swapped && (
-          <button onClick={() => choose(null)} className="text-xs text-gray-400 hover:text-gray-600 font-medium">
+          <button onClick={() => choose(null)} className="text-xs text-gray-500 hover:text-gray-600 font-medium">
             undo
           </button>
         )}
@@ -92,10 +92,10 @@ export function ExerciseSwap({ exercise, onSwap }: Props) {
             >
               <div className="text-sm font-semibold text-gray-900">{o.name}</div>
               <div className="text-[11px] text-gray-500">{o.reason}</div>
-              {o.note && <div className="text-[11px] text-gray-400 mt-0.5">{o.note}</div>}
+              {o.note && <div className="text-[11px] text-gray-500 mt-0.5">{o.note}</div>}
             </button>
           ))}
-          <div className="text-[11px] text-gray-400 pt-1">
+          <div className="text-[11px] text-gray-500 pt-1">
             Showing options for: {equipment.map((e) => EQUIPMENT_LABEL[e]).join(", ")}
             {limitations.length > 0 && ` · working around ${limitations.length} limitation${limitations.length > 1 ? "s" : ""}`}
           </div>

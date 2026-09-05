@@ -48,7 +48,7 @@ export function TrainingDosePanel({ volume, volumeNote, zones, caution, stepTarg
             {inRange}/{volume.length} in range
           </span>
         </div>
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-gray-500 mb-4">
           Hard sets per muscle each week — the dose that actually drives strength and muscle. Compound lifts count half
           for the muscles they assist.
         </p>
@@ -63,9 +63,9 @@ export function TrainingDosePanel({ volume, volumeNote, zones, caution, stepTarg
                   <span className="font-semibold text-gray-700">{v.label}</span>
                   <span className={cn(
                     "font-bold tabular-nums",
-                    v.status === "under" ? "text-orange-600" : "text-gray-700"
+                    v.status === "under" ? "text-orange-700" : "text-gray-700"
                   )}>
-                    {v.sets}<span className="text-gray-400 font-normal"> sets · target {v.min}–{v.max}</span>
+                    {v.sets}<span className="text-gray-500 font-normal"> sets · target {v.min}–{v.max}</span>
                   </span>
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -89,7 +89,7 @@ export function TrainingDosePanel({ volume, volumeNote, zones, caution, stepTarg
               <span className="text-lg">❤️</span>
               <span className="font-bold text-gray-900 text-sm">Cardio Intensity</span>
             </div>
-            <p className="text-xs text-gray-400 mb-3">
+            <p className="text-xs text-gray-500 mb-3">
               How to split your cardio time — mostly easy, a little hard. There is no single magic zone.
             </p>
             <div className="space-y-2">
@@ -119,7 +119,7 @@ export function TrainingDosePanel({ volume, volumeNote, zones, caution, stepTarg
               <span className="text-lg">🚶</span>
               <span className="font-bold text-gray-900 text-sm">Daily Steps</span>
             </div>
-            <div className="text-3xl font-black bg-gradient-to-r from-sky-500 to-violet-600 bg-clip-text text-transparent my-3">
+            <div className="text-3xl font-black bg-gradient-to-r from-sky-700 to-violet-700 bg-clip-text text-transparent my-3">
               {stepTarget.toLocaleString()}
             </div>
             {stepRationale && <p className="text-xs text-gray-600 leading-relaxed">{stepRationale}</p>}

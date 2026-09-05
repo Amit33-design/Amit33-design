@@ -118,7 +118,7 @@ export default function ConditionsPage() {
                         {med.label}
                       </div>
                       {on && (
-                        <div className="text-xs text-sky-600 mt-0.5 animate-fade-in">{med.note}</div>
+                        <div className="text-xs text-sky-700 mt-0.5 animate-fade-in">{med.note}</div>
                       )}
                     </div>
                     <div className={cn("w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5", on ? "bg-sky-500 border-sky-500" : "border-gray-300")}>
@@ -135,7 +135,7 @@ export default function ConditionsPage() {
           <button onClick={() => router.back()} className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">← Back</button>
           <button
             onClick={() => router.push("/onboarding/diet")}
-            className="flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:scale-105 transition-all shadow-glow-blue"
+            className="flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:scale-105 transition-all shadow-glow-blue"
           >
             {conditions.length === 0 && medications.length === 0 ? "Skip" : `Continue →`}
           </button>

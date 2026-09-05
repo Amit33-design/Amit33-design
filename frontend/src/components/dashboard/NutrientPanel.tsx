@@ -80,7 +80,7 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
             {onTarget}/{nutrients.length} on target
           </span>
         </div>
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-gray-500 mb-4">
           Vitamins and minerals — the layer most calorie apps leave out. Targets are set from your age, sex, diet and conditions.
         </p>
 
@@ -93,19 +93,19 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
               <div key={n.key}>
                 <button
                   onClick={() => setOpenWhy(openWhy === n.key ? null : n.key)}
-                  className="w-full text-left group"
+                  className="w-full text-left group py-2 -my-0.5"
                 >
                   <div className="flex items-baseline justify-between gap-2 text-xs mb-1">
                     <span className="font-semibold text-gray-700 flex items-center gap-1">
                       {n.label}
-                      {n.isLimit && <span className="text-gray-400 font-normal">(limit)</span>}
-                      <span className="text-gray-300 group-hover:text-violet-500 transition-colors">ⓘ</span>
+                      {n.isLimit && <span className="text-gray-500 font-normal">(limit)</span>}
+                      <span className="text-gray-500 group-hover:text-violet-700 transition-colors">ⓘ</span>
                     </span>
                     <span className={cn(
                       "font-bold tabular-nums",
-                      n.status === "low" ? "text-orange-600" : n.status === "over" ? "text-red-600" : "text-gray-700"
+                      n.status === "low" ? "text-orange-700" : n.status === "over" ? "text-red-600" : "text-gray-700"
                     )}>
-                      {n.actual}<span className="text-gray-400 font-normal"> / {n.target} {n.unit}</span>
+                      {n.actual}<span className="text-gray-500 font-normal"> / {n.target} {n.unit}</span>
                     </span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -131,7 +131,7 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
               <span className="text-lg">💪</span>
               <span className="font-bold text-gray-900 text-sm">Protein Timing</span>
             </div>
-            <p className="text-xs text-gray-400 mb-3">
+            <p className="text-xs text-gray-500 mb-3">
               Muscle responds to protein per meal, not per day — aim for ~{proteinDistribution.per_meal_target_g}g in each main meal.
             </p>
             <div className="flex gap-1.5 mb-3">
@@ -139,11 +139,11 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
                 <div key={m.slot} className="flex-1 text-center">
                   <div className={cn(
                     "rounded-lg py-1.5 text-xs font-bold",
-                    m.meets ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"
+                    m.meets ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"
                   )}>
                     {m.protein_g}g
                   </div>
-                  <div className="text-[10px] text-gray-400 mt-0.5 truncate">{SLOT_SHORT[m.slot] || m.slot}</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5 truncate">{SLOT_SHORT[m.slot] || m.slot}</div>
                 </div>
               ))}
             </div>
@@ -171,7 +171,7 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
                     .map((m) => (
                       <span key={m.slot} className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
-                        m.triggers_synthesis ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
+                        m.triggers_synthesis ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"
                       )}>
                         {SLOT_SHORT[m.slot] || m.slot} {m.leucine_g}g leucine{m.complementary ? " · paired" : ""}
                       </span>
@@ -241,7 +241,7 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
             <span className="text-lg">🩺</span>
             <span className="font-bold text-gray-900 text-sm">What To Do About It</span>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Specific, actionable steps for the gaps found in today&apos;s plan.</p>
+          <p className="text-xs text-gray-500 mb-4">Specific, actionable steps for the gaps found in today&apos;s plan.</p>
           <div className="space-y-2.5">
             {actions.map((a) => {
               const s = SEVERITY[a.severity];

@@ -60,10 +60,10 @@ export default function ActivityPage() {
             </div>
             {activity.activity_level === level.value && bmr && (
               <div className="text-right">
-                <div className="text-lg font-black text-sky-600">
+                <div className="text-lg font-black text-sky-700">
                   {Math.round(bmr * TDEE_MULTIPLIERS[level.value])} kcal
                 </div>
-                <div className="text-xs text-gray-400">TDEE</div>
+                <div className="text-xs text-gray-500">TDEE</div>
               </div>
             )}
           </button>
@@ -71,9 +71,9 @@ export default function ActivityPage() {
 
         {tdee && (
           <div className="p-5 bg-gradient-to-r from-sky-50 to-violet-50 border border-sky-200 rounded-2xl animate-fade-in">
-            <div className="text-sm text-gray-500 mb-1">Your estimated daily energy need</div>
+            <div className="text-sm text-gray-600 mb-1">Your estimated daily energy need</div>
             <div className="text-4xl font-black text-sky-700">{tdee.toLocaleString()} <span className="text-xl font-normal">kcal/day</span></div>
-            <div className="text-sm text-gray-400 mt-1">The engine will adjust this based on your goal (deficit/surplus)</div>
+            <div className="text-sm text-gray-600 mt-1">The engine will adjust this based on your goal (deficit/surplus)</div>
           </div>
         )}
 
@@ -87,8 +87,8 @@ export default function ActivityPage() {
             className={cn(
               "flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg transition-all",
               activity.activity_level
-                ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:scale-105 shadow-glow-blue"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:scale-105 shadow-glow-blue"
+                : "bg-gray-100 text-gray-500 cursor-not-allowed"
             )}
           >
             Continue to Goals →

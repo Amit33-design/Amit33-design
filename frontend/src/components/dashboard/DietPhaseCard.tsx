@@ -49,7 +49,7 @@ export function DietPhaseCard({ assessment, onSetPhase }: Props) {
           {PHASE_LABEL[phase]} · week {weeks_in_phase + 1}
         </span>
       </div>
-      <p className="text-xs text-gray-400 mb-3">
+      <p className="text-xs text-gray-500 mb-3">
         Dieting in a straight line until you hit a number is how most attempts end. Phases are planned, not a failure of will.
       </p>
 
@@ -57,7 +57,7 @@ export function DietPhaseCard({ assessment, onSetPhase }: Props) {
         <div className="mb-3">
           <div className="flex justify-between text-xs mb-1">
             <span className="font-semibold text-gray-600">Burn vs predicted</span>
-            <span className={cn("font-bold", adaptation_detected ? "text-amber-600" : "text-gray-700")}>
+            <span className={cn("font-bold", adaptation_detected ? "text-amber-800" : "text-gray-700")}>
               {Math.round(adaptation_ratio * 100)}%
             </span>
           </div>
@@ -78,7 +78,7 @@ export function DietPhaseCard({ assessment, onSetPhase }: Props) {
         {recommend && (
           <button
             onClick={() => onSetPhase(recommend)}
-            className="mt-2.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:opacity-90 transition-all"
+            className="mt-2.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:opacity-90 transition-all"
           >
             Switch to {PHASE_LABEL[recommend].toLowerCase()} →
           </button>
@@ -86,7 +86,7 @@ export function DietPhaseCard({ assessment, onSetPhase }: Props) {
       </div>
 
       <div className="mt-3">
-        <button onClick={() => setPicking((p) => !p)} className="text-xs text-gray-400 hover:text-gray-600 font-semibold">
+        <button onClick={() => setPicking((p) => !p)} className="text-xs text-gray-600 hover:text-gray-900 font-semibold min-h-[44px] inline-flex items-center py-2">
           {picking ? "Close" : "Change phase manually"}
         </button>
         {picking && (

@@ -113,8 +113,8 @@ export default function ProgressPage() {
         <div>
           <h1 className="text-2xl font-black text-gray-900">Progress Tracker</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <p className="text-gray-400 text-sm">Log your daily metrics and see trends over time</p>
-            <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full font-medium">
+            <p className="text-gray-500 text-sm">Log your daily metrics and see trends over time</p>
+            <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full font-medium">
               🔒 Saved on this device
             </span>
           </div>
@@ -134,7 +134,7 @@ export default function ProgressPage() {
         <h2 className="font-bold text-gray-900 mb-4">Log Today&apos;s Metrics</h2>
 
         {/* Body metrics */}
-        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Body & Activity</div>
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Body & Activity</div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-5">
           {[
             { key: "weight_kg",         label: "Weight (kg)",       placeholder: "75.0", step: "0.1" },
@@ -160,7 +160,7 @@ export default function ProgressPage() {
         </div>
 
         {/* Live health readings */}
-        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Live Health Readings</div>
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Live Health Readings</div>
         <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700 mb-3">
           Log your daily BP and blood sugar readings — these help track how well your conditions are controlled over time.
         </div>
@@ -201,8 +201,8 @@ export default function ProgressPage() {
           className={cn(
             "px-6 py-3 rounded-xl font-bold text-sm transition-all",
             saved ? "bg-emerald-500 text-white" :
-            !saving ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:opacity-90" :
-            "bg-gray-100 text-gray-400 cursor-not-allowed"
+            !saving ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:opacity-90" :
+            "bg-gray-100 text-gray-500 cursor-not-allowed"
           )}
         >
           {saved ? "✓ Saved!" : saving ? "Saving..." : "Log Today's Data"}
@@ -286,7 +286,7 @@ export default function ProgressPage() {
           {chartData.some((d) => d.bp_systolic) && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
               <h2 className="font-bold text-gray-900 mb-1">Blood Pressure Trend 💓</h2>
-              <p className="text-xs text-gray-400 mb-4">Normal: &lt;120/80 mmHg · High: &gt;130/80 mmHg</p>
+              <p className="text-xs text-gray-500 mb-4">Normal: &lt;120/80 mmHg · High: &gt;130/80 mmHg</p>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -303,7 +303,7 @@ export default function ProgressPage() {
           {chartData.some((d) => d.sugar_fasting) && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
               <h2 className="font-bold text-gray-900 mb-1">Blood Sugar Trend 🩸</h2>
-              <p className="text-xs text-gray-400 mb-4">Fasting normal: 70–99 mg/dL · Post-meal normal: &lt;140 mg/dL</p>
+              <p className="text-xs text-gray-500 mb-4">Fasting normal: 70–99 mg/dL · Post-meal normal: &lt;140 mg/dL</p>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -348,15 +348,15 @@ export default function ProgressPage() {
                     <tr key={log.log_date} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">{log.log_date}</td>
                       <td className="px-4 py-3 text-right text-gray-600">{log.weight_kg ? `${log.weight_kg} kg` : "—"}</td>
-                      <td className={cn("px-4 py-3 text-right font-semibold text-sm", bpOk ? (bpHigh ? "text-rose-600" : "text-emerald-600") : "text-gray-400")}>
+                      <td className={cn("px-4 py-3 text-right font-semibold text-sm", bpOk ? (bpHigh ? "text-rose-600" : "text-emerald-700") : "text-gray-500")}>
                         {bpOk ? `${log.bp_systolic}/${log.bp_diastolic}` : "—"}
                       </td>
                       <td className="px-4 py-3 text-right text-sm">
-                        <span className={log.blood_sugar_fasting ? (sugarHighF ? "text-rose-600 font-semibold" : "text-emerald-600 font-semibold") : "text-gray-400"}>
+                        <span className={log.blood_sugar_fasting ? (sugarHighF ? "text-rose-600 font-semibold" : "text-emerald-700 font-semibold") : "text-gray-500"}>
                           {log.blood_sugar_fasting || "—"}
                         </span>
                         {" / "}
-                        <span className={log.blood_sugar_post_meal ? (sugarHighP ? "text-rose-600 font-semibold" : "text-emerald-600 font-semibold") : "text-gray-400"}>
+                        <span className={log.blood_sugar_post_meal ? (sugarHighP ? "text-rose-600 font-semibold" : "text-emerald-700 font-semibold") : "text-gray-500"}>
                           {log.blood_sugar_post_meal || "—"}
                         </span>
                       </td>
@@ -381,7 +381,7 @@ export default function ProgressPage() {
           <div className="text-gray-500 text-sm max-w-sm mx-auto">
             Log today&apos;s metrics above — weight, BP, blood sugar, sleep. Charts appear after 2+ entries. Your data stays on this device, no account needed.
           </div>
-          <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs text-gray-400">
+          <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs text-gray-500">
             <span className="px-3 py-1 bg-gray-50 rounded-full">🔒 Stored locally on your device</span>
             <span className="px-3 py-1 bg-gray-50 rounded-full">📵 Works offline</span>
             <span className="px-3 py-1 bg-gray-50 rounded-full">🚫 No login required</span>

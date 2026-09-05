@@ -32,9 +32,9 @@ export default function DietPage() {
         {/* Cuisine preference */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Cuisine Style <span className="text-red-400">*</span>
+            Cuisine Style <span className="text-red-600">*</span>
           </label>
-          <p className="text-xs text-gray-400 mb-3">Sets the food culture your meal plan is drawn from.</p>
+          <p className="text-xs text-gray-500 mb-3">Sets the food culture your meal plan is drawn from.</p>
           <div className="grid grid-cols-3 gap-3">
             {CUISINE_TYPES.map((ct) => (
               <button
@@ -49,7 +49,7 @@ export default function DietPage() {
               >
                 <span className="text-2xl">{ct.icon}</span>
                 <span>{ct.label}</span>
-                <span className="text-xs font-normal text-gray-400 text-center">{ct.description}</span>
+                <span className="text-xs font-normal text-gray-500 text-center">{ct.description}</span>
               </button>
             ))}
           </div>
@@ -58,9 +58,9 @@ export default function DietPage() {
         {/* Protein preference */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Protein Preference <span className="text-red-400">*</span>
+            Protein Preference <span className="text-red-600">*</span>
           </label>
-          <p className="text-xs text-gray-400 mb-3">Determines which protein sources appear in your meals.</p>
+          <p className="text-xs text-gray-500 mb-3">Determines which protein sources appear in your meals.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {PROTEIN_PREFERENCES.map((pp) => (
               <button
@@ -75,7 +75,7 @@ export default function DietPage() {
               >
                 <span className="text-2xl">{pp.icon}</span>
                 <span>{pp.label}</span>
-                <span className="text-xs font-normal text-gray-400 text-center">{pp.description}</span>
+                <span className="text-xs font-normal text-gray-500 text-center">{pp.description}</span>
               </button>
             ))}
           </div>
@@ -103,7 +103,7 @@ export default function DietPage() {
               );
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-2">Selected allergies will be excluded from all meal plans.</p>
+          <p className="text-xs text-gray-500 mt-2">Selected allergies will be excluded from all meal plans.</p>
         </div>
 
         <div className="flex gap-3 pt-2">
@@ -114,8 +114,8 @@ export default function DietPage() {
             className={cn(
               "flex-1 md:flex-none px-8 py-4 rounded-xl font-bold text-lg transition-all",
               canContinue
-                ? "bg-gradient-to-r from-sky-500 to-violet-600 text-white hover:scale-105 shadow-glow-blue"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                ? "bg-gradient-to-r from-sky-700 to-violet-700 text-white hover:scale-105 shadow-glow-blue"
+                : "bg-gray-100 text-gray-500 cursor-not-allowed"
             )}
           >
             Continue to Lifestyle →

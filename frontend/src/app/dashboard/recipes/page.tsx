@@ -66,16 +66,16 @@ function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags
         <div className="flex-1 min-w-0">
           <div className="font-bold text-gray-900 text-sm leading-tight">{name}</div>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
               🕐 {recipe.prep + recipe.cook} min total
             </span>
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full",
-              recipe.difficulty === "easy" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+              recipe.difficulty === "easy" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
             )}>
               {recipe.difficulty === "easy" ? "Easy" : "Medium"}
             </span>
-            <span className="text-xs px-2 py-0.5 bg-sky-50 text-sky-600 rounded-full">
+            <span className="text-xs px-2 py-0.5 bg-sky-50 text-sky-700 rounded-full">
               {recipe.servings} serving{recipe.servings > 1 ? "s" : ""}
             </span>
           </div>
@@ -90,7 +90,7 @@ function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags
           )}
         </div>
         <span className={cn(
-          "text-gray-400 text-sm flex-shrink-0 transition-transform mt-0.5",
+          "text-gray-500 text-sm flex-shrink-0 transition-transform mt-0.5",
           open ? "rotate-180" : ""
         )}>▼</span>
       </button>
@@ -110,7 +110,7 @@ function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags
             <ul className="space-y-1.5">
               {recipe.ingredients.map((ing, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="text-violet-400 mt-0.5 flex-shrink-0">•</span>
+                  <span className="text-violet-700 mt-0.5 flex-shrink-0">•</span>
                   <span>{ing}</span>
                 </li>
               ))}
@@ -183,7 +183,7 @@ export default function RecipesPage() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black text-gray-900">Today&apos;s Recipes</h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-gray-500 text-sm mt-1">
             How to prepare every meal in your plan — simple, homemade, healthy
           </p>
         </div>
@@ -204,7 +204,7 @@ export default function RecipesPage() {
                 setExpandSlot(slot.slot);
                 setTimeout(() => document.getElementById(`slot-${slot.slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200 hover:border-violet-300 text-xs font-semibold text-gray-600 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2.5 min-h-[40px] rounded-full bg-white border border-gray-200 hover:border-violet-300 text-xs font-semibold text-gray-600 transition-all"
             >
               {meta?.icon} {meta?.label}
             </button>
@@ -229,12 +229,12 @@ export default function RecipesPage() {
               </div>
               <div>
                 <div className="font-black text-gray-900">{meta.label}</div>
-                <div className="text-xs text-gray-400">{meta.time}</div>
+                <div className="text-xs text-gray-500">{meta.time}</div>
               </div>
               {slot.alternatives && slot.alternatives.length > 0 && (
                 <button
                   onClick={() => setShowAlts((s) => ({ ...s, [slot.slot]: !s[slot.slot] }))}
-                  className="ml-auto text-xs px-3 py-1 rounded-full border border-violet-200 text-violet-600 hover:bg-violet-50 font-semibold"
+                  className="ml-auto text-xs px-4 py-2.5 min-h-[40px] rounded-full border border-violet-200 text-violet-700 hover:bg-violet-50 font-semibold"
                 >
                   {showAlts[slot.slot] ? "Hide alternatives" : `+${slot.alternatives.length} alternatives`}
                 </button>
@@ -249,7 +249,7 @@ export default function RecipesPage() {
                   <div key={item.food.id + idx} className="relative">
                     {isAlt && (
                       <div className="absolute -top-1 left-3 z-10">
-                        <span className="text-xs px-2 py-0.5 bg-sky-100 text-sky-600 rounded-full font-semibold">
+                        <span className="text-xs px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full font-semibold">
                           Alternative
                         </span>
                       </div>
@@ -277,7 +277,7 @@ export default function RecipesPage() {
           <div className="text-gray-500 text-sm">Complete your health profile to get a personalised meal plan with recipes.</div>
           <button
             onClick={() => router.push("/onboarding/profile")}
-            className="mt-4 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white font-bold text-sm hover:opacity-90"
+            className="mt-4 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-700 to-violet-700 text-white font-bold text-sm hover:opacity-90"
           >
             Set Up My Profile →
           </button>
@@ -285,7 +285,7 @@ export default function RecipesPage() {
       )}
 
       {/* Disclaimer */}
-      <div className="text-xs text-gray-400 bg-gray-50 rounded-xl p-4">
+      <div className="text-xs text-gray-500 bg-gray-50 rounded-xl p-4">
         ⚕️ Recipes are tailored to your health profile. Serving sizes and ingredients may differ from traditional recipes to meet your nutritional targets. Always consult your doctor or dietician before making significant dietary changes.
       </div>
     </div>

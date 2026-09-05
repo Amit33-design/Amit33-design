@@ -67,7 +67,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold text-lg">
               H
             </div>
             <span className="text-xl font-bold text-gray-900">healthCopilot</span>
@@ -76,7 +76,7 @@ export default function LandingPage() {
             <span className="hidden md:block text-sm text-gray-500">Personal Health AI Platform</span>
             <Link
               href="/onboarding/profile"
-              className="px-5 py-2.5 bg-gradient-to-r from-sky-500 to-violet-600 text-white font-semibold rounded-xl text-sm hover:opacity-90 transition-opacity shadow-glow-blue"
+              className="px-5 py-2.5 bg-gradient-to-r from-sky-700 to-violet-700 text-white font-semibold rounded-xl text-sm hover:opacity-90 transition-opacity shadow-glow-blue"
             >
               Start Free →
             </Link>
@@ -110,7 +110,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 mb-16">
             <Link
               href="/onboarding/profile"
-              className="px-8 py-4 bg-gradient-to-r from-sky-400 to-violet-500 text-white font-bold rounded-2xl text-lg hover:scale-105 transition-transform shadow-2xl shadow-sky-500/30 text-center"
+              className="px-8 py-4 bg-gradient-to-r from-sky-700 to-violet-700 text-white font-bold rounded-2xl text-lg hover:scale-105 transition-transform shadow-2xl shadow-sky-500/30 text-center"
             >
               Build My Health Plan →
             </Link>
@@ -125,7 +125,7 @@ export default function LandingPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {STATS.map((stat) => (
-              <div key={stat.label} className="rounded-2xl p-5 bg-gradient-to-br from-sky-400 to-violet-500 shadow-lg shadow-violet-500/30">
+              <div key={stat.label} className="rounded-2xl p-5 bg-gradient-to-br from-sky-700 to-violet-700 shadow-lg shadow-violet-500/30">
                 <div className="text-3xl font-black text-white mb-1">{stat.value}</div>
                 <div className="text-sm text-white font-semibold">{stat.icon} {stat.label}</div>
               </div>
@@ -159,7 +159,7 @@ export default function LandingPage() {
               { label: "Your Plan",      desc: "Meals, workouts & lifestyle tips",    icon: "✅", bg: "bg-emerald-500" },
             ].map((step, i) =>
               step.label === "→" ? (
-                <div key={i} className="text-center text-3xl text-gray-300 hidden md:block">→</div>
+                <div key={i} className="text-center text-3xl text-gray-500 hidden md:block">→</div>
               ) : (
                 <div key={step.label} className="rounded-2xl p-6 bg-white border border-gray-100 shadow-card text-center">
                   <div className={`w-14 h-14 ${step.bg} rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3`}>
@@ -282,12 +282,12 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 bg-gradient-to-br from-sky-600 via-violet-600 to-emerald-600 text-white">
+      <section className="py-24 bg-gradient-to-br from-sky-700 via-violet-700 to-emerald-700 text-white">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-6xl font-black mb-6">
             Ready to meet your<br />healthCopilot?
           </h2>
-          <p className="text-xl text-white/80 mb-10 max-w-xl mx-auto">
+          <p className="text-xl text-white/90 mb-10 max-w-xl mx-auto">
             Onboard in 5 minutes. Get a condition-aware, AI-explained health plan
             that no generic app can match.
           </p>
@@ -298,7 +298,7 @@ export default function LandingPage() {
             Build My Plan — Free
             <span className="text-2xl">→</span>
           </Link>
-          <p className="mt-6 text-sm text-white/80">
+          <p className="mt-6 text-sm text-white/90">
             Not medical advice. Always consult your healthcare provider for clinical decisions.
           </p>
         </div>
@@ -308,7 +308,7 @@ export default function LandingPage() {
       <footer className="bg-slate-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center font-bold">H</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center font-bold">H</div>
             <span className="font-bold">healthCopilot</span>
           </div>
           <p className="text-sm text-slate-400">

@@ -3,12 +3,12 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL
   : "/api/v1";
 
 export const GOALS = [
-  { value: "weight_loss",               label: "Weight Loss",              icon: "⚖️", color: "text-orange-600 bg-orange-50 border-orange-200" },
-  { value: "fat_loss",                  label: "Fat Loss",                 icon: "🔥", color: "text-red-600 bg-red-50 border-red-200" },
+  { value: "weight_loss",               label: "Weight Loss",              icon: "⚖️", color: "text-orange-700 bg-orange-50 border-orange-200" },
+  { value: "fat_loss",                  label: "Fat Loss",                 icon: "🔥", color: "text-red-700 bg-red-50 border-red-200" },
   { value: "muscle_gain",               label: "Muscle Gain",              icon: "💪", color: "text-violet-600 bg-violet-50 border-violet-200" },
   { value: "maintenance",               label: "Maintain Weight",          icon: "🎯", color: "text-blue-600 bg-blue-50 border-blue-200" },
-  { value: "healthy_aging",             label: "Healthy Aging",            icon: "🌿", color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
-  { value: "cardiovascular",            label: "Improve Heart Health",     icon: "❤️", color: "text-red-600 bg-red-50 border-red-200" },
+  { value: "healthy_aging",             label: "Healthy Aging",            icon: "🌿", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+  { value: "cardiovascular",            label: "Improve Heart Health",     icon: "❤️", color: "text-red-700 bg-red-50 border-red-200" },
   { value: "diabetes_friendly",         label: "Diabetes-Friendly",        icon: "🩺", color: "text-teal-600 bg-teal-50 border-teal-200" },
   { value: "blood_pressure_management", label: "Blood Pressure Control",   icon: "💊", color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
 ];
@@ -66,6 +66,19 @@ export const MACRO_COLORS = {
   carbs:   "#0ea5e9",
   fat:     "#f97316",
   fiber:   "#10b981",
+};
+
+/**
+ * Darker twins of MACRO_COLORS for use as TEXT. The vivid 500-level shades
+ * read well as chart fills but land at 2.6-4.2:1 on white, under the 4.5:1
+ * WCAG AA floor — which matters here because the numbers they colour are the
+ * actual macro figures, and a good share of this app's users are older adults.
+ */
+export const MACRO_TEXT_COLORS = {
+  protein: "#6d28d9",
+  carbs:   "#0369a1",
+  fat:     "#c2410c",
+  fiber:   "#047857",
 };
 
 export const CONDITION_COLORS: Record<string, string> = {

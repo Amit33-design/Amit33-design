@@ -33,7 +33,7 @@ export default function NutritionPage() {
         </div>
         <Link
           href="/dashboard/nutrition/weekly"
-          className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-500 to-violet-600 text-white shadow-lg shadow-violet-500/25 hover:opacity-95 transition-all"
+          className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-700 to-violet-700 text-white shadow-lg shadow-violet-500/25 hover:opacity-95 transition-all"
         >
           📅 7-Day Plan &amp; Grocery List →
         </Link>
@@ -46,7 +46,7 @@ export default function NutritionPage() {
             <div className="flex items-center gap-2">
               <span className="text-lg">🎯</span>
               <span className="font-bold text-gray-900 text-sm">Plan Match</span>
-              <span className="text-xs text-gray-400">how closely your portions hit today&apos;s targets</span>
+              <span className="text-xs text-gray-500">how closely your portions hit today&apos;s targets</span>
             </div>
             <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${fit.overall >= 85 ? "bg-emerald-100 text-emerald-700" : fit.overall >= 70 ? "bg-amber-100 text-amber-700" : "bg-orange-100 text-orange-700"}`}>
               {fit.overall}%
@@ -107,7 +107,7 @@ export default function NutritionPage() {
                   <div className={`w-8 h-8 ${m.color} rounded-xl flex items-center justify-center text-sm mb-3`}>{m.icon}</div>
                   <div className="text-xl font-black text-gray-900">{m.value}</div>
                   <div className="text-sm font-semibold text-gray-700">{m.label}</div>
-                  <div className="text-xs text-gray-400">{m.sub}</div>
+                  <div className="text-xs text-gray-500">{m.sub}</div>
                 </div>
               ))}
             </div>

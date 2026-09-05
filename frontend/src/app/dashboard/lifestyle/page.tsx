@@ -34,7 +34,7 @@ export default function LifestylePage() {
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-black text-gray-900">Lifestyle Recommendations</h1>
-        <p className="text-gray-400 text-sm mt-1">Personalized for your health profile and conditions</p>
+        <p className="text-gray-500 text-sm mt-1">Personalized for your health profile and conditions</p>
       </div>
 
       {/* Condition-specific notes */}
@@ -74,7 +74,7 @@ export default function LifestylePage() {
                   <ul className="space-y-1.5">
                     {med.tips.map((tip, j) => (
                       <li key={j} className="flex items-start gap-2 text-sm text-gray-700">
-                        <span className="text-sky-400 mt-0.5 flex-shrink-0">→</span> {tip}
+                        <span className="text-sky-700 mt-0.5 flex-shrink-0">→</span> {tip}
                       </li>
                     ))}
                   </ul>
@@ -82,7 +82,7 @@ export default function LifestylePage() {
               );
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-gray-500 mt-4">
             ⚠️ This is general guidance only. Always follow your doctor&apos;s specific instructions for your medication.
           </p>
         </div>
@@ -95,14 +95,14 @@ export default function LifestylePage() {
             <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-xl">💧</div>
             <div>
               <div className="font-bold text-gray-900">Daily Hydration Target</div>
-              <div className="text-3xl font-black text-sky-600">{String(hydration.target_liters)}L</div>
+              <div className="text-3xl font-black text-sky-700">{String(hydration.target_liters)}L</div>
             </div>
           </div>
           <div className="text-sm text-gray-600 mb-4">{String(hydration.reason)}</div>
           <div className="grid grid-cols-2 gap-2">
             {((hydration.tips as string[]) || []).map((tip: string, i: number) => (
               <div key={i} className="flex items-start gap-2 text-sm text-gray-600 bg-sky-50 rounded-xl p-3">
-                <span className="text-sky-400 mt-0.5">→</span> {tip}
+                <span className="text-sky-700 mt-0.5">→</span> {tip}
               </div>
             ))}
           </div>
@@ -127,7 +127,7 @@ export default function LifestylePage() {
           <div className="grid grid-cols-2 gap-2">
             {((sleep.tips as string[]) || []).map((tip: string, i: number) => (
               <div key={i} className="flex items-start gap-2 text-sm text-gray-600 bg-indigo-50 rounded-xl p-3">
-                <span className="text-indigo-400 mt-0.5">→</span> {tip}
+                <span className="text-indigo-700 mt-0.5">→</span> {tip}
               </div>
             ))}
           </div>
@@ -202,7 +202,7 @@ export default function LifestylePage() {
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-semibold text-gray-900 text-sm">{String(practice.name)}</span>
                       <span className="text-xs px-2 py-0.5 bg-violet-200 text-violet-700 rounded-full">{String(practice.duration)}</span>
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{String(practice.level)}</span>
+                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{String(practice.level)}</span>
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">{String(practice.description)}</div>
                   </div>
@@ -216,7 +216,7 @@ export default function LifestylePage() {
               const app = a as Record<string, unknown>;
               return (
                 <span key={i} className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full">
-                  {String(app.name)} <span className="text-gray-400">— {String(app.note)}</span>
+                  {String(app.name)} <span className="text-gray-600">— {String(app.note)}</span>
                 </span>
               );
             })}
