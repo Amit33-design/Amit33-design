@@ -24,16 +24,19 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 flex flex-col">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center gap-3 mb-4">
-            <div
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold cursor-pointer"
+            <button
+              type="button"
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold shrink-0"
               onClick={() => router.push("/")}
+              aria-label="healthCopilot — go to home page"
             >
-              H
-            </div>
+              <span aria-hidden="true">H</span>
+            </button>
             <span className="font-bold text-gray-900">healthCopilot</span>
             <span className="text-gray-500">|</span>
             <span className="text-sm text-gray-500">Build Your Health Profile</span>
@@ -83,14 +86,14 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
       </div>
 
       {/* Content */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-10">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-4xl mx-auto w-full px-6 py-10">
         <div className="mb-8">
           <div className="text-sm text-sky-700 font-semibold mb-1">Step {currentStep} of 6</div>
           <h1 className="text-3xl font-black text-gray-900">{title}</h1>
           <p className="text-gray-500 mt-2">{subtitle}</p>
         </div>
         <div className="animate-slide-up">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

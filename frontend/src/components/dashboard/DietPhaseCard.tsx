@@ -86,7 +86,7 @@ export function DietPhaseCard({ assessment, onSetPhase }: Props) {
       </div>
 
       <div className="mt-3">
-        <button onClick={() => setPicking((p) => !p)} className="text-xs text-gray-600 hover:text-gray-900 font-semibold min-h-[44px] inline-flex items-center py-2">
+        <button onClick={() => setPicking((p) => !p)} aria-expanded={picking} className="text-xs text-gray-600 hover:text-gray-900 font-semibold min-h-[44px] inline-flex items-center py-2">
           {picking ? "Close" : "Change phase manually"}
         </button>
         {picking && (

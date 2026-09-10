@@ -93,6 +93,7 @@ export function NutrientPanel({ nutrients, actions, glycemicLoad, naK, proteinDi
               <div key={n.key}>
                 <button
                   onClick={() => setOpenWhy(openWhy === n.key ? null : n.key)}
+                  aria-expanded={openWhy === n.key}
                   className="w-full text-left group py-2 -my-0.5"
                 >
                   <div className="flex items-baseline justify-between gap-2 text-xs mb-1">

@@ -64,7 +64,8 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* NAV */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <nav aria-label="Primary" className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold text-lg">
@@ -84,8 +85,10 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      <main id="main-content" tabIndex={-1}>
       {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-sky-950 to-violet-950 text-white">
+      {/* on-dark switches the focus ring to its light twin over the dark hero */}
+      <section className="on-dark relative overflow-hidden bg-gradient-to-br from-slate-900 via-sky-950 to-violet-950 text-white">
         {/* Decorative orbs */}
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-sky-500/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
@@ -304,8 +307,10 @@ export default function LandingPage() {
         </div>
       </section>
 
+      </main>
+
       {/* FOOTER */}
-      <footer className="bg-slate-900 text-white py-12">
+      <footer className="on-dark bg-slate-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center font-bold">H</div>

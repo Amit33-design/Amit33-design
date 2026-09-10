@@ -62,6 +62,7 @@ export function ExerciseSwap({ exercise, onSwap }: Props) {
         {options.length > 0 && (
           <button
             onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
             className="text-xs font-semibold text-sky-700 hover:text-sky-900 min-h-[44px] inline-flex items-center py-2"
           >
             ⇄ {open ? "Close" : swapped ? "Change swap" : "Swap exercise"}

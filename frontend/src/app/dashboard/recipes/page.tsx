@@ -234,6 +234,7 @@ export default function RecipesPage() {
               {slot.alternatives && slot.alternatives.length > 0 && (
                 <button
                   onClick={() => setShowAlts((s) => ({ ...s, [slot.slot]: !s[slot.slot] }))}
+                  aria-expanded={!!showAlts[slot.slot]}
                   className="ml-auto text-xs px-4 py-2.5 min-h-[40px] rounded-full border border-violet-200 text-violet-700 hover:bg-violet-50 font-semibold"
                 >
                   {showAlts[slot.slot] ? "Hide alternatives" : `+${slot.alternatives.length} alternatives`}

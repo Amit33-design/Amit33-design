@@ -101,6 +101,7 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -188,6 +189,7 @@ export function MealCard({ mealSlot, onExplainFood, expanded: defaultExpanded = 
                 {availableAlts.length > 0 && (
                   <button
                     onClick={() => setSwapIndex(swapIndex === index ? null : index)}
+                    aria-expanded={swapIndex === index}
                     className="text-xs text-sky-700 hover:text-sky-900 font-semibold flex items-center gap-1 min-h-[44px] inline-flex items-center py-2"
                   >
                     ⇄ {swapIndex === index ? "Close options" : "Swap / more options"}

@@ -95,7 +95,7 @@ export default function AICopilotPage() {
           🤖
         </div>
         <div>
-          <div className="font-bold text-gray-900">healthCopilot AI</div>
+          <h1 className="font-bold text-gray-900 text-base">healthCopilot AI</h1>
           <div className="text-xs text-gray-500">
             Aware of your conditions, goals, and today&apos;s plan
           </div>
@@ -109,7 +109,13 @@ export default function AICopilotPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50 to-white">
+      <div
+        className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50 to-white"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-label="Conversation with your health copilot"
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}

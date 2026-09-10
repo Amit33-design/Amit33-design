@@ -22,6 +22,50 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+ * Focus indicator. The app relied on the browser default, which Tailwind's
+ * `outline-none` strips from every input (leaving only a pale border-colour
+ * change) and which is nearly invisible on the coloured and gradient buttons
+ * this app is full of. One explicit, high-contrast ring on :focus-visible
+ * covers every control — keyboard users get the same clear indicator
+ * everywhere, and mouse users still see nothing.
+ */
+:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Dark surfaces (the landing hero, the report header) need the light twin. */
+.on-dark :focus-visible,
+[class*="bg-slate-9"] :focus-visible {
+  outline-color: #bfdbfe;
+}
+
+/*
+ * Skip link: without it a keyboard user tabs through all eight navigation
+ * items before reaching page content, on every single page.
+ */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.75rem 1.25rem;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f5f9; }
