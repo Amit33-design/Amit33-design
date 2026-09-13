@@ -111,6 +111,19 @@ const FOODS: Food[] = [
   { id: "idli", name: "Idli (3) + Sambar", local: "Idli", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 200, cal: 230, p: 9, c: 44, f: 2, fiber: 4, gi: 60, sodium: "med", oxalate: "low", satfat: "low", tags: ["Fermented", "Light", "Plant Protein"] },
   { id: "moong-chilla", name: "Moong Dal Chilla (2)", local: "Chilla", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 150, cal: 210, p: 14, c: 26, f: 5, fiber: 5, gi: 40, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Low GI"] },
   { id: "turmeric-milk", name: "Turmeric Milk", local: "Haldi Doodh", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["breakfast", "evening_snack"], qty: 250, cal: 130, p: 7, c: 14, f: 5, fiber: 0, sodium: "low", oxalate: "low", satfat: "med", tags: ["Anti-Inflammatory", "Bone Health", "Curcumin"] },
+  /*
+   * Low-protein energy foods. A renal diet restricts protein but must still
+   * deliver full calories, which means energy that carries almost none — fats
+   * and refined starch. The library had no `fats` group at all and every grain
+   * in it is whole-grain (5-18 g protein), so a CKD plan had nothing to make
+   * up calories with and landed at roughly half its target. These also fill a
+   * plain gap: olive oil is a Mediterranean staple and was missing entirely.
+   * They are ordinary foods, not renal-only — the condition rules (satfat for
+   * heart/lipids, GI for diabetes) exclude them where they do not belong.
+   */
+  { id: "olive-oil", name: "Extra Virgin Olive Oil (drizzle)", group: "fats", cuisines: ALL, diet: "vegan", slots: ["lunch", "dinner", "breakfast"], qty: 14, cal: 120, p: 0, c: 0, f: 14, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", tags: ["Heart Healthy", "Monounsaturated Fat"] },
+  { id: "ghee", name: "Ghee (1 tsp)", local: "Ghee", group: "fats", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner", "breakfast"], qty: 10, cal: 112, p: 0, c: 0, f: 12, fiber: 0, sodium: "low", oxalate: "low", satfat: "high", tags: ["Traditional Fat", "Fat-Soluble Vitamins"] },
+  { id: "white-rice", name: "Steamed White Rice", local: "Chawal", group: "grains", cuisines: ["indian", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 205, p: 4, c: 45, f: 0, fiber: 1, gi: 73, sodium: "low", oxalate: "low", satfat: "low", tags: ["Easy to Digest", "Low Potassium"] },
   { id: "brown-rice", name: "Brown Rice", group: "grains", cuisines: ["indian", "western"], diet: "vegan", slots: ["lunch", "dinner"], qty: 150, cal: 215, p: 5, c: 45, f: 2, fiber: 4, gi: 50, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "Complex Carbs", "High Fiber"] },
   { id: "roti", name: "Whole Wheat Roti (2)", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 80, cal: 240, p: 8, c: 44, f: 5, fiber: 5, gi: 62, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Fiber", "Whole Grain"] },
   { id: "bajra-roti", name: "Bajra Roti", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 60, cal: 175, p: 5, c: 35, f: 3, fiber: 5, gi: 55, sodium: "low", oxalate: "low", satfat: "low", tags: ["Bone Health", "Magnesium", "Whole Grain"] },
@@ -521,6 +534,9 @@ function scaleBounds(food: Food): [number, number] {
     case "fruit": return [0.75, 1.5];
     case "vegetable": return [0.75, 1.75];
     case "grains": return [0.5, 1.75];
+    // Pure-fat items are a drizzle, so the serving is small and stretching it
+    // is how a low-protein plan makes up calories without adding protein.
+    case "fats": return [0.5, 2.5];
     case "protein":
     case "dairy":
     case "legumes": return [0.75, 1.8];
@@ -574,7 +590,7 @@ function toMealItem(food: Food, slot: Slot, scale = 1) {
 // variety across groups beats doubling within one.
 const SLOT_GROUP_CAPS: Record<string, number> = {
   protein: 1, legumes: 1, grains: 1, dairy: 1, vegetable: 2,
-  fruit: 1, nuts: 1, seeds: 1, beverage: 1,
+  fruit: 1, nuts: 1, seeds: 1, beverage: 1, fats: 1,
 };
 // groups allowed one extra dish per meal when the calorie target is very high
 const HIGH_CAL_BONUS_GROUPS = new Set(["grains", "dairy", "nuts", "protein"]);
@@ -799,7 +815,10 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       .slice(0, 10)
       .map((r) => r.food);
 
-    return { slotDef, picked, altFoods };
+    // The renal energy refill needs the whole safe pool, not just the ten
+    // ranked alternatives — the low-protein energy foods it wants are exactly
+    // the ones preference ranking puts last.
+    return { slotDef, picked, altFoods, pool: rankedAll.map((r) => r.food) };
   });
 
   // ── Phase 2: SIZE the portions so day totals converge on the user's targets ─
@@ -827,6 +846,21 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const sumBy = (list: Entry[], fn: (e: Entry) => number) => list.reduce((a, e) => a + fn(e), 0);
   const dayCal = () => sumBy(entries, (e) => e.food.cal * e.scale);
   const dayProt = () => sumBy(entries, (e) => e.food.p * e.scale);
+  const dayFat = () => sumBy(entries, (e) => e.food.f * e.scale);
+
+  // Grow-only variant, used by the calorie top-up: steering toward the target
+  // can SHRINK, which silently undid the item just added and left the plan no
+  // better off than before.
+  const steerUp = (list: Entry[], current: number, target: number, valueOf: (e: Entry) => number) => {
+    if (current >= target || !list.length) return;
+    const base = sumBy(list, (e) => valueOf(e) * e.scale) || 1;
+    const want = Math.max(0, target - (current - base));
+    const factor = Math.max(1, want / base);
+    for (const e of list) {
+      const [, hi] = scaleBounds(e.food);
+      e.scale = Math.min(hi, e.scale * factor);
+    }
+  };
 
   // Distribute a scale across a list to move a running total toward `target`.
   const steer = (list: Entry[], current: number, target: number, valueOf: (e: Entry) => number) => {
@@ -973,6 +1007,132 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       entries.splice(entries.indexOf(v), 1);
     }
   }
+
+  /*
+   * A plan has to DELIVER the calories it prescribes.
+   *
+   * This matters most for renal plans, which is where it was found, but the
+   * same gap appears wherever the target is high and portion bounds run out.
+   *
+   * The trim above removes protein to respect the renal cap, and it also
+   * removes everything those foods were contributing in energy. Nothing put
+   * the energy back: CKD plans were landing at roughly half their calorie
+   * target — a 2460 kcal prescription served as 869 kcal.
+   *
+   * That is harmful in the exact direction the protein cap exists to prevent.
+   * Under-feeding a renal patient makes the body burn lean tissue for fuel,
+   * which RAISES urea — so an under-fed low-protein plan defeats its own
+   * purpose and costs the patient muscle. Renal dietitians answer this with
+   * low-protein energy foods (rice, oils, fruit), which is what this does:
+   * first re-steer the energy portions that the trim shrank, then add further
+   * low-protein items from the slot's own safe alternatives, cheapest protein
+   * per calorie first, never breaching the cap.
+   */
+  if (dayCal() < macros.calories * 0.92) {
+    // Only near-zero-protein items may be stretched here. Scaling the grains
+    // back up would push protein straight back over the renal cap, and
+    // correcting THAT by shrinking them again just re-removes the calories —
+    // the loop this pass exists to break.
+    const isLowProteinEnergy = (e: Entry) =>
+      e.food.group !== "beverage" && e.food.p / Math.max(e.food.cal, 1) < 0.02;
+    const stretchable = entries.filter(isLowProteinEnergy);
+    // Buying calories per gram of protein, left unbounded, buys oil: a renal
+    // plan came out at 235 g fat against a 75 g target, four-fifths of its
+    // energy from fat. Cap the fat this pass may reach so the rest of the
+    // energy has to come from carbohydrate, which is what a renal plan
+    // actually looks like.
+    // Tied to the plan's own fat target, not to a share of calories: a
+    // generous-but-explainable overshoot, so the remaining energy has to come
+    // from carbohydrate. If carbohydrate cannot cover it either, the plan
+    // stays short and says so — which is the honest outcome, and better than
+    // a plan whose fat reads 0% against target on the user's own screen.
+    const fatCeiling = macros.fat_g * 1.35;
+    const trimFatTo = (ceiling: number) => {
+      let over = dayFat() - ceiling;
+      if (over <= 0) return;
+      for (const e of entries
+        .filter((e2) => e2.food.f > 0)
+        .sort((x, y) => y.food.f * y.scale - x.food.f * x.scale)) {
+        if (over <= 0) break;
+        const [lo] = scaleBounds(e.food);
+        const cut = Math.min(e.scale - lo, over / Math.max(e.food.f, 0.1));
+        if (cut <= 0.01) continue;
+        e.scale -= cut;
+        over -= cut * e.food.f;
+      }
+    };
+    steerUp(stretchable, dayCal(), macros.calories, (e) => e.food.cal);
+    trimFatTo(fatCeiling);
+
+    let addGuard = 0;
+    while (dayCal() < macros.calories * 0.92 && addGuard++ < 16) {
+      type Pick = { food: Food; slotIdx: number; score: number };
+      // annotated because TS cannot see that the forEach callback below runs,
+      // and would otherwise narrow `best` to never after the null check
+      let best: Pick | null = null;
+      selected.forEach(({ slotDef, picked, pool }, slotIdx) => {
+        // keep plates plausible — this pass tops a slot up, it does not
+        // rebuild it
+        if (picked.length >= slotDef.maxItems + 2) return;
+        for (const food of pool) {
+          if (picked.includes(food)) continue;
+          if (food.cal <= 0) continue;
+          if (dayProt() + food.p > (proteinCap ? proteinTarget : proteinCeiling)) continue;
+          if (dayFat() + food.f > fatCeiling) continue;
+          // This pass adds straight to the plate, so it has to honour the
+          // weekly variety cap itself — bypassing tryAdd once put the same
+          // dish on the plan 14 times in a week. Cooking fats are exempt on
+          // purpose: a drizzle of oil is not a dish you get bored of, and it
+          // is the only energy a renal plan can add without protein.
+          if (food.group !== "fats" && weekCount(food.id) >= WEEKLY_AUTO_CAP) continue;
+          // Under a renal cap the scarce resource is protein, so buy energy
+          // per gram of it (and steer away from potassium, which also
+          // accumulates). Without a cap the plan is simply short of food, so
+          // take the biggest contributor that still fits the plate.
+          const score = proteinCap
+            ? food.cal / Math.max(food.p, 0.5) - (food.highK ? 40 : 0)
+            : food.cal;
+          if (!proteinCap) {
+            const cap = SLOT_GROUP_CAPS[food.group] ?? 1;
+            const used = picked.filter((f) => f.group === food.group).length;
+            if (used >= cap) continue; // keep ordinary plates composed sanely
+          }
+          if (!best || score > best.score) best = { food, slotIdx, score };
+        }
+      });
+      if (!best) break;
+      const { food, slotIdx } = best as Pick;
+      selected[slotIdx].picked.push(food);
+      usedIds.add(food.id);
+      dayUsage.set(food.id, (dayUsage.get(food.id) ?? 0) + 1);
+      const entry: Entry = {
+        food, slotIdx, scale: 1, role: "energy",
+        dropRank: selected[slotIdx].slotDef.share * 100,
+      };
+      entries.push(entry);
+      if (isLowProteinEnergy(entry)) stretchable.push(entry);
+      else energyItems.push(entry);
+      steerUp(stretchable, dayCal(), macros.calories, (e) => e.food.cal);
+      trimFatTo(fatCeiling);
+    }
+
+    // Stretching may cost calories but never the renal cap: white rice is
+    // nearly protein-free per calorie, not entirely, so a 2.5x portion still
+    // adds a few grams. Pull back only the items this pass stretched —
+    // touching anything else would re-open the loop described above.
+    if (proteinCap && dayProt() > proteinTarget) {
+      let over = dayProt() - proteinTarget;
+      for (const e of [...stretchable].sort((a, b) => b.food.p * b.scale - a.food.p * a.scale)) {
+        if (over <= 0) break;
+        const [lo] = scaleBounds(e.food);
+        const cut = Math.min(e.scale - lo, over / Math.max(e.food.p, 0.1));
+        if (cut <= 0.01) continue;
+        e.scale -= cut;
+        over -= cut * e.food.p;
+      }
+    }
+  }
+
   const scaleOf = (food: Food) => entries.find((e) => e.food === food)?.scale ?? 1;
 
   // ── Phase 3: MATERIALISE meals with their tuned portions ───────────────────
@@ -1024,7 +1184,10 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const micro_targets = computeMicroTargets(input);
   const nutrients = analyseMicros(micros, micro_targets);
   const glycemic_load = glycemicLoad(meals);
-  const nutrient_actions = buildNutrientActions(input, nutrients, lowSodiumCooking);
+  const nutrient_actions = buildNutrientActions(input, nutrients, lowSodiumCooking, {
+    delivered: total_calories,
+    target: macros.calories,
+  });
   const protein_distribution = analyseProteinDistribution(meals, macros.protein_per_meal_g);
   const na_k_ratio = sodiumPotassiumRatio(micros);
   // Protein quality: grams are not equivalent, and plant eaters need the
@@ -1225,12 +1388,26 @@ export interface NutrientAction {
 function buildNutrientActions(
   input: OnboardingInput,
   nutrients: NutrientStatus[],
-  lowSodiumCooking: boolean
+  lowSodiumCooking: boolean,
+  energy?: { delivered: number; target: number }
 ): NutrientAction[] {
   const diet = input.protein_pref || "vegetarian";
   const plantOnly = diet === "vegan" || diet === "vegetarian";
   const out: NutrientAction[] = [];
   const get = (k: keyof Micros) => nutrients.find((n) => n.key === k);
+
+  // A renal protein cap and a full calorie target can genuinely conflict: at
+  // 0.75 g/kg almost all the energy has to come from foods carrying no
+  // protein, and ordinary ingredients run out before the target is met. When
+  // that happens, say so. Quietly serving a short plan is the worse outcome —
+  // under-eating on a low-protein diet makes the body break down muscle,
+  // which raises urea and undoes the point of restricting protein.
+  if (input.conditions.includes("CKD") && energy && energy.delivered < energy.target * 0.85) {
+    const short = Math.round(energy.target - energy.delivered);
+    out.push({ nutrient: "Energy", severity: "critical",
+      headline: "This plan is short on calories — that matters more with kidney disease",
+      detail: `Today's meals come to about ${Math.round(energy.delivered)} kcal against your ${Math.round(energy.target)} kcal target, roughly ${short} kcal short. Keeping protein at the renal limit leaves very few everyday foods that can carry the rest of the energy. Eating too little on a low-protein diet makes your body break down its own muscle for fuel, which pushes urea UP — the opposite of what the protein limit is for. Close the gap with foods that add calories but almost no protein: an extra drizzle of oil or ghee, white rice or sago in place of whole grains, and stewed low-potassium fruit. Renal dietitians also use low-protein specialty flours and pasta for exactly this. Please go through your energy intake with your kidney team.` });
+  }
 
   const b12 = get("b12_ug");
   if (b12 && b12.status !== "low" && diet === "vegan") {
@@ -1259,6 +1436,16 @@ function buildNutrientActions(
     out.push({ nutrient: "Vitamin D", severity: "watch",
       headline: "Vitamin D is hard to get from food alone",
       detail: `Your plan supplies about ${vitD.actual} µg of the ${vitD.target} µg target — that is normal, since very few foods contain it${plantOnly ? " and the richest sources are oily fish and egg yolk" : ""}. Aim for 15–20 minutes of midday sunlight on arms and face, and ask your doctor to check your level; deficiency is very common even in sunny countries.` });
+  }
+
+  // The plan already refuses every food flagged high-potassium, yet a
+  // whole-food renal plan still lands well above a 2000 mg restriction —
+  // moderate-potassium foods add up. Saying nothing implied the limit was met.
+  const potassium = get("potassium_mg");
+  if (input.conditions.includes("CKD") && potassium && potassium.status === "over") {
+    out.push({ nutrient: "Potassium", severity: "critical",
+      headline: "Potassium runs above your renal limit — here is how to bring it down",
+      detail: `Today's plan comes to about ${potassium.actual} mg against a ${potassium.target} mg restriction. High-potassium foods are already excluded, but vegetables, dal and fruit all carry potassium, so a whole-food plan adds up past the limit. Two things help more than swapping dishes: boil vegetables and potatoes in plenty of water and throw the water away (this leaches out a useful share), and keep portions of dal, fruit and curd modest rather than cutting them out. Your own limit depends on your blood results — bring this number to your kidney team rather than treating it as fixed.` });
   }
 
   const iron = get("iron_mg");
@@ -1485,6 +1672,28 @@ export function generateWeeklyPlan(input: OnboardingInput) {
       nutrientDays.set(n.key, row);
     }
   }
+  /*
+   * "A pattern worth acting on" is the right thing to say about most nutrients
+   * and the wrong thing to say about a few. The daily view already tells a
+   * user that vitamin D barely exists in food and that B12 has to come from
+   * fortification — then the weekly view told the same user to act on it as
+   * if a different dinner would fix it. Two surfaces contradicting each other
+   * is worse than either message alone, so the ones food cannot fix say so.
+   */
+  const consistentMessage = (
+    key: string,
+    r: { isLimit: boolean; label: string; total: number },
+    daysOff: number
+  ) => {
+    if (key === "vitamin_d_ug")
+      return `Low on ${daysOff} of ${r.total} days — expected, not a failure of the plan. Almost no food carries vitamin D, so this is a sunlight-and-supplement question rather than a menu one. Worth asking your doctor for a blood level.`;
+    if (key === "b12_ug")
+      return `Short on ${daysOff} of ${r.total} days. B12 comes from fortified foods or a supplement, never from plants themselves — changing which vegetables you eat will not move it.`;
+    if (key === "potassium_mg" && r.isLimit)
+      return `Above your renal limit on ${daysOff} of ${r.total} days. Whole foods are potassium-rich, so a plan built from them runs high even with the richest foods excluded. Boiling vegetables and draining the water removes a useful share, and smaller portions of dal, fruit and potato help. Please review this with your kidney team — your own limit depends on your blood results.`;
+    return `${r.isLimit ? "Over the limit" : "Short"} on ${daysOff} of ${r.total} days — this is a pattern worth acting on, not a one-off.`;
+  };
+
   const nutrient_consistency = [...nutrientDays.entries()]
     .map(([key, r]) => {
       const daysOff = r.isLimit ? r.over : r.low;
@@ -1502,7 +1711,7 @@ export function generateWeeklyPlan(input: OnboardingInput) {
         pattern,
         message:
           pattern === "consistent"
-            ? `${r.isLimit ? "Over the limit" : "Short"} on ${daysOff} of ${r.total} days — this is a pattern worth acting on, not a one-off.`
+            ? consistentMessage(key, r, daysOff)
             : pattern === "occasional"
               ? `${r.isLimit ? "Over" : "Short"} on ${daysOff} of ${r.total} days. Bodies buffer day to day, so occasional dips are normal.`
               : `Steady across the week, averaging ${Math.round((r.sum / r.total) * 10) / 10}${r.unit}.`,

@@ -893,6 +893,21 @@ export const RECIPES: Record<string, Recipe> = {
     tip: "The fibre in vegetables + protein in hummus creates a combination that keeps you full for 2–3 hours without a blood sugar spike.",
   },
 
+  "white-rice": {
+    prep: 2, cook: 15, servings: 2, difficulty: "easy",
+    ingredients: [
+      "1 cup white rice",
+      "2 cups water",
+      "Pinch of salt (skip if you are watching sodium)",
+    ],
+    steps: [
+      "Rinse the rice until the water runs clear — this also washes off surface starch.",
+      "For a kidney-friendly version, boil the rice in plenty of extra water, then drain it; some potassium leaches into the water.",
+      "Otherwise bring 2 cups water to a boil, add the rice, cover and cook on the lowest heat for 12-15 min.",
+      "Rest covered for 5 min, then fluff with a fork.",
+    ],
+    tip: "Lower in potassium and phosphorus than brown rice, which is why renal diets often prefer it — the fibre trade-off is worth it when those minerals are restricted.",
+  },
   "brown-rice": {
     prep: 2, cook: 35, servings: 2, difficulty: "easy",
     ingredients: [

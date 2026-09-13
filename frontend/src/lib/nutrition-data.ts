@@ -198,6 +198,14 @@ export const NUTRIENTS: Record<string, NutrientTuple> = {
 
   // ── Beverages ─────────────────────────────────────────────────────────────
   "green-tea":         [  4,  20,   0, 0.0, 0.0, 0.0,  2, 0.00,  0.0, 0.0, 1],
+
+  // ── Low-protein energy (fats, refined starch) ─────────────────────────────
+  // Fats carry essentially no minerals, which is exactly why a renal plan
+  // leans on them; white rice is deliberately lower in potassium and
+  // phosphorus than the brown rice it stands in for.
+  "olive-oil":         [  0,   1,   0, 0.1, 0.0, 0.0,  0, 0.10,  1.9, 0.0, 1],
+  "ghee":              [  0,   1,   0, 0.0, 0.0, 0.2,  0, 0.05,  7.5, 0.0, 1],
+  "white-rice":        [  2,  55,  15, 0.4, 0.0, 0.0, 19, 0.00,  0.1, 0.1, 1],
 };
 
 /** Food-group fallbacks (per 100 kcal) for any food missing an explicit row. */
@@ -211,6 +219,7 @@ const GROUP_FALLBACK: Record<string, NutrientTuple> = {
   nuts:      [ 10, 180, 55, 1.0, 0.0, 0.0, 65, 0.30, 1.4, 2.0, 1],
   seeds:     [  5, 140, 50, 1.1, 0.0, 0.0, 70, 1.50, 0.8, 0.5, 1],
   beverage:  [  5,  30,  5, 0.0, 0.0, 0.0,  3, 0.00, 0.0, 1.0, 1],
+  fats:      [  0,   1,  0, 0.0, 0.0, 0.0,  0, 0.10, 4.0, 0.0, 1],
 };
 
 const KEYS: (keyof Micros)[] = [

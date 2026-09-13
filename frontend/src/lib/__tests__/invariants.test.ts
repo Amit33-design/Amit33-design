@@ -151,7 +151,13 @@ describe("invariants across the whole profile space", () => {
       const counts = new Map<string, number>();
       for (const day of week.days)
         for (const meal of day.plan.meals)
-          for (const item of meal.items) counts.set(item.food.name, (counts.get(item.food.name) ?? 0) + 1);
+          for (const item of meal.items) {
+            // Cooking fats are exempt from the variety cap by design — a
+            // drizzle of oil is a cooking medium, not a dish, and it is the
+            // only energy a renal plan can add without protein.
+            if (item.food.food_group === "fats") continue;
+            counts.set(item.food.name, (counts.get(item.food.name) ?? 0) + 1);
+          }
       for (const [name, n] of counts) {
         if (n > 4) bad.push(`${p.cuisine}/${p.protein_pref}: ${name} served ${n}×`);
       }
@@ -185,6 +191,10 @@ describe("invariants across the whole profile space", () => {
             for (const item of meal.items) {
               const id = item.food.id.replace(/^food-/, "");
               usage.set(id, (usage.get(id) ?? 0) + 1);
+              // Cooking fats are deliberately exempt from the variety cap —
+              // a drizzle of oil is a cooking medium, not a dish, and real
+              // meals use one most days.
+              if (item.food.food_group === "fats") continue;
               counts.set(item.food.name, (counts.get(item.food.name) ?? 0) + 1);
             }
         }
@@ -193,6 +203,26 @@ describe("invariants across the whole profile space", () => {
         }
       }
     }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
+  // The plan has to actually DELIVER the calories it prescribes. Nothing
+  // checked this: the macro test asserts the TARGET clears BMR, and the CKD
+  // test asserts protein stays under the renal cap — so a renal plan that met
+  // both while serving 869 kcal against a 2460 kcal prescription passed
+  // everything. Under-eating on a protein-restricted diet burns lean tissue
+  // and raises urea, which is precisely what the cap exists to prevent.
+  it("delivers the calories it prescribes, or says why it cannot", () => {
+    const bad = sweep((p, d) => {
+      const plan = generateMealPlan(p, d);
+      const ratio = plan.total_calories / plan.macro_targets.calories;
+      if (ratio >= 0.85) return null;
+      // A renal cap and a full energy target can genuinely conflict. That is
+      // allowed — going quiet about it is not.
+      const flagged = (plan.nutrient_actions ?? []).some((a) => a.nutrient === "Energy");
+      if (p.conditions.includes("CKD") && flagged) return null;
+      return `delivers ${Math.round(plan.total_calories)} of ${plan.macro_targets.calories} kcal (${Math.round(ratio * 100)}%)${flagged ? "" : " with no shortfall warning"}`;
+    });
     expect(bad, report(bad)).toEqual([]);
   });
 
