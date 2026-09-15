@@ -13,7 +13,7 @@
  *   - Strictest health rule wins when multiple conditions conflict
  */
 
-import { getMicros, Micros } from "./nutrition-data";
+import { getMicros, Micros, freeSugars } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
 import { analyseDayProtein } from "./protein-quality";
@@ -821,6 +821,75 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     return { slotDef, picked, altFoods, pool: rankedAll.map((r) => r.food) };
   });
 
+  /*
+   * ── Phase 1b: bring the day's SODIUM under its limit, by swapping dishes ──
+   *
+   * Sodium is the one target you cannot portion your way out of: halving a
+   * salty dish halves its calories too, and the plan needs those. The ranking
+   * penalty is per-food and has no idea what is already on the plate, so three
+   * individually-reasonable 400 mg dishes stacked up — a quarter of days broke
+   * their limit and the worst ran to nearly double it, which matters most for
+   * the hypertension and kidney users the limit exists for.
+   *
+   * So swap instead: replace the saltiest dish with the least salty option the
+   * same slot already offers, keeping the plate's shape (same food group, same
+   * anchor role, still carrying its vegetables, similar calories) so nothing
+   * downstream has to be re-derived.
+   */
+  {
+    const sodiumLimit =
+      computeMicroTargets(input).find((t) => t.key === "sodium_mg")?.target ?? 2300;
+    const lowSodiumCook =
+      conditions.includes("HTN") || conditions.includes("HEART_DISEASE") || conditions.includes("CKD");
+    // mirror the cooking-salt model used when the day is finally totalled, or
+    // this pass would be optimising a different number than the one reported
+    const naOf = (f: Food) => {
+      const m = getMicros(f.id, f.group, f.cal);
+      return m.sodium_mg * (lowSodiumCook && m.nova >= 3 ? 0.25 + 0.75 * 0.5 : 1);
+    };
+    const daySodium = () =>
+      selected.reduce((sum, sel) => sum + sel.picked.reduce((a, f) => a + naOf(f), 0), 0);
+
+    let swapGuard = 0;
+    while (daySodium() > sodiumLimit && swapGuard++ < 8) {
+      let best: { slotIdx: number; from: Food; to: Food; saving: number } | null = null;
+      selected.forEach(({ picked, pool }, slotIdx) => {
+        for (const from of picked) {
+          for (const to of pool) {
+            if (picked.includes(to) || usedIds.has(to.id)) continue;
+            if (weekCount(to.id) >= WEEKLY_AUTO_CAP) continue;
+            if (to.group !== from.group) continue;
+            if (!!to.anchor !== !!from.anchor) continue;
+            // a swap must not cost the plate its vegetables
+            if ((from.group === "vegetable" || from.hasVeg) && !(to.group === "vegetable" || to.hasVeg)) continue;
+            // nor wreck the calorie fit the portion pass is about to solve
+            if (Math.abs(to.cal - from.cal) > from.cal * 0.5) continue;
+            const saving = naOf(from) - naOf(to);
+            if (saving < 50) continue; // not worth churning the menu for
+            // The saltiest plant dishes — soya chunks, soya keema, chickpea
+            // salads — are also the iron-rich ones, so a naive swap trades a
+            // sodium problem for an iron one. Measured: iron-short profiles
+            // rose from 10 to 17 before this guard.
+            const fromM = getMicros(from.id, from.group, from.cal);
+            const toM = getMicros(to.id, to.group, to.cal);
+            if (toM.iron_mg < fromM.iron_mg * 0.75) continue;
+            const satRank = { low: 0, med: 1, high: 2 } as const;
+            if (satRank[to.satfat] > satRank[from.satfat]) continue;
+            if (!best || saving > best.saving) best = { slotIdx, from, to, saving };
+          }
+        }
+      });
+      if (!best) break;
+      const { slotIdx, from, to } = best as { slotIdx: number; from: Food; to: Food; saving: number };
+      const picked = selected[slotIdx].picked;
+      picked[picked.indexOf(from)] = to;
+      usedIds.delete(from.id);
+      usedIds.add(to.id);
+      dayUsage.set(from.id, Math.max(0, (dayUsage.get(from.id) ?? 1) - 1));
+      dayUsage.set(to.id, (dayUsage.get(to.id) ?? 0) + 1);
+    }
+  }
+
   // ── Phase 2: SIZE the portions so day totals converge on the user's targets ─
   // The two macros are steered by *separate* levers so they don't fight:
   //   • protein-dense foods are scaled to hit the protein target
@@ -1078,7 +1147,12 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           if (picked.includes(food)) continue;
           if (food.cal <= 0) continue;
           if (dayProt() + food.p > (proteinCap ? proteinTarget : proteinCeiling)) continue;
-          if (dayFat() + food.f > fatCeiling) continue;
+          // The fat ceiling exists to stop this pass buying oil, not to block
+          // a 300 kcal rice dish carrying 4 g of fat. Only foods that are
+          // mostly fat by energy are held to it; total fat is pulled back by
+          // trimFatTo afterwards either way.
+          const fatDominant = (food.f * 9) / Math.max(food.cal, 1) > 0.45;
+          if (fatDominant && dayFat() + food.f > fatCeiling) continue;
           // This pass adds straight to the plate, so it has to honour the
           // weekly variety cap itself — bypassing tryAdd once put the same
           // dish on the plan 14 times in a week. Cooking fats are exempt on
@@ -1326,9 +1400,11 @@ function sumMicros(
       total.magnesium_mg += m.magnesium_mg * scale;
       total.omega3_g += m.omega3_g * scale;
       total.satfat_g += m.satfat_g * scale;
-      // free sugars only — whole fruit and plain dairy sugars don't count
-      const intrinsic = item.food.food_group === "fruit" || rawId === "low-fat-curd" || rawId === "greek-yogurt" || rawId === "buttermilk";
-      if (!intrinsic) total.sugar_g += m.sugar_g * scale;
+      // Free sugars only. This used to subtract a hardcoded list of four
+      // intrinsic-sugar foods from the total, which left vegetables, lactose
+      // and whole grains counting as added sugar; `freeSugars` knows which
+      // dishes actually carry any.
+      total.sugar_g += freeSugars(rawId) * scale;
       novaSum += m.nova;
       items += 1;
     }

@@ -208,6 +208,51 @@ export const NUTRIENTS: Record<string, NutrientTuple> = {
   "white-rice":        [  2,  55,  15, 0.4, 0.0, 0.0, 19, 0.00,  0.1, 0.1, 1],
 };
 
+/**
+ * Free sugars, per serving.
+ *
+ * "Free sugars" (WHO/SACN) means added sugar, honey and syrups, plus sugars
+ * liberated by blending or pureeing fruit — NOT the sugars naturally present
+ * in whole fruit, vegetables, milk or whole grains. In this library only two
+ * things introduce them: a handful of recipes with a sweetener, and blended
+ * fruit. Everything else is intrinsic and contributes zero.
+ *
+ * This exists because the engine previously counted a dish's TOTAL sugar as
+ * free sugar for everything except fruit and three named dairy items, so
+ * roasted vegetables, yogurt dressing, whole-wheat pasta and a banana on
+ * toast all scored as added sugar — and 214 of 300 plans reported breaching
+ * a limit they were nowhere near. That is a bad number to show a diabetic.
+ *
+ * Values are estimates from the recipes: the sweetener quantity, plus the
+ * fruit portion where the dish is blended. Milk and yogurt lactose is
+ * excluded throughout.
+ */
+const FREE_SUGARS: Record<string, number> = {
+  // blended fruit — SACN counts these as free because blending releases the
+  // sugars from the fruit's cell walls (and they spike glucose accordingly)
+  "banana-pb-smoothie":   14, // banana; the rest is milk lactose
+  "smoothie-bowl":        16, // blended fruit + optional honey
+  "date-almond-smoothie": 28, // blended dates
+  "dates-nut-laddoo":     18, // dates processed into a paste
+
+  // added sweetener in the recipe
+  "yogurt-parfait":        6, // honey
+  "granola-yogurt":       13, // honey + granola's own sugar
+  "turmeric-milk":         3, // honey; ~11 g of the total is lactose
+  "overnight-oats-vegan":  2, // maple syrup
+  "muesli-yogurt":         6, // sweetened muesli
+  "fruit-yogurt":          7, // commercial fruit yogurt
+  "soy-milk":              4, // sweetened fortified soy milk
+};
+
+/**
+ * Free sugars for one serving. Anything not listed carries none: its sugars
+ * come from whole fruit, vegetables, milk or grain.
+ */
+export function freeSugars(foodId: string): number {
+  return FREE_SUGARS[foodId] ?? 0;
+}
+
 /** Food-group fallbacks (per 100 kcal) for any food missing an explicit row. */
 const GROUP_FALLBACK: Record<string, NutrientTuple> = {
   protein:   [150, 220, 30, 1.0, 0.4, 0.3, 30, 0.10, 1.5, 1.0, 2],

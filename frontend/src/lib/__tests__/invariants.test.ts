@@ -226,6 +226,28 @@ describe("invariants across the whole profile space", () => {
     expect(bad, report(bad)).toEqual([]);
   });
 
+  // Free sugars means added sugar, honey/syrups and blended fruit — NOT the
+  // sugars in vegetables, milk or whole grain. The engine used to count a
+  // dish's total sugar for everything except fruit and three named dairy
+  // items, so roasted vegetables and a yogurt dressing scored as added sugar
+  // and 214 of 300 plans reported breaching a limit they were nowhere near.
+  it("counts only genuinely-added sugars as free sugars", () => {
+    const SWEETENED = ["smoothie", "granola", "parfait", "muesli", "laddoo", "turmeric-milk", "overnight-oats", "fruit-yogurt", "soy-milk"];
+    const bad = sweep((p, d) => {
+      const plan = generateMealPlan(p, d);
+      const sugar = plan.nutrients.find((n) => n.key === "sugar_g");
+      if (!sugar || sugar.actual === 0) return null;
+      // any free sugar on the plate must be traceable to a dish that has some
+      const carriers = plan.meals
+        .flatMap((m) => m.items)
+        .filter((i) => SWEETENED.some((k) => i.food.id.includes(k)));
+      return carriers.length === 0
+        ? `${sugar.actual} g free sugars but no dish on the plate contains added or blended sugar`
+        : null;
+    }, 2);
+    expect(bad, report(bad)).toEqual([]);
+  });
+
   it("reports nutrient patterns for every weekly plan", () => {
     const bad: string[] = [];
     for (const p of profiles().filter((_, i) => i % 8 === 0)) {
