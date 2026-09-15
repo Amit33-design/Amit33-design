@@ -1972,6 +1972,7 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Reverse lunges", sets: 3, reps: 12, rest_sec: 60 },
         { exercise: "Glute bridge", sets: 3, reps: 15, rest_sec: 45 },
         { exercise: "Plank hold", sets: 3, duration_sec: 40, rest_sec: 45 },
+        { exercise: "Calf raise", sets: 3, reps: 15, rest_sec: 30 },
       ],
       cooldown: [{ exercise: "Full-body stretch", duration_sec: 240 }],
     },
@@ -2103,6 +2104,7 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Romanian deadlift (light)", sets: 3, reps: 10, rest_sec: 75 },
         { exercise: "Shoulder press (seated)", sets: 3, reps: 10, rest_sec: 60 },
         { exercise: "Plank hold", sets: 3, reps: 1, rest_sec: 45 },
+        { exercise: "Calf raise", sets: 3, reps: 15, rest_sec: 30 },
       ],
       cooldown: [{ exercise: "Full-body static stretching", duration_sec: 240 }],
     },
@@ -2123,6 +2125,56 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Core: Dead bug", sets: 3, reps: 10, rest_sec: 45 },
       ],
       cooldown: [{ exercise: "Foam rolling + hip flexor stretch", duration_sec: 300 }],
+    },
+  },
+  /*
+   * Older adults had exactly ONE template carrying sets. Because the weekly
+   * planner picks by set-coverage, that single session won every training day
+   * — a 68-year-old choosing "healthy aging" was handed the identical workout
+   * three times a week, forever, and the goal made no difference at all. The
+   * planner was doing its job; the library had one strength session where it
+   * needed several. These two add the movement patterns it was missing:
+   * standing/upright work (posture, grip, balance under load) and power plus
+   * carries (sit-to-stand speed predicts independence better than raw strength).
+   */
+  {
+    id: "wo-senior-standing", name: "Standing Strength & Posture (55+)",
+    goals: ["healthy_aging", "maintenance", "cardiovascular", "weight_loss", "blood_pressure_management"], levels: ["older_adult"], contra: [],
+    duration_min: 30, equipment: ["resistance_band", "chair"],
+    description: "Upright counterpart to the seated session — trains balance under load, posture and grip, which seated work cannot reach. Hold a chair back whenever you need to.",
+    instructions: {
+      warmup: [{ exercise: "Marching on the spot + shoulder rolls", duration_sec: 240 }],
+      main_circuit: [
+        { exercise: "Sit-to-stand (chair squat)", sets: 3, reps: 12, rest_sec: 60 },
+        { exercise: "Resistance band row", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Wall push-up", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Band overhead press", sets: 3, reps: 10, rest_sec: 45 },
+        { exercise: "Standing hamstring curl", sets: 3, reps: 12, rest_sec: 40 },
+        { exercise: "Calf raise (holding chair back)", sets: 3, reps: 15, rest_sec: 40 },
+        { exercise: "Standing side bend", sets: 2, reps: 12, rest_sec: 30 },
+        { exercise: "Bird dog", sets: 3, reps: 10, rest_sec: 40 },
+      ],
+      cooldown: [{ exercise: "Standing stretches — calves, chest, hip flexors", duration_sec: 240 }],
+    },
+  },
+  {
+    id: "wo-senior-power", name: "Everyday Power & Carry (55+)",
+    goals: ["healthy_aging", "maintenance", "cardiovascular", "weight_loss"], levels: ["older_adult"], contra: [],
+    duration_min: 30, equipment: ["dumbbells", "chair"],
+    description: "Moves you can do quickly, not just slowly. Standing up fast and carrying the shopping are what keep you independent — train the speed, not only the strength. Move up briskly, lower under control.",
+    instructions: {
+      warmup: [{ exercise: "Seated marching + ankle circles", duration_sec: 240 }],
+      main_circuit: [
+        { exercise: "Sit-to-stand (chair squat)", sets: 4, reps: 8, rest_sec: 75 },
+        { exercise: "Step-up", sets: 3, reps: 10, rest_sec: 60 },
+        { exercise: "Dumbbell row (supported on chair)", sets: 3, reps: 12, rest_sec: 45 },
+        { exercise: "Incline push-up", sets: 3, reps: 10, rest_sec: 45 },
+        { exercise: "Single-leg glute bridge", sets: 3, reps: 8, rest_sec: 45 },
+        { exercise: "Front raise (water bottles)", sets: 2, reps: 12, rest_sec: 40 },
+        { exercise: "Seated calf raise", sets: 3, reps: 15, rest_sec: 40 },
+        { exercise: "Dead bug", sets: 3, reps: 10, rest_sec: 40 },
+      ],
+      cooldown: [{ exercise: "Seated stretching — quads, hamstrings, shoulders", duration_sec: 240 }],
     },
   },
   {
@@ -2183,6 +2235,7 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Pike push-up (shoulders)", sets: 3, reps: 10, rest_sec: 45 },
         { exercise: "Superman hold (back)", sets: 3, reps: 12, rest_sec: 30 },
         { exercise: "Plank + shoulder tap", sets: 3, reps: 16, rest_sec: 45 },
+        { exercise: "Calf raise", sets: 3, reps: 15, rest_sec: 30 },
       ],
       cooldown: [{ exercise: "Child's pose, pigeon pose, chest opener — 4 min", duration_sec: 240 }],
     },
@@ -2272,7 +2325,7 @@ export function generateWorkoutPlan(input: OnboardingInput) {
     }
     return out;
   };
-  const pickNext = (used: Set<string>): ExerciseTemplate => {
+  const pickNext = (used: Map<string, number>): ExerciseTemplate => {
     let best = shuffled[0];
     let bestScore = -Infinity;
     for (const t of shuffled) {
@@ -2283,19 +2336,24 @@ export function generateWorkoutPlan(input: OnboardingInput) {
         const have = setsSoFar[muscle] ?? 0;
         score += sets / (1 + have); // diminishing value once a muscle is covered
       }
-      if (used.has(t.id)) score -= 1.5; // prefer variety across the week
+      // Variety across the week, proportional rather than a flat nudge: a
+      // fixed -1.5 could not outweigh a coverage score of 15, so wherever one
+      // template dominated set-coverage it took every training day. Dividing
+      // by uses halves a session's appeal the second time and thirds it the
+      // third, which rotates the week without letting a muscle go untrained.
+      score /= 1 + (used.get(t.id) ?? 0);
       if (score > bestScore) { bestScore = score; best = t; }
     }
     return best;
   };
 
-  const usedIds = new Set<string>();
+  const usedIds = new Map<string, number>();
   const days = dayNames.map((day, idx) => {
     if (!trainingDays[idx]) {
       return { day, is_rest_day: true, templates: [] as WorkoutDayTemplate[] };
     }
     const tmpl = pickNext(usedIds);
-    usedIds.add(tmpl.id);
+    usedIds.set(tmpl.id, (usedIds.get(tmpl.id) ?? 0) + 1);
     for (const [m, s] of Object.entries(templateSets(tmpl))) setsSoFar[m] = (setsSoFar[m] ?? 0) + s;
     return {
       day,
