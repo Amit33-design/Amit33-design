@@ -888,6 +888,64 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       dayUsage.set(from.id, Math.max(0, (dayUsage.get(from.id) ?? 1) - 1));
       dayUsage.set(to.id, (dayUsage.get(to.id) ?? 0) + 1);
     }
+
+    /*
+     * Same move again for POTASSIUM, renal plans only.
+     *
+     * Every food flagged high-potassium is already excluded, yet a renal plan
+     * still lands well over its restriction because moderate-potassium whole
+     * foods add up — the same stacking problem as salt. Boiling and draining
+     * (counted above) takes roughly a third off the vegetables and pulses;
+     * choosing the lower-potassium dish where the slot offers one takes more,
+     * and unlike a portion cut it costs no calories, which a renal plan
+     * cannot spare.
+     */
+    if (conditions.includes("CKD")) {
+      const kLimit =
+        computeMicroTargets(input).find((t) => t.key === "potassium_mg")?.target ?? 2000;
+      // mirror the leaching model used when the day is totalled
+      const kOf = (f: Food) => {
+        const m = getMicros(f.id, f.group, f.cal);
+        return m.potassium_mg * (["vegetable", "legumes"].includes(f.group) ? 0.7 : 1);
+      };
+      const dayK = () =>
+        selected.reduce((sum, sel) => sum + sel.picked.reduce((a, f) => a + kOf(f), 0), 0);
+
+      let kGuard = 0;
+      while (dayK() > kLimit && kGuard++ < 8) {
+        let best: { slotIdx: number; from: Food; to: Food; saving: number } | null = null;
+        selected.forEach(({ picked, pool }, slotIdx) => {
+          for (const from of picked) {
+            for (const to of pool) {
+              if (picked.includes(to) || usedIds.has(to.id)) continue;
+              if (weekCount(to.id) >= WEEKLY_AUTO_CAP) continue;
+              if (to.group !== from.group) continue;
+              if (!!to.anchor !== !!from.anchor) continue;
+              if ((from.group === "vegetable" || from.hasVeg) && !(to.group === "vegetable" || to.hasVeg)) continue;
+              if (Math.abs(to.cal - from.cal) > from.cal * 0.5) continue;
+              // A renal plan cannot spare energy — under-feeding on a
+              // protein-restricted diet burns lean tissue and raises urea.
+              // Measured: without this guard the potassium swaps cost CKD
+              // plans 3 points of calorie delivery, undoing earlier work.
+              if (to.cal < from.cal * 0.9) continue;
+              const saving = kOf(from) - kOf(to);
+              if (saving < 80) continue;
+              // do not undo the sodium work this pass just did
+              if (naOf(to) > naOf(from) + 100) continue;
+              if (!best || saving > best.saving) best = { slotIdx, from, to, saving };
+            }
+          }
+        });
+        if (!best) break;
+        const { slotIdx, from, to } = best as { slotIdx: number; from: Food; to: Food; saving: number };
+        const picked = selected[slotIdx].picked;
+        picked[picked.indexOf(from)] = to;
+        usedIds.delete(from.id);
+        usedIds.add(to.id);
+        dayUsage.set(from.id, Math.max(0, (dayUsage.get(from.id) ?? 1) - 1));
+        dayUsage.set(to.id, (dayUsage.get(to.id) ?? 0) + 1);
+      }
+    }
   }
 
   // ── Phase 2: SIZE the portions so day totals converge on the user's targets ─
@@ -1254,7 +1312,11 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // Micronutrient adequacy + glycemic load — the clinical layer most apps skip
   const lowSodiumCooking =
     conditions.includes("HTN") || conditions.includes("HEART_DISEASE") || conditions.includes("CKD");
-  const micros = sumMicros(meals, lowSodiumCooking);
+  // Renal plans are built on the assumption that vegetables and pulses are
+  // boiled and drained — the plan says so in its potassium guidance, so the
+  // total it reports should reflect the same kitchen.
+  const leachedVegetables = conditions.includes("CKD");
+  const micros = sumMicros(meals, lowSodiumCooking, leachedVegetables);
   const micro_targets = computeMicroTargets(input);
   const nutrients = analyseMicros(micros, micro_targets);
   const glycemic_load = glycemicLoad(meals);
@@ -1290,6 +1352,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     protein_quality,
     na_k_ratio,
     low_sodium_cooking: lowSodiumCooking,
+    leached_vegetables: leachedVegetables,
   };
 }
 
@@ -1374,7 +1437,8 @@ export function computeMicroTargets(input: OnboardingInput): MicroTarget[] {
  */
 function sumMicros(
   meals: { items: { food: { id: string; food_group: string }; calories: number; serving_scale: number }[] }[],
-  lowSodiumCooking = false
+  lowSodiumCooking = false,
+  leachedVegetables = false
 ): Micros {
   const total: Micros = {
     sodium_mg: 0, potassium_mg: 0, calcium_mg: 0, iron_mg: 0, b12_ug: 0,
@@ -1392,7 +1456,22 @@ function sumMicros(
       // effective DASH change, so when the plan prescribes it we count it.
       const saltAdjust = lowSodiumCooking && m.nova >= 3 ? 0.25 + 0.75 * 0.5 : 1;
       total.sodium_mg += m.sodium_mg * scale * saltAdjust;
-      total.potassium_mg += m.potassium_mg * scale;
+      /*
+       * Potassium leaching. Boiling vegetables, pulses and potato in a large
+       * volume of water and discarding it removes a substantial share of
+       * their potassium — it is water-soluble, and this is the standard renal
+       * kitchen technique. Counted ONLY for renal plans, which already carry
+       * the instruction to do it, and only for the groups it works on: it
+       * does nothing for a glass of milk or a handful of nuts.
+       *
+       * 30% is deliberately at the conservative end of the published range
+       * (studies report ~30-50%, more for diced potato), because a plan that
+       * overstates the reduction hands a CKD patient a number their blood
+       * test will not agree with.
+       */
+      const leachable = ["vegetable", "legumes"].includes(item.food.food_group);
+      const kAdjust = leachedVegetables && leachable ? 0.7 : 1;
+      total.potassium_mg += m.potassium_mg * scale * kAdjust;
       total.calcium_mg += m.calcium_mg * scale;
       total.iron_mg += m.iron_mg * scale;
       total.b12_ug += m.b12_ug * scale;
@@ -1521,7 +1600,14 @@ function buildNutrientActions(
   if (input.conditions.includes("CKD") && potassium && potassium.status === "over") {
     out.push({ nutrient: "Potassium", severity: "critical",
       headline: "Potassium runs above your renal limit — here is how to bring it down",
-      detail: `Today's plan comes to about ${potassium.actual} mg against a ${potassium.target} mg restriction. High-potassium foods are already excluded, but vegetables, dal and fruit all carry potassium, so a whole-food plan adds up past the limit. Two things help more than swapping dishes: boil vegetables and potatoes in plenty of water and throw the water away (this leaches out a useful share), and keep portions of dal, fruit and curd modest rather than cutting them out. Your own limit depends on your blood results — bring this number to your kidney team rather than treating it as fixed.` });
+      detail: `Today's plan comes to about ${potassium.actual} mg against a ${potassium.target} mg restriction, and that figure ALREADY assumes you boil vegetables and pulses in plenty of water and pour the water away — if you cook them any other way the real number is higher. High-potassium foods are excluded too, but dal, vegetables, fruit and curd all carry some, so a whole-food plan still adds up. Keep those portions modest rather than cutting them out, and double the water when you boil. Your own limit depends on your blood results — bring this number to your kidney team rather than treating it as fixed.` });
+  } else if (input.conditions.includes("CKD") && potassium) {
+    // The total is only achievable in a kitchen that leaches, so say so where
+    // the user can act on it. Silently banking the reduction would hand them a
+    // number their blood test disagrees with.
+    out.push({ nutrient: "Potassium", severity: "tip",
+      headline: "This plan assumes you boil and drain your vegetables",
+      detail: `Your potassium total of about ${potassium.actual} mg depends on a renal kitchen habit: boil vegetables, potato and pulses in a large volume of water and throw the water away. Potassium dissolves into it, and draining removes roughly a third. Steaming, pressure-cooking or frying keeps it in the food, so cook this way or the figure above understates what you actually eat.` });
   }
 
   const iron = get("iron_mg");
@@ -2153,6 +2239,7 @@ const WORKOUTS: ExerciseTemplate[] = [
         { exercise: "Calf raise (holding chair back)", sets: 3, reps: 15, rest_sec: 40 },
         { exercise: "Standing side bend", sets: 2, reps: 12, rest_sec: 30 },
         { exercise: "Bird dog", sets: 3, reps: 10, rest_sec: 40 },
+        { exercise: "Band bicep curl", sets: 3, reps: 12, rest_sec: 40 },
       ],
       cooldown: [{ exercise: "Standing stretches — calves, chest, hip flexors", duration_sec: 240 }],
     },
