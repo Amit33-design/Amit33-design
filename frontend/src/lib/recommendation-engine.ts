@@ -13,6 +13,7 @@
  *   - Strictest health rule wins when multiple conditions conflict
  */
 
+import { assessAlcohol } from "./alcohol";
 import { getMicros, Micros, freeSugars } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
@@ -64,7 +65,16 @@ export interface OnboardingInput {
   cuisine: string;
   protein_pref: string;
   name?: string;
-  lifestyle?: { sleep_hours?: number; stress_level?: string; water_liters_day?: number };
+  lifestyle?: {
+    sleep_hours?: number;
+    stress_level?: string;
+    water_liters_day?: number;
+    /** US standard drinks (14 g ethanol) per week, converted from real servings */
+    alcohol_drinks_week?: number;
+    /** weekly energy from drinks, including beer's carbohydrate */
+    alcohol_kcal_week?: number;
+    drinking_days_week?: number;
+  };
   /** kcal nudge derived from the user's logged weight trend (progress feedback loop) */
   calorie_adjustment?: number;
   /** energy expenditure solved from the user's own intake + weight logs */
@@ -1716,6 +1726,10 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     protein_quality,
     na_k_ratio,
     low_sodium_cooking: lowSodiumCooking,
+    // shown next to the plan, never subtracted from it
+    alcohol_kcal_day: input.lifestyle?.alcohol_drinks_week
+      ? Math.round((input.lifestyle.alcohol_kcal_week ?? input.lifestyle.alcohol_drinks_week * 14 * 7) / 7)
+      : 0,
     leached_vegetables: leachedVegetables,
   };
 }
@@ -2314,6 +2328,14 @@ function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeM
     );
   // Medication-aware guidance woven into the plan explanation (max 2 lines)
   const meds = input.medications || [];
+  // Drinks are named, not netted off. Subtracting alcohol calories from the
+  // food target would quietly shrink meals to make room for beer; showing the
+  // number lets the user decide.
+  const drinks = input.lifestyle?.alcohol_drinks_week ?? 0;
+  if (drinks > 0) {
+    const kcalWeek = input.lifestyle?.alcohol_kcal_week ?? Math.round(drinks * 14 * 7);
+    parts.push(`Your drinks add roughly ${Math.round(kcalWeek / 7)} kcal a day on average (${kcalWeek} a week) on top of these meals — the plan does not trim food to make room for them.`);
+  }
   const medLines: string[] = [];
   if (meds.some((m) => m.startsWith("insulin")))
     medLines.push("Carbohydrates are spread evenly across your meals so they work smoothly with your insulin doses.");
@@ -2997,7 +3019,19 @@ export function generateLifestyle(input: OnboardingInput) {
 
   const hasGlycemic = conditions.includes("T2D") || conditions.includes("PREDIABETES");
 
+  // Alcohol reached the engine for the first time here. Before, onboarding
+  // collected it and api-client dropped it on the floor.
+  const alcohol = assessAlcohol({
+    drinks_week: ls.alcohol_drinks_week ?? 0,
+    kcal_week: ls.alcohol_kcal_week,
+    drinking_days: ls.drinking_days_week ?? null,
+    gender: input.gender,
+    conditions,
+    medications,
+  });
+
   return {
+    alcohol,
     hydration: {
       target_liters: liters,
       glasses_8oz: Math.round((liters * 1000) / 240),

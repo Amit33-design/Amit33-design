@@ -1,3 +1,4 @@
+import type { DrinkEntry } from "@/lib/alcohol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -36,7 +37,12 @@ export interface OnboardingLifestyle {
   sleep_hours: number | "";
   stress_level: string;
   smoking_status: string;
+  /** LEGACY: the old free-text "units" field. Read only to migrate old profiles. */
   alcohol_units_week: number | "";
+  /** what the user actually drinks, in real container sizes (see lib/alcohol) */
+  alcohol_entries?: DrinkEntry[];
+  /** how many days a week they drink — separates steady from binge patterns */
+  drinking_days_week?: number | "";
   water_liters_day: number | "";
 }
 

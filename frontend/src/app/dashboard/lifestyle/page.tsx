@@ -29,6 +29,10 @@ export default function LifestylePage() {
   const conditionNotes = (recs?.condition_specific as unknown[]) || [];
   const medicationNotes = (recs?.medication_notes as unknown[]) || [];
   const meditation = recs?.meditation as Record<string, unknown> | undefined;
+  const alcohol = recs?.alcohol as {
+    level: "none" | "within" | "above"; headline: string; detail: string;
+    tips: string[]; medication_interactions: string[]; drinks_week: number;
+  } | undefined;
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6 animate-fade-in">
@@ -85,6 +89,37 @@ export default function LifestylePage() {
           <p className="text-xs text-gray-500 mt-4">
             ⚠️ This is general guidance only. Always follow your doctor&apos;s specific instructions for your medication.
           </p>
+        </div>
+      )}
+
+      {/* Alcohol — only when the user reported some. It used to be collected
+          at onboarding and then dropped before it ever reached a plan. */}
+      {alcohol && alcohol.level !== "none" && (
+        <div className={`bg-white rounded-2xl border shadow-card p-6 ${alcohol.level === "above" ? "border-amber-300" : "border-gray-100"}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xl" aria-hidden="true">🍷</span>
+            <h2 className="font-bold text-gray-900">Alcohol</h2>
+            {alcohol.level === "above" && (
+              <span className="ml-auto px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-800">Worth cutting back</span>
+            )}
+          </div>
+          <div className="font-semibold text-gray-900">{alcohol.headline}</div>
+          <p className="text-sm text-gray-700 mt-1">{alcohol.detail}</p>
+          {alcohol.tips.length > 0 && (
+            <ul className="mt-3 space-y-1.5">
+              {alcohol.tips.map((t) => (
+                <li key={t} className="text-sm text-gray-700 flex gap-2"><span className="text-sky-700" aria-hidden="true">→</span>{t}</li>
+              ))}
+            </ul>
+          )}
+          {alcohol.medication_interactions.length > 0 && (
+            <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200">
+              <div className="text-xs font-bold text-red-800 mb-1">With your medication</div>
+              {alcohol.medication_interactions.map((m) => (
+                <p key={m} className="text-sm text-red-800">{m}</p>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

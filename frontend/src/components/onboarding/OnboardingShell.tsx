@@ -31,7 +31,7 @@ export function OnboardingShell({ currentStep, children, title, subtitle }: Prop
           <div className="flex items-center gap-3 mb-4">
             <button
               type="button"
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold shrink-0"
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-700 to-violet-700 flex items-center justify-center text-white font-bold shrink-0"
               onClick={() => router.push("/")}
               aria-label="healthCopilot — go to home page"
             >

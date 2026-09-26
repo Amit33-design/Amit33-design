@@ -102,6 +102,11 @@ export default function NutritionPage() {
                 { label: "Fat",             value: `${Math.round(macros.fat_g)}g`,             sub: "Healthy fats",     color: "bg-amber-500",  icon: "🫒" },
                 { label: "Fiber",           value: `${Math.round(macros.fiber_g)}g`,           sub: "Minimum target",   color: "bg-emerald-500",icon: "🥦" },
                 { label: "Plan Calories",   value: `${formatCalories((plan?.total_calories as number) || 0)} kcal`, sub: "Generated plan", color: "bg-indigo-500", icon: "📋" },
+                // Calories from drinks are shown, never netted off the food
+                // target — trimming meals to make room for beer is not advice.
+                ...(((plan?.alcohol_kcal_day as number) || 0) > 0
+                  ? [{ label: "From Drinks", value: `~${plan?.alcohol_kcal_day as number} kcal`, sub: "Daily average, on top of meals", color: "bg-amber-500", icon: "🍷" }]
+                  : []),
               ].map((m) => (
                 <div key={m.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-card">
                   <div className={`w-8 h-8 ${m.color} rounded-xl flex items-center justify-center text-sm mb-3`}>{m.icon}</div>

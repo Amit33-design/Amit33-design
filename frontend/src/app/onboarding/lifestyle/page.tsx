@@ -6,6 +6,7 @@ import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
 import { api } from "@/lib/api-client";
 import { setStoredUserId } from "@/store/onboarding-store";
 import { cn } from "@/lib/utils";
+import { DRINK_TYPES, weeklyAlcohol, standardDrinks, legacyUnitsToDrinks, type DrinkEntry, type DrinkType } from "@/lib/alcohol";
 
 const STRESS_LEVELS = [
   { value: "low",    label: "Low",    icon: "😌", color: "border-emerald-400 bg-emerald-50 text-emerald-700" },
@@ -24,6 +25,23 @@ export default function LifestylePage() {
   const { lifestyle, setLifestyle, profile, activity, goals, conditions, diet, setUserId } = useOnboardingStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // An old profile only has the legacy "units" number; show it as drinks
+  // until the user picks real servings, which then replace it.
+  const entries: DrinkEntry[] = lifestyle.alcohol_entries ?? [];
+  const legacyDrinks = entries.length ? 0 : legacyUnitsToDrinks(Number(lifestyle.alcohol_units_week) || 0);
+  const alcoholTotals = entries.length
+    ? weeklyAlcohol(entries)
+    : { drinks: legacyDrinks, kcal: Math.round(legacyDrinks * 14 * 7), ethanol_g: 0, carbs_g: 0 };
+  const countOf = (t: DrinkType) => entries.find((e) => e.type === t)?.count ?? 0;
+  const abvOf = (t: DrinkType) => entries.find((e) => e.type === t)?.abv;
+  const setDrink = (t: DrinkType, patch: Partial<DrinkEntry>) => {
+    const next = [...entries.filter((e) => e.type !== t)];
+    const cur = entries.find((e) => e.type === t) ?? { type: t, count: 0 };
+    const merged = { ...cur, ...patch };
+    if (merged.count > 0) next.push(merged);
+    setLifestyle({ alcohol_entries: next, alcohol_units_week: "" });
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -50,7 +68,11 @@ export default function LifestylePage() {
           sleep_hours: lifestyle.sleep_hours ? Number(lifestyle.sleep_hours) : null,
           stress_level: lifestyle.stress_level || null,
           smoking_status: lifestyle.smoking_status || null,
-          alcohol_units_week: lifestyle.alcohol_units_week ? Number(lifestyle.alcohol_units_week) : null,
+          // The backend still speaks UK units; send it a CORRECT figure
+          // (drinks x 14/8) alongside the standard-drink count.
+          alcohol_units_week: alcoholTotals.drinks > 0 ? Math.round((alcoholTotals.drinks * 14) / 8 * 10) / 10 : null,
+          alcohol_drinks_week: alcoholTotals.drinks > 0 ? alcoholTotals.drinks : null,
+          drinking_days_week: lifestyle.drinking_days_week ? Number(lifestyle.drinking_days_week) : null,
           water_liters_day: lifestyle.water_liters_day ? Number(lifestyle.water_liters_day) : null,
         },
       };
@@ -134,20 +156,69 @@ export default function LifestylePage() {
           </div>
         </div>
 
-        {/* Alcohol */}
+        {/* Alcohol — what you actually drink, in real sizes */}
         <div>
-          <label htmlFor="lifestyle-alcohol" className="block text-sm font-semibold text-gray-700 mb-2">Alcohol Consumption (units/week)</label>
-          <input
-            id="lifestyle-alcohol"
-            type="number"
-            min={0}
-            max={50}
-            value={lifestyle.alcohol_units_week}
-            onChange={(e) => setLifestyle({ alcohol_units_week: Number(e.target.value) })}
-            placeholder="0"
-            className="w-full md:w-40 px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none transition-all text-gray-900"
-          />
-          <div className="text-xs text-gray-500 mt-1">Safe limit: 14 units/week. 1 unit = 1 small beer or glass of wine.</div>
+          <div className="block text-sm font-semibold text-gray-700 mb-1">Alcohol — a typical week</div>
+          <p className="text-xs text-gray-600 mb-3">
+            Tap in what you usually drink. Sizes are shown so nothing gets under-counted — a home &ldquo;peg&rdquo; or glass is often bigger than you&apos;d think.
+          </p>
+          <div className="space-y-2">
+            {(Object.keys(DRINK_TYPES) as DrinkType[]).map((t) => {
+              const spec = DRINK_TYPES[t];
+              const n = countOf(t);
+              return (
+                <div key={t} className={cn("rounded-xl border px-3 py-2", n > 0 ? "border-sky-300 bg-sky-50/50" : "border-gray-200")}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-gray-800">{spec.label}</div>
+                      <div className="text-xs text-gray-600">{spec.ml} ml · {spec.abv}% · {standardDrinks(spec.ml, abvOf(t) ?? spec.abv).toFixed(1)} standard drinks each</div>
+                    </div>
+                    <button type="button" aria-label={`Remove one ${spec.label}`} disabled={n === 0}
+                      onClick={() => setDrink(t, { count: Math.max(0, n - 1) })}
+                      className="w-10 h-10 rounded-lg border border-gray-300 text-lg font-bold text-gray-700 disabled:opacity-40">−</button>
+                    <span className="w-8 text-center font-bold text-gray-900 tabular-nums" aria-label={`${n} per week`}>{n}</span>
+                    <button type="button" aria-label={`Add one ${spec.label}`}
+                      onClick={() => setDrink(t, { count: Math.min(60, n + 1) })}
+                      className="w-10 h-10 rounded-lg border border-gray-300 text-lg font-bold text-gray-700">+</button>
+                  </div>
+                  {n > 0 && (
+                    <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+                      Stronger or weaker than {spec.abv}%?
+                      <input type="number" min={0.5} max={70} step={0.5} inputMode="decimal"
+                        value={abvOf(t) ?? ""} placeholder={String(spec.abv)}
+                        onChange={(e) => setDrink(t, { abv: e.target.value ? Number(e.target.value) : undefined })}
+                        className="w-20 px-2 py-1.5 rounded-lg border border-gray-300 text-gray-900" aria-label={`Strength of ${spec.label}, percent ABV`} />
+                      % ABV
+                    </label>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {alcoholTotals.drinks > 0 && (
+            <div className="mt-3">
+              <div className="text-sm font-semibold text-gray-700 mb-2">On how many days a week?</div>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                  <button key={d} type="button" onClick={() => setLifestyle({ drinking_days_week: d })}
+                    aria-pressed={Number(lifestyle.drinking_days_week) === d}
+                    className={cn("w-11 h-11 rounded-xl border-2 text-sm font-semibold",
+                      Number(lifestyle.drinking_days_week) === d ? "border-sky-600 bg-sky-50 text-sky-800" : "border-gray-200 text-gray-600")}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-3 text-sm text-gray-700" aria-live="polite">
+            {alcoholTotals.drinks > 0
+              ? <>≈ <strong>{alcoholTotals.drinks}</strong> standard drinks a week · about <strong>{alcoholTotals.kcal}</strong> kcal from drinks.
+                  {!entries.length && <span className="text-gray-600"> (converted from your earlier entry — pick your drinks above to be exact)</span>}</>
+              : "None — that's fine, leave it empty."}
+          </div>
+          <div className="text-xs text-gray-600 mt-1">A standard drink is 14 g of alcohol — about a 355 ml beer, a 150 ml glass of wine, or a 44 ml shot.</div>
         </div>
 
         {/* Water */}

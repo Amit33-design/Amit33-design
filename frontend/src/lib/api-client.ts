@@ -1,3 +1,4 @@
+import { weeklyAlcohol, legacyUnitsToDrinks } from "./alcohol";
 import { API_BASE } from "./constants";
 import { DEMO_USER_ID } from "./demo-data";
 import {
@@ -64,6 +65,20 @@ function getOnboardingInput(): OnboardingInput {
         sleep_hours: num(s.lifestyle?.sleep_hours, 6.5),
         stress_level: s.lifestyle?.stress_level || "medium",
         water_liters_day: num(s.lifestyle?.water_liters_day, 2.0),
+        // Alcohol used to be collected here and silently dropped. Real drink
+        // entries win; an old profile's "units" figure is migrated as UK units.
+        ...(() => {
+          const entries = Array.isArray(s.lifestyle?.alcohol_entries) ? s.lifestyle.alcohol_entries : [];
+          if (entries.length) {
+            const w = weeklyAlcohol(entries);
+            return { alcohol_drinks_week: w.drinks, alcohol_kcal_week: w.kcal,
+                     drinking_days_week: num(s.lifestyle?.drinking_days_week, 0) || undefined };
+          }
+          const legacy = legacyUnitsToDrinks(Number(s.lifestyle?.alcohol_units_week) || 0);
+          return legacy > 0
+            ? { alcohol_drinks_week: legacy, drinking_days_week: num(s.lifestyle?.drinking_days_week, 0) || undefined }
+            : {};
+        })(),
       },
     };
   } catch {
