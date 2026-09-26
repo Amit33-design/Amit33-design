@@ -18,6 +18,10 @@ export const CONDITIONS = [
   { code: "PREDIABETES",   label: "Prediabetes",            icon: "⚠️", impact: "Eliminates sugary beverages, favors whole grains" },
   { code: "HTN",           label: "Hypertension",           icon: "💓", impact: "DASH protocol: sodium < 1500mg/day, high potassium" },
   { code: "HYPERLIPIDEMIA",label: "High Cholesterol",       icon: "🫀", impact: "Removes trans fats, limits saturated fat, adds fiber" },
+  // Triglycerides respond to different levers than LDL cholesterol — sugar,
+  // refined carbs, alcohol, total energy and omega-3 — so they get their own
+  // condition rather than being folded into "High Cholesterol".
+  { code: "HYPERTRIGLYCERIDEMIA", label: "High Triglycerides", icon: "🧪", impact: "Limits sugar and refined carbs, flags alcohol, adds omega-3" },
   { code: "KIDNEY_STONES", label: "Kidney Stones",          icon: "🫁", impact: "Avoids high-oxalate foods, increases hydration" },
   { code: "CKD",           label: "Chronic Kidney Disease", icon: "🏥", impact: "Caps protein at 0.75g/kg, limits phosphorus & potassium" },
   { code: "HEART_DISEASE", label: "Heart Disease",          icon: "❤️", impact: "Sodium < 1500mg, no trans fats, omega-3 priority" },
@@ -86,6 +90,7 @@ export const CONDITION_COLORS: Record<string, string> = {
   PREDIABETES:   "bg-yellow-100 text-yellow-800 border-yellow-200",
   HTN:           "bg-blue-100 text-blue-800 border-blue-200",
   HYPERLIPIDEMIA:"bg-indigo-100 text-indigo-800 border-indigo-200",
+  HYPERTRIGLYCERIDEMIA: "bg-orange-100 text-orange-800 border-orange-200",
   KIDNEY_STONES: "bg-purple-100 text-purple-800 border-purple-200",
   CKD:           "bg-red-100 text-red-800 border-red-200",
   HEART_DISEASE: "bg-rose-100 text-rose-800 border-rose-200",

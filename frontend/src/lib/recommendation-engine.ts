@@ -267,15 +267,21 @@ const FOODS: Food[] = [
  */
 export function isCarbControlled(input: { goal_type?: string; conditions?: string[] }): boolean {
   const c = input.conditions || [];
-  return input.goal_type === "diabetes_friendly" || c.includes("T2D") || c.includes("PREDIABETES");
+  return input.goal_type === "diabetes_friendly" || c.includes("T2D") || c.includes("PREDIABETES") ||
+    // refined carbohydrate is one of the main drivers of triglycerides
+    c.includes("HYPERTRIGLYCERIDEMIA");
 }
 
 function isExcluded(food: Food, conditions: string[]): boolean {
   for (const c of conditions) {
-    if ((c === "T2D" || c === "PREDIABETES") && food.gi !== undefined && food.gi >= 70) return true;
+    if ((c === "T2D" || c === "PREDIABETES" || c === "HYPERTRIGLYCERIDEMIA") && food.gi !== undefined && food.gi >= 70) return true;
+    // Free sugar is the most direct dietary lever on triglycerides. One date
+    // smoothie carries 28 g — more than the whole day's 25 g limit — so for
+    // this condition the sweetest dishes are excluded, not merely ranked lower.
+    if (c === "HYPERTRIGLYCERIDEMIA" && freeSugars(food.id) >= 10) return true;
     if ((c === "HTN" || c === "HEART_DISEASE") && food.sodium === "high") return true;
     if (c === "KIDNEY_STONES" && food.oxalate === "high") return true;
-    if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE") && food.satfat === "high") return true;
+    if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE" || c === "HYPERTRIGLYCERIDEMIA") && food.satfat === "high") return true;
     if (c === "CKD" && food.highK) return true;
     if (c === "THYROID" && food.goitrogen) return true;
   }
@@ -342,6 +348,18 @@ function preferenceScore(
   // every 100 mg of sodium costs a point under DASH, half that otherwise
   s -= (mic.sodium_mg / 100) * (tightSodium ? 1.0 : 0.35);
   if (tightSodium && mic.potassium_mg >= 400) s += 1.5; // potassium blunts sodium's effect
+
+  // Triglycerides: the levers are sugar, refined carbs and omega-3, so rank
+  // for them directly. The omega-3 boost is a flat +2, not proportional —
+  // an uncapped omega-3 boost once put flax on the plan six days a week.
+  if (conditions.includes("HYPERTRIGLYCERIDEMIA")) {
+    if (mic.omega3_g >= 0.5) s += 2;
+    if (food.fiber >= 5) s += 1;
+    if (freeSugars(food.id) > 0) s -= 2;
+  }
+  // Lipid plans: prefer the leanest saturated-fat options at selection, so the
+  // day-level cap has less to undo later.
+  if (["HYPERLIPIDEMIA", "HEART_DISEASE", "HYPERTRIGLYCERIDEMIA"].some((c) => conditions.includes(c)) && food.satfat === "low") s += 1;
 
   if (deficitFocus.length) {
     // each boost is capped so no single nutrient can dominate ranking and
@@ -647,7 +665,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // Saturated fat is a day-level limit for cholesterol and heart plans (6% of
   // calories). The food-level "high" exclusion alone let "med" dishes stack:
   // half of these days ran over, the worst at 3.5x.
-  const lipidPlan = conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE");
+  const lipidPlan = conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") || conditions.includes("HYPERTRIGLYCERIDEMIA");
   const satFatLimit =
     computeMicroTargets(input).find((t) => t.key === "satfat_g")?.target ?? Infinity;
   const sfOf = (f: Food) => getMicros(f.id, f.group, f.cal).satfat_g;
@@ -1172,11 +1190,9 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const proteinTarget = proteinCap ? Math.min(macros.protein_g, proteinCeiling) : macros.protein_g;
   steer(proteinItems, dayProt(), proteinTarget, (e) => e.food.p);
 
-  if (process.env.DBGC) console.log('after-protein-lever'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Calorie lever — fill the remaining calories with the energy foods.
   steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
 
-  if (process.env.DBGC) console.log('after-energy-lever'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // A dish may be the only thing bringing vegetables to a main meal even when
   // it is filed under protein — palak dal, tofu and spinach, a vegetable kofta.
   // Every drop pass has to respect that, or the plate quietly loses its
@@ -1208,7 +1224,6 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
   }
 
-  if (process.env.DBGC) console.log('after-drop-pass'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Protein overshoot trim: when calories are on target but protein runs well
   // over (common for muscle-gain with many anchor foods), shrink the biggest
   // protein contributors toward the target, then let energy foods refill any
@@ -1256,7 +1271,6 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
   }
 
-  if (process.env.DBGC) console.log('after-overshoot-trim'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Final trim: when a plan is still over on calories (common for protein-dense
   // plant plans on a low target) and protein is already met, shrink the protein
   // portions toward their minimum — but never below the protein target itself.
@@ -1270,7 +1284,6 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
   }
 
-  if (process.env.DBGC) console.log('after-final-trim'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Hard safety (CKD): keep total protein at or under the renal cap. Plant foods
   // carry protein even in "energy" roles, so we trim EVERY protein-bearing item
   // toward its minimum — highest contributor first — and drop protein foods from
@@ -1345,7 +1358,6 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
    * give the lost energy back through fat-dense and protein items, each held
    * under its own ceiling.
    */
-  if (process.env.DBGC) console.log('before-carb-block'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   const carbShareOf = (f: Food) => (f.c * 4) / Math.max(f.cal, 1);
   // "Carb-dense" is relative to the plan's own target share, not a fixed
   // 55%. What pushes an AVERAGE above 40% is every item above 40%, and in an
@@ -1478,9 +1490,13 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     // the loop this pass exists to break.
     // Near-zero-protein includes fruit and white rice, so for a carb-controlled
     // plan stretching them would simply re-add the carbs the carb pass removed.
+    const allowedSfDensity = (satFatLimit * 9) / Math.max(macros.calories, 1);
     const isLowProteinEnergy = (e: Entry) =>
       e.food.group !== "beverage" && e.food.p / Math.max(e.food.cal, 1) < 0.02 &&
-      !(carbControl && isCarbDense(e));
+      !(carbControl && isCarbDense(e)) &&
+      // On a lipid plan, stretching olive oil to 2.5x to fill calories pushed
+      // sat fat over the limit, which then blocked every other addition.
+      !(lipidPlan && (sfOf(e.food) * 9) / Math.max(e.food.cal, 1) > allowedSfDensity);
     const stretchable = entries.filter(isLowProteinEnergy);
     // Buying calories per gram of protein, left unbounded, buys oil: a renal
     // plan came out at 235 g fat against a 75 g target, four-fifths of its
@@ -1551,15 +1567,24 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           // a heart + cholesterol + diabetes plan was left at 85% of its
           // calories with carbs, fat and protein all under target. Allow foods
           // at under half the permitted density, within a small gram margin.
-          if (lipidPlan) {
-            const allowedDensity = (satFatLimit * 9) / Math.max(macros.calories, 1);
+          if (lipidPlan && daySatFat() + sfOf(food) > satFatLimit) {
+            // Only once the gram limit would be breached does density matter.
+            // Applied unconditionally, this refused chicken and fish on days
+            // with grams to spare — a triglyceride plan sat at 86% of its
+            // calories with 2 g of sat-fat headroom it could not use. Past the
+            // limit, a very lean food still LOWERS the day's sat-fat share, so
+            // it is allowed even though the gram total ticks up.
             const density = (sfOf(food) * 9) / Math.max(food.cal, 1);
-            if (density > allowedDensity * 0.5) continue;
-            if (daySatFat() + sfOf(food) > satFatLimit * 1.08) continue;
+            if (density > allowedSfDensity * 0.5) continue;
           }
+          // Carb-controlled plans value non-carb energy — unless the day is
+          // already well UNDER its carb target, when refusing whole grains
+          // just leaves it short: a triglyceride plan ended at 110 g of a
+          // 230 g carb target, 77% of its calories, and no grain all day.
+          const carbsShort = dayCarb() < macros.carbs_g * 0.85;
           const score = proteinCap
             ? food.cal / Math.max(food.p, 0.5) - (food.highK ? 40 : 0)
-            : carbControl
+            : carbControl && !carbsShort
               ? food.cal * (1 - carbShareOf(food))
               : food.cal;
           if (!proteinCap) {
@@ -1603,7 +1628,6 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
   }
 
-  if (process.env.DBGC) console.log('end'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   const scaleOf = (food: Food) => entries.find((e) => e.food === food)?.scale ?? 1;
 
   // ── Phase 3: MATERIALISE meals with their tuned portions ───────────────────
@@ -1753,14 +1777,14 @@ export function computeMicroTargets(input: OnboardingInput): MicroTarget[] {
       why: "Calcium absorption and immunity — widely deficient even in sunny climates" },
     { key: "magnesium_mg", label: "Magnesium", unit: "mg", target: female ? 320 : 420,
       why: "Blood pressure, blood sugar control and muscle recovery" },
-    { key: "omega3_g", label: "Omega-3", unit: "g", target: female ? 1.1 : 1.6,
+    { key: "omega3_g", label: "Omega-3", unit: "g", target: (female ? 1.1 : 1.6) + (conditions.includes("HYPERTRIGLYCERIDEMIA") ? 0.5 : 0),
       why: "Anti-inflammatory; supports heart, brain and joint health" },
     { key: "satfat_g", label: "Saturated Fat", unit: "g",
-      target: Math.round((computeMacros(input).calories * (conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") ? 0.06 : 0.10)) / 9),
+      target: Math.round((computeMacros(input).calories * (conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") || conditions.includes("HYPERTRIGLYCERIDEMIA") ? 0.06 : 0.10)) / 9),
       isLimit: true,
-      why: conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") ? "Tightened to 6% of calories to lower LDL cholesterol" : "Kept under 10% of calories for heart health" },
+      why: conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") || conditions.includes("HYPERTRIGLYCERIDEMIA") ? "Tightened to 6% of calories to lower LDL cholesterol" : "Kept under 10% of calories for heart health" },
     { key: "sugar_g", label: "Free Sugars", unit: "g",
-      target: conditions.includes("T2D") || conditions.includes("PREDIABETES") ? 25 : female ? 25 : 36,
+      target: conditions.includes("T2D") || conditions.includes("PREDIABETES") || conditions.includes("HYPERTRIGLYCERIDEMIA") ? 25 : female ? 25 : 36,
       isLimit: true,
       why: "WHO limit for sugars added in cooking or processing — sugars inside whole fruit are not counted and are not a concern" },
   ];
@@ -2265,6 +2289,8 @@ function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeM
     parts.push(`Protein is capped at ${macros.protein_g_per_kg} g/kg to protect kidney function.`);
   if (input.conditions.includes("HYPERLIPIDEMIA"))
     parts.push("Saturated fat is minimised and soluble fiber elevated to help lower LDL cholesterol.");
+  if (input.conditions.includes("HYPERTRIGLYCERIDEMIA"))
+    parts.push("To bring triglycerides down, sugary and refined-carb foods are kept out, carbohydrate is held under 40% of calories, and omega-3 sources like walnuts, flax and oily fish are favoured. Alcohol raises triglycerides more than almost anything else on the plate.");
   if (input.goal_type === "muscle_gain")
     parts.push(`Protein is set high at ${macros.protein_g} g (${macros.protein_g_per_kg} g/kg) and spread across all meals to maximise muscle protein synthesis.`);
   else if (input.goal_type === "healthy_aging")
@@ -2306,7 +2332,7 @@ function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeM
 
 const CONDITION_LABEL: Record<string, string> = {
   T2D: "Type 2 Diabetes", PREDIABETES: "Prediabetes", HTN: "Hypertension",
-  HYPERLIPIDEMIA: "High Cholesterol", KIDNEY_STONES: "Kidney Stones", CKD: "Chronic Kidney Disease",
+  HYPERLIPIDEMIA: "High Cholesterol", HYPERTRIGLYCERIDEMIA: "High Triglycerides", KIDNEY_STONES: "Kidney Stones", CKD: "Chronic Kidney Disease",
   HEART_DISEASE: "Heart Disease", THYROID: "Hypothyroidism",
 };
 
@@ -2862,6 +2888,7 @@ const CONDITION_TIPS: Record<string, { condition: string; tip: string }> = {
   T2D: { condition: "Diabetes", tip: "A 15-minute walk after each meal improves post-meal blood sugar by up to 22%. Keep carbohydrates low-GI and high-fiber." },
   PREDIABETES: { condition: "Prediabetes", tip: "Losing 5–7% of body weight and 150 min/week of activity can cut your progression to diabetes by ~58%." },
   HTN: { condition: "Hypertension", tip: "Limit sodium to < 1500 mg/day, increase potassium-rich foods (banana, curd, dal) and practise daily relaxation (DASH protocol)." },
+  HYPERTRIGLYCERIDEMIA: { condition: "High Triglycerides", tip: "Cut sugary drinks, sweets and refined carbs (white rice, white bread, maida) first — they raise triglycerides fastest. Keep alcohol low and have several alcohol-free days a week, eat oily fish or walnuts and flax for omega-3, and walk after meals. Losing even 5% of body weight lowers triglycerides noticeably." },
   HYPERLIPIDEMIA: { condition: "High Cholesterol", tip: "Aim for 10–25 g of soluble fiber daily (oats, beans, flax) and replace saturated fats with olive oil and nuts to lower LDL." },
   KIDNEY_STONES: { condition: "Kidney Stones", tip: "Drink 2.5–3 L of water daily, add citrus (lemon/orange) for citrate, and limit high-oxalate foods like spinach and almonds." },
   CKD: { condition: "Kidney Disease", tip: "Keep protein moderate (~0.75 g/kg), limit phosphorus and potassium, and monitor fluid intake with your nephrologist." },
@@ -3058,11 +3085,15 @@ function explainFoodSafety(term: string, matches: Food[], input: OnboardingInput
   for (const f of matches) {
     if ((conditions.includes("T2D") || conditions.includes("PREDIABETES")) && f.gi !== undefined && f.gi >= 70)
       reasons.add(`its **high glycemic index (GI ${f.gi})** can spike blood sugar`);
+    if (conditions.includes("HYPERTRIGLYCERIDEMIA") && f.gi !== undefined && f.gi >= 70)
+      reasons.add(`it's a **fast-digesting carb (GI ${f.gi})**, and refined carbs push triglycerides up`);
+    if (conditions.includes("HYPERTRIGLYCERIDEMIA") && freeSugars(f.id) >= 10)
+      reasons.add("its **added or blended sugar** raises triglycerides directly");
     if ((conditions.includes("HTN") || conditions.includes("HEART_DISEASE")) && f.sodium === "high")
       reasons.add("its **high sodium** works against your blood-pressure targets");
     if (conditions.includes("KIDNEY_STONES") && f.oxalate === "high")
       reasons.add("it's **high in oxalates**, which can promote calcium-oxalate kidney stones");
-    if ((conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE")) && f.satfat === "high")
+    if ((conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") || conditions.includes("HYPERTRIGLYCERIDEMIA")) && f.satfat === "high")
       reasons.add("its **saturated fat** content works against your cholesterol goals");
     if (conditions.includes("CKD") && f.highK)
       reasons.add("it's **high in potassium**, which strained kidneys clear poorly");
@@ -3147,6 +3178,25 @@ export function answerHealthQuestion(input: OnboardingInput, message: string): s
         disclaimer
       );
     }
+  }
+
+  // Triglycerides. These questions used to fall through to the generic
+  // overview, and "high cholesterol" was quietly carrying both meanings.
+  if (/triglycer|\btgs?\b|blood fats?/.test(m)) {
+    const has = conditions.includes("HYPERTRIGLYCERIDEMIA");
+    const macrosTG = computeMacros(input);
+    return (
+      (has
+        ? `Your plan is built to bring **triglycerides** down. Unlike LDL cholesterol, triglycerides respond most to what you eat and drink day to day:\n\n` +
+          `• **Sugar and refined carbs** — sweets, sugary drinks, white rice, white bread and maida raise them fastest. Your plan keeps carbohydrate to about **${macrosTG.carbs_g} g/day (under 40% of calories)**, excludes high-GI foods and keeps free sugars under 25 g.\n` +
+          `• **Alcohol** — even moderate drinking raises triglycerides noticeably. Keep it low and take several alcohol-free days a week.\n` +
+          `• **Omega-3** — oily fish, walnuts, flax and chia are favoured in your plan, and your omega-3 target is raised.\n` +
+          `• **Weight and movement** — losing 5-10% of body weight and a short walk after meals both lower triglycerides.\n\n` +
+          `Recheck with a **fasting** blood test after 8-12 weeks; non-fasting results read higher.`
+        : `**Triglycerides** are the main fat carried in your blood. They rise with sugar, refined carbs, alcohol and excess calories, and fall with weight loss, activity and omega-3 — different levers from LDL cholesterol.\n\n` +
+          `If a **fasting** blood test shows triglycerides at or above **150 mg/dL (1.7 mmol/L)**, add **High Triglycerides** to your health profile and your plan will cut refined carbs and sugar, and favour omega-3 sources.`) +
+      disclaimer
+    );
   }
 
   // 3) Micronutrient questions — we compute these precisely, so answer from

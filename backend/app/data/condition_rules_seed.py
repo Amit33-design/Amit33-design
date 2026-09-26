@@ -7,7 +7,8 @@ CONDITIONS = [
     {"code": "T2D",          "name": "Type 2 Diabetes",       "description": "Chronic condition affecting blood sugar regulation"},
     {"code": "PREDIABETES",  "name": "Prediabetes",           "description": "Blood sugar levels higher than normal but not yet diabetic"},
     {"code": "HTN",          "name": "Hypertension",          "description": "Chronically elevated blood pressure (≥130/80 mmHg)"},
-    {"code": "HYPERLIPIDEMIA","name": "High Cholesterol",     "description": "Elevated LDL cholesterol or triglycerides"},
+    {"code": "HYPERLIPIDEMIA","name": "High Cholesterol",     "description": "Elevated LDL cholesterol"},
+    {"code": "HYPERTRIGLYCERIDEMIA", "name": "High Triglycerides", "description": "Elevated fasting triglycerides (>= 150 mg/dL)"},
     {"code": "KIDNEY_STONES","name": "Kidney Stones",         "description": "Calcium oxalate or other renal calculi"},
     {"code": "CKD",          "name": "Chronic Kidney Disease","description": "Progressive loss of kidney function"},
     {"code": "HEART_DISEASE","name": "Heart Disease",         "description": "Coronary artery disease or other cardiovascular conditions"},
@@ -16,6 +17,35 @@ CONDITIONS = [
 
 # Rules: list of dicts with condition_code, rule_type, scope, target_value, reason, evidence_level, priority
 RULES = [
+
+    # ==================== HIGH TRIGLYCERIDES ====================
+    # Triglycerides respond to different levers than LDL: sugar, refined
+    # carbohydrate, alcohol, total energy and omega-3. Mirrors the client-side
+    # engine, which is what demo mode actually runs.
+    {"condition_code": "HYPERTRIGLYCERIDEMIA", "rule_type": "AVOID", "scope": "FOOD_GROUP",
+     "target_value": {"food_group": "sugary_beverages"},
+     "reason": "Sugary drinks raise triglycerides faster than almost any other food.",
+     "evidence_level": "strong", "priority": 1},
+
+    {"condition_code": "HYPERTRIGLYCERIDEMIA", "rule_type": "LIMIT", "scope": "NUTRIENT_THRESHOLD",
+     "target_value": {"nutrient": "sugar_g", "max_per_day": 25},
+     "reason": "Free sugars are the most direct dietary driver of raised triglycerides.",
+     "evidence_level": "strong", "priority": 1},
+
+    {"condition_code": "HYPERTRIGLYCERIDEMIA", "rule_type": "LIMIT", "scope": "NUTRIENT_THRESHOLD",
+     "target_value": {"nutrient": "carbs_pct_kcal", "max": 40},
+     "reason": "Refined carbohydrate raises triglycerides; hold carbohydrate under 40% of calories and favour low-GI sources.",
+     "evidence_level": "moderate", "priority": 2},
+
+    {"condition_code": "HYPERTRIGLYCERIDEMIA", "rule_type": "LIMIT", "scope": "FOOD_GROUP",
+     "target_value": {"food_group": "alcohol"},
+     "reason": "Alcohol raises triglycerides even at moderate intake; keep it low with several alcohol-free days a week.",
+     "evidence_level": "strong", "priority": 1},
+
+    {"condition_code": "HYPERTRIGLYCERIDEMIA", "rule_type": "RECOMMEND", "scope": "NUTRIENT_THRESHOLD",
+     "target_value": {"nutrient": "omega3_g", "min_per_day": 1.6},
+     "reason": "Omega-3 fats lower triglycerides; favour oily fish, walnuts, flax and chia.",
+     "evidence_level": "strong", "priority": 2},
 
     # ==================== TYPE 2 DIABETES ====================
     {"condition_code": "T2D", "rule_type": "AVOID", "scope": "FOOD_GROUP",

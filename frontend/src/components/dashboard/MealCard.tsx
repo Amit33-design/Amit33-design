@@ -67,10 +67,11 @@ function clinicalBadges(food: FoodItem, conditions: string[]): string[] {
 
   if ((has("HTN") || has("HEART_DISEASE")) && food.sodium_level === "low") out.push("Low sodium · BP-friendly");
   if (has("KIDNEY_STONES") && food.oxalate_level === "low") out.push("Low oxalate · stone-safe");
-  if ((has("HYPERLIPIDEMIA") || has("HEART_DISEASE")) && food.satfat_level === "low") out.push("Low saturated fat");
+  if ((has("HYPERLIPIDEMIA") || has("HEART_DISEASE") || has("HYPERTRIGLYCERIDEMIA")) && food.satfat_level === "low") out.push("Low saturated fat");
   if (has("CKD") && food.is_high_potassium === false) out.push("Kidney-friendly potassium");
   if (has("THYROID") && food.is_goitrogenic === false) out.push("No goitrogens");
   if ((has("T2D") || has("PREDIABETES")) && food.is_low_gi) out.push("Low GI · steady blood sugar");
+  else if (has("HYPERTRIGLYCERIDEMIA") && food.is_low_gi) out.push("Low GI · helps triglycerides");
   return out;
 }
 

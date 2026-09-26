@@ -19,7 +19,7 @@ import { generateMealPlan, generateWeeklyPlan, OnboardingInput } from "../recomm
 const CUISINES = ["indian", "western", "mediterranean"];
 const DIETS = ["vegetarian", "non_vegetarian", "vegan", "pescatarian"];
 const GOALS = ["weight_loss", "muscle_gain", "maintenance", "healthy_aging", "diabetes_friendly"];
-const CONDITIONS: string[][] = [[], ["T2D"], ["HTN"], ["CKD"], ["HYPERLIPIDEMIA", "HEART_DISEASE"]];
+const CONDITIONS: string[][] = [[], ["T2D"], ["HTN"], ["CKD"], ["HYPERLIPIDEMIA", "HEART_DISEASE"], ["HYPERTRIGLYCERIDEMIA"]];
 
 const BODIES: Partial<OnboardingInput>[] = [
   { age: 28, gender: "male", weight_kg: 88, height_cm: 183, activity_level: "active" },
@@ -372,6 +372,39 @@ describe("invariants across the whole profile space", () => {
       }
     }
     expect(bad, report(bad)).toEqual([]);
+  });
+
+  // ── High triglycerides ────────────────────────────────────────────────────
+  // Triglycerides respond to sugar, refined carbs, alcohol and omega-3 — not
+  // the LDL levers "High Cholesterol" used — so the condition has its own
+  // rules. Free sugar is the most direct lever: one date smoothie carries
+  // 28 g against a 25 g daily limit.
+  it("keeps triglyceride plans under 25 g free sugar and free of high-GI food, every day", () => {
+    const bad: string[] = [];
+    for (const body of BODIES) for (const cuisine of CUISINES) for (const protein_pref of DIETS)
+      for (const goal_type of ["weight_loss", "maintenance", "healthy_aging"]) {
+        const p = { ...base, ...body, cuisine, protein_pref, goal_type, conditions: ["HYPERTRIGLYCERIDEMIA"] };
+        for (let d = 0; d < 3; d++) {
+          const plan = generateMealPlan(p, d);
+          const sugar = plan.nutrients.find((n) => n.key === "sugar_g")!;
+          if (sugar.actual > 25) bad.push(`${cuisine}/${protein_pref}/${goal_type} d${d}: ${sugar.actual} g free sugar`);
+          const hi = plan.meals.flatMap((m) => m.items).filter((i) => (i.food.glycemic_index ?? 0) >= 70);
+          if (hi.length) bad.push(`${cuisine}/${protein_pref}/${goal_type} d${d}: high-GI ${hi.map((i) => i.food.name).join(", ")}`);
+          const share = (plan.total_carbs_g * 4) / plan.total_calories;
+          if (share > 0.44 && !plan.nutrient_actions.some((a) => a.nutrient === "Carbohydrate"))
+            bad.push(`${cuisine}/${protein_pref}/${goal_type} d${d}: ${Math.round(share * 100)}% carbs, no warning`);
+        }
+      }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
+  it("answers triglyceride questions instead of falling through to the overview", async () => {
+    const { answerHealthQuestion } = await import("../recommendation-engine");
+    const withTG = answerHealthQuestion({ ...base, conditions: ["HYPERTRIGLYCERIDEMIA"] }, "how do I lower my triglycerides?");
+    expect(withTG).toMatch(/alcohol/i);
+    expect(withTG).toMatch(/omega-3/i);
+    const without = answerHealthQuestion(base, "what are triglycerides?");
+    expect(without).toMatch(/150 mg\/dL/);
   });
 
   it("reports nutrient patterns for every weekly plan", () => {
