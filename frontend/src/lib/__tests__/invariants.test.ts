@@ -325,6 +325,55 @@ describe("invariants across the whole profile space", () => {
     expect(bad, report(bad)).toEqual([]);
   });
 
+  // ── Saturated fat (cholesterol / heart) ───────────────────────────────────
+  // The 6%-of-calories limit was computed and displayed but never enforced:
+  // the food-level exclusion only caught dishes labelled "high", "med" dishes
+  // stacked, and half of these days ran over, the worst at 3.5x.
+  it("holds cholesterol and heart plans under the saturated-fat limit", () => {
+    let days = 0, within = 0;
+    const unflagged: string[] = [];
+    for (const body of BODIES) for (const cuisine of CUISINES) for (const protein_pref of DIETS)
+      for (const [goal_type, conditions] of [
+        ["diabetes_friendly", ["PREDIABETES", "HYPERLIPIDEMIA"]],
+        ["maintenance", ["HYPERLIPIDEMIA"]],
+        ["weight_loss", ["HEART_DISEASE"]],
+      ] as [string, string[]][]) {
+        const p = { ...base, ...body, cuisine, protein_pref, goal_type, conditions };
+        for (let d = 0; d < 3; d++) {
+          const plan = generateMealPlan(p, d);
+          const sf = plan.nutrients.find((n) => n.key === "satfat_g")!;
+          days++;
+          if (sf.actual <= sf.target * 1.10) { within++; continue; }
+          if (!plan.nutrient_actions.some((a) => a.nutrient === "Saturated Fat"))
+            unflagged.push(`${cuisine}/${protein_pref}/${conditions.join("+")} d${d}: ${sf.actual}/${sf.target} g, no warning`);
+        }
+      }
+    expect(unflagged, report(unflagged)).toEqual([]);
+    // HEAD was 56% within 1.10x; now ~95%. Held at 92% for date-seed margin.
+    expect(within / days, `only ${Math.round((within / days) * 100)}% within 1.10x of the sat-fat limit`).toBeGreaterThanOrEqual(0.92);
+  });
+
+  it("labels every food's saturated fat consistently with its grams", async () => {
+    // paneer (8 g) was "high" while paneer tikka (10 g) and palak paneer
+    // (8.5 g) were "med" — so the cholesterol exclusion missed exactly the
+    // dishes it exists to catch. The label must agree with the data.
+    const { getMicros } = await import("../nutrition-data");
+    const bad: string[] = [];
+    const seen = new Set<string>();
+    for (const p of profiles()) {
+      for (const meal of generateMealPlan(p, 0).meals) {
+        for (const item of [...meal.items, ...meal.alternatives]) {
+          const id = item.food.id.replace(/^food-/, "");
+          if (seen.has(id)) continue;
+          seen.add(id);
+          const grams = getMicros(id, item.food.food_group, item.food.calories).satfat_g;
+          if (grams >= 6 && item.food.satfat_level !== "high") bad.push(`${id}: ${grams} g labelled "${item.food.satfat_level}"`);
+        }
+      }
+    }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
   it("reports nutrient patterns for every weekly plan", () => {
     const bad: string[] = [];
     for (const p of profiles().filter((_, i) => i % 8 === 0)) {

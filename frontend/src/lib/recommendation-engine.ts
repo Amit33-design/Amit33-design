@@ -197,11 +197,11 @@ const FOODS: Food[] = [
   { id: "fruit-yogurt", name: "Fruit & Nut Yogurt Cup", group: "dairy", cuisines: ALL, diet: "vegetarian", slots: ["evening_snack", "mid_morning"], qty: 150, cal: 150, p: 10, c: 18, f: 4, fiber: 2, gi: 30, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Probiotic", "Calcium", "Protein"] },
 
   // ── Expanded library: more lunch / dinner mains ──────────────────────────────
-  { id: "fish-curry", name: "Coconut Fish Curry", local: "Macchi Curry", group: "protein", cuisines: ["indian"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 180, cal: 260, p: 28, c: 6, f: 13, fiber: 1, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["Omega-3", "Lean Protein", "Heart Healthy"] },
+  { id: "fish-curry", name: "Coconut Fish Curry", local: "Macchi Curry", group: "protein", cuisines: ["indian"], diet: "pescatarian", slots: ["lunch", "dinner"], qty: 180, cal: 260, p: 28, c: 6, f: 13, fiber: 1, sodium: "low", oxalate: "low", satfat: "high", anchor: true, tags: ["Omega-3", "Lean Protein", "Heart Healthy"] },
   { id: "tandoori-chicken", name: "Tandoori Chicken (Grilled)", local: "Tandoori Murgh", group: "protein", cuisines: ["indian"], diet: "nonveg", slots: ["lunch", "dinner"], qty: 150, cal: 235, p: 38, c: 3, f: 8, fiber: 0, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Lean Protein", "Low Carb", "Muscle Preservation"] },
   { id: "egg-curry", name: "Egg Curry (2 eggs)", local: "Anda Curry", group: "protein", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 245, p: 15, c: 8, f: 17, fiber: 2, sodium: "med", oxalate: "low", satfat: "med", anchor: true, egg: true, tags: ["Complete Protein", "Muscle Recovery"] },
   { id: "kadhi", name: "Low-Fat Kadhi with Brown Rice", local: "Kadhi Chawal", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 250, cal: 240, p: 10, c: 38, f: 5, fiber: 3, gi: 50, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Probiotic", "Comfort Food", "Plant Protein"] },
-  { id: "palak-paneer", name: "Palak Paneer (Low-Fat)", local: "Palak Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 240, p: 16, c: 10, f: 15, fiber: 4, sodium: "low", oxalate: "high", satfat: "med", anchor: true, tags: ["Vegetarian Protein", "Iron", "Calcium"] },
+  { id: "palak-paneer", name: "Palak Paneer (Low-Fat)", local: "Palak Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 240, p: 16, c: 10, f: 15, fiber: 4, sodium: "low", oxalate: "high", satfat: "high", anchor: true, tags: ["Vegetarian Protein", "Iron", "Calcium"] },
   { id: "veg-pulao", name: "Vegetable Brown Rice Pulao", local: "Pulao", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 220, cal: 250, p: 7, c: 45, f: 5, fiber: 6, gi: 50, sodium: "low", oxalate: "low", satfat: "low", hasVeg: true, tags: ["Complex Carbs", "High Fiber", "Low GI"] },
   { id: "sambar-rice", name: "Sambar with Brown Rice", local: "Sambar Chawal", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 250, cal: 270, p: 12, c: 48, f: 3, fiber: 8, gi: 48, sodium: "low", oxalate: "low", satfat: "low", hasVeg: true, anchor: true, tags: ["Plant Protein", "High Fiber", "Low GI"] },
   { id: "lauki-chana", name: "Lauki Chana Dal", local: "Lauki Chana", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 190, p: 11, c: 28, f: 3, fiber: 8, gi: 30, sodium: "low", oxalate: "low", satfat: "low", hasVeg: true, anchor: true, tags: ["Plant Protein", "Low GI", "Light"] },
@@ -229,14 +229,14 @@ const FOODS: Food[] = [
   // ── Indian vegetarian mains — a week of dinners shouldn't repeat ──────────
   { id: "dal-tadka", name: "Toor Dal Tadka", local: "Dal Tadka", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 210, p: 13, c: 32, f: 4, fiber: 8, gi: 30, sodium: "low", oxalate: "low", satfat: "low", highK: true, anchor: true, tags: ["Plant Protein", "Low GI", "Comfort Food"] },
   { id: "chana-masala", name: "Chana Masala", local: "Chole", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 240, p: 12, c: 38, f: 6, fiber: 11, gi: 28, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["High Fiber", "Plant Protein", "Iron"] },
-  { id: "matar-paneer", name: "Matar Paneer (Low-Fat)", local: "Matar Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 250, p: 17, c: 16, f: 14, fiber: 5, gi: 35, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["Vegetarian Protein", "Calcium", "Fiber"] },
-  { id: "paneer-tikka", name: "Grilled Paneer Tikka", local: "Paneer Tikka", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner", "evening_snack"], qty: 150, cal: 260, p: 20, c: 8, f: 17, fiber: 2, sodium: "low", oxalate: "low", satfat: "med", anchor: true, tags: ["High Protein", "Grilled Not Fried", "Calcium"] },
+  { id: "matar-paneer", name: "Matar Paneer (Low-Fat)", local: "Matar Paneer", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 250, p: 17, c: 16, f: 14, fiber: 5, gi: 35, sodium: "low", oxalate: "low", satfat: "high", anchor: true, tags: ["Vegetarian Protein", "Calcium", "Fiber"] },
+  { id: "paneer-tikka", name: "Grilled Paneer Tikka", local: "Paneer Tikka", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner", "evening_snack"], qty: 150, cal: 260, p: 20, c: 8, f: 17, fiber: 2, sodium: "low", oxalate: "low", satfat: "high", anchor: true, tags: ["High Protein", "Grilled Not Fried", "Calcium"] },
   { id: "aloo-gobi-matar", name: "Aloo Gobi Matar", local: "Aloo Gobi", group: "vegetable", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 165, p: 6, c: 26, f: 5, fiber: 7, gi: 45, sodium: "low", oxalate: "low", satfat: "low", goitrogen: true, hasVeg: true, tags: ["High Fiber", "Vitamin C", "Everyday Sabzi"] },
   { id: "veg-kofta", name: "Baked Vegetable Kofta Curry", local: "Veg Kofta", group: "vegetable", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 220, cal: 250, p: 10, c: 30, f: 10, fiber: 6, gi: 40, sodium: "med", oxalate: "low", satfat: "low", hasVeg: true, tags: ["Baked Not Fried", "High Fiber", "Festive"] },
   { id: "soya-keema", name: "Soya Matar Keema", local: "Soya Keema", group: "protein", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 180, cal: 240, p: 24, c: 22, f: 6, fiber: 9, gi: 35, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Complete Protein", "Muscle Gain", "High Fiber"] },
   { id: "curd-rice", name: "Curd Rice with Brown Rice", local: "Thayir Sadam", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 250, cal: 230, p: 9, c: 38, f: 4, fiber: 3, gi: 45, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Probiotic", "Cooling", "Digestive Ease"] },
   { id: "palak-dal", name: "Palak Moong Dal", local: "Palak Dal", group: "legumes", cuisines: ["indian"], diet: "vegan", slots: ["lunch", "dinner"], qty: 200, cal: 190, p: 13, c: 27, f: 3, fiber: 8, gi: 28, sodium: "low", oxalate: "high", satfat: "low", hasVeg: true, anchor: true, tags: ["Iron", "Plant Protein", "Low GI"] },
-  { id: "stuffed-capsicum", name: "Paneer-Stuffed Capsicum", local: "Bharwa Shimla Mirch", group: "vegetable", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 220, p: 13, c: 18, f: 11, fiber: 5, gi: 30, sodium: "low", oxalate: "low", satfat: "med", hasVeg: true, anchor: true, tags: ["Vegetarian Protein", "Vitamin C", "Low Carb"] },
+  { id: "stuffed-capsicum", name: "Paneer-Stuffed Capsicum", local: "Bharwa Shimla Mirch", group: "vegetable", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 200, cal: 220, p: 13, c: 18, f: 11, fiber: 5, gi: 30, sodium: "low", oxalate: "low", satfat: "high", hasVeg: true, anchor: true, tags: ["Vegetarian Protein", "Vitamin C", "Low Carb"] },
   { id: "veg-uttapam", name: "Vegetable Uttapam (2)", local: "Uttapam", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast", "dinner"], qty: 200, cal: 240, p: 8, c: 42, f: 5, fiber: 5, gi: 55, sodium: "med", oxalate: "low", satfat: "low", tags: ["Fermented", "Complex Carbs", "Light"] },
   { id: "sabudana-khichdi", name: "Sabudana Khichdi with Peanuts", local: "Sabudana", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 280, p: 7, c: 45, f: 9, fiber: 3, gi: 60, sodium: "low", oxalate: "low", satfat: "low", tags: ["High Energy", "Fasting Friendly"] },
   { id: "masala-oats", name: "Savoury Masala Oats", local: "Masala Oats", group: "grains", cuisines: ["indian"], diet: "vegan", slots: ["breakfast", "dinner"], qty: 200, cal: 215, p: 8, c: 36, f: 5, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "low", tags: ["Low GI", "High Fiber", "Quick"] },
@@ -252,7 +252,7 @@ const FOODS: Food[] = [
   { id: "date-almond-smoothie", name: "Date, Almond & Banana Smoothie", group: "fruit", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast", "mid_morning"], qty: 320, cal: 300, p: 8, c: 48, f: 10, fiber: 7, gi: 48, sodium: "low", oxalate: "low", satfat: "low", highK: true, tags: ["High Energy", "Natural Sweetness", "Potassium"] },
   { id: "avocado-bean-toast", name: "Smashed White Bean & Avocado Toast", group: "legumes", cuisines: ["mediterranean", "western"], diet: "vegan", slots: ["breakfast"], qty: 180, cal: 300, p: 13, c: 34, f: 13, fiber: 11, gi: 42, sodium: "low", oxalate: "low", satfat: "low", anchor: true, tags: ["Plant Protein", "High Fiber", "Heart Healthy"] },
 
-  { id: "paneer-rice-bowl", name: "Paneer & Veg Brown Rice Bowl", local: "Paneer Chawal", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 300, cal: 420, p: 22, c: 52, f: 14, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "med", hasVeg: true, anchor: true, tags: ["High Protein", "High Energy", "Complete Meal"] },
+  { id: "paneer-rice-bowl", name: "Paneer & Veg Brown Rice Bowl", local: "Paneer Chawal", group: "dairy", cuisines: ["indian"], diet: "vegetarian", slots: ["lunch", "dinner"], qty: 300, cal: 420, p: 22, c: 52, f: 14, fiber: 6, gi: 52, sodium: "low", oxalate: "low", satfat: "high", hasVeg: true, anchor: true, tags: ["High Protein", "High Energy", "Complete Meal"] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -644,6 +644,13 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // The floor is the clinical one, not a fraction of the target: tying it to
   // 75% of target put it near 1.2 g/kg for most profiles and blocked carb
   // swaps that were perfectly safe (204 days over the carb target vs 99).
+  // Saturated fat is a day-level limit for cholesterol and heart plans (6% of
+  // calories). The food-level "high" exclusion alone let "med" dishes stack:
+  // half of these days ran over, the worst at 3.5x.
+  const lipidPlan = conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE");
+  const satFatLimit =
+    computeMicroTargets(input).find((t) => t.key === "satfat_g")?.target ?? Infinity;
+  const sfOf = (f: Food) => getMicros(f.id, f.group, f.cal).satfat_g;
   const proteinFloorG = proteinCap ? 0 :
     (input.weight_kg || 70) * ((input.age || 40) >= 65 ? 1.1 : 1.0);
   const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
@@ -929,6 +936,52 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
 
     /*
+     * Saturated fat, for cholesterol and heart plans — the same swap move.
+     * A paneer dish carries 6-10 g, and the whole day's allowance at 6% of
+     * calories is 10-13 g, so one of them can be most of the day. Swap the
+     * biggest sat-fat dish for the slot's leaner option (paneer to tofu or
+     * dal) while holding the plate's shape. Crossing groups is allowed where
+     * the slot's group caps permit it.
+     */
+    if (lipidPlan) {
+      const daySF = () => selected.reduce((sum, sel) => sum + sel.picked.reduce((a, f) => a + sfOf(f), 0), 0);
+      let sfGuard = 0;
+      while (daySF() > satFatLimit && sfGuard++ < 8) {
+        let best: { slotIdx: number; from: Food; to: Food; saving: number } | null = null;
+        selected.forEach(({ picked, pool }, slotIdx) => {
+          for (const from of picked) {
+            for (const to of pool) {
+              if (picked.includes(to) || usedIds.has(to.id)) continue;
+              if (weekCount(to.id) >= WEEKLY_AUTO_CAP) continue;
+              if (!!to.anchor !== !!from.anchor) continue;
+              if ((from.group === "vegetable" || from.hasVeg) && !(to.group === "vegetable" || to.hasVeg)) continue;
+              if (from.group === "fruit" && to.group !== "fruit") continue;
+              if (to.group !== from.group) {
+                const cap = SLOT_GROUP_CAPS[to.group] ?? 1;
+                if (picked.filter((f) => f !== from && f.group === to.group).length >= cap) continue;
+              }
+              if (Math.abs(to.cal - from.cal) > from.cal * 0.5) continue;
+              if (naOf(to) > naOf(from) + 100) continue;
+              // do not buy a sat-fat fix with a carb problem
+              if (carbControl && to.c > from.c + 10) continue;
+              const saving = sfOf(from) - sfOf(to);
+              if (saving < 1) continue;
+              if (!best || saving > best.saving) best = { slotIdx, from, to, saving };
+            }
+          }
+        });
+        if (!best) break;
+        const { slotIdx, from, to } = best as { slotIdx: number; from: Food; to: Food; saving: number };
+        const picked = selected[slotIdx].picked;
+        picked[picked.indexOf(from)] = to;
+        usedIds.delete(from.id);
+        usedIds.add(to.id);
+        dayUsage.set(from.id, Math.max(0, (dayUsage.get(from.id) ?? 1) - 1));
+        dayUsage.set(to.id, (dayUsage.get(to.id) ?? 0) + 1);
+      }
+    }
+
+    /*
      * And for CARBOHYDRATE SHARE, carb-controlled plans only.
      *
      * Portion tuning can only shrink a dish to its minimum. When the plate is
@@ -1087,6 +1140,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const dayProt = () => sumBy(entries, (e) => e.food.p * e.scale);
   const dayFat = () => sumBy(entries, (e) => e.food.f * e.scale);
   const dayCarb = () => sumBy(entries, (e) => e.food.c * e.scale);
+  const daySatFat = () => sumBy(entries, (e) => sfOf(e.food) * e.scale);
 
   // Grow-only variant, used by the calorie top-up: steering toward the target
   // can SHRINK, which silently undid the item just added and left the plan no
@@ -1379,14 +1433,42 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           const breach =
             dayFat() > carbFatCeiling ||
             dayProt() > (proteinCap ? proteinTarget : proteinCeiling) ||
-            dayCarb() > macros.carbs_g * 1.05;
+            dayCarb() > macros.carbs_g * 1.05 ||
+            // replacing carbs with paneer is how Fix 1 first pushed lipid
+            // plans further over their sat-fat limit (47% -> 61% of days)
+            (lipidPlan && daySatFat() > satFatLimit);
           if (breach) { e.scale -= 0.1; break; }
         }
       }
     };
-    grow(entries.filter(isFatDense).sort((a, b) => carbShareOf(a.food) - carbShareOf(b.food)));
+    // on a lipid plan grow the unsaturated fats first (nuts, seeds, olive oil)
+    grow(entries.filter(isFatDense).sort((a, b) =>
+      lipidPlan ? sfOf(a.food) / Math.max(a.food.cal, 1) - sfOf(b.food) / Math.max(b.food.cal, 1)
+                : carbShareOf(a.food) - carbShareOf(b.food)));
     grow(entries.filter((e) => e.role === "protein" && !isCarbDense(e) && e.food.group !== "beverage")
       .sort((a, b) => carbShareOf(a.food) - carbShareOf(b.food)));
+  }
+
+  // Saturated fat, portion level: shrink the most sat-fat-dense portions
+  // (never below their bounds, never taking protein under its floor).
+  // Selection and the swap pass do most of the work; this catches days where
+  // portion scaling grew a sat-fat dish afterwards. It runs BEFORE the calorie
+  // top-up on purpose — placed after it, the calories it removed were never
+  // given back, and non-CKD worst-case delivery fell from 92% to 80%.
+  if (lipidPlan && daySatFat() > satFatLimit * 1.05) {
+    let over = daySatFat() - satFatLimit;
+    for (const e of [...entries].sort((a, b) =>
+      sfOf(b.food) / Math.max(b.food.cal, 1) - sfOf(a.food) / Math.max(a.food.cal, 1))) {
+      if (over <= 0) break;
+      const sf = sfOf(e.food);
+      if (sf <= 0.3) continue;
+      const [lo] = scaleBounds(e.food);
+      let cut = Math.min(e.scale - lo, over / sf);
+      if (e.food.p > 0) cut = Math.min(cut, Math.max(0, (dayProt() - proteinFloorG) / e.food.p));
+      if (cut <= 0.01) continue;
+      e.scale -= cut;
+      over -= cut * sf;
+    }
   }
 
   if (dayCal() < macros.calories * 0.92) {
@@ -1462,6 +1544,19 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           // by its energy that is NOT carbohydrate — otherwise the biggest
           // item wins, and the biggest item is usually a grain.
           if (carbControl && dayCarb() + food.c > macros.carbs_g * 1.05) continue;
+          // The sat-fat limit is really a ratio — 6% of calories — so a very
+          // lean food (fruit, pulses, grains) brings the day's ratio DOWN even
+          // when the gram total is already at the limit. A flat gram check
+          // refused everything, since nearly every food carries some sat fat:
+          // a heart + cholesterol + diabetes plan was left at 85% of its
+          // calories with carbs, fat and protein all under target. Allow foods
+          // at under half the permitted density, within a small gram margin.
+          if (lipidPlan) {
+            const allowedDensity = (satFatLimit * 9) / Math.max(macros.calories, 1);
+            const density = (sfOf(food) * 9) / Math.max(food.cal, 1);
+            if (density > allowedDensity * 0.5) continue;
+            if (daySatFat() + sfOf(food) > satFatLimit * 1.08) continue;
+          }
           const score = proteinCap
             ? food.cal / Math.max(food.p, 0.5) - (food.highK ? 40 : 0)
             : carbControl
