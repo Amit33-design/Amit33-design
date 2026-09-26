@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateMealPlan, generateWeeklyPlan, OnboardingInput } from "../recommendation-engine";
+import { potassiumPlan, KidneyStage } from "../kidney-potassium";
 
 /**
  * Whole-space invariant sweep.
@@ -481,10 +482,11 @@ describe("invariants across the whole profile space", () => {
       { cond: "HYPERLIPIDEMIA", label: "high-saturated-fat", unsafe: (f) => f.satfat_level === "high" },
       { cond: "HEART_DISEASE", label: "high-saturated-fat", unsafe: (f) => f.satfat_level === "high" },
       { cond: "THYROID", label: "goitrogenic", unsafe: (f) => f.is_goitrogenic === true },
+      // only where potassium is actually restricted — see the stage sweep below
       { cond: "CKD", label: "high-potassium", unsafe: (f) => f.is_high_potassium === true },
     ];
     const bad = sweep((p, d) => {
-      const active = RULES.filter((r) => p.conditions.includes(r.cond));
+      const active = RULES.filter((r) => p.conditions.includes(r.cond) && (r.cond !== "CKD" || potassiumPlan(p).restricted));
       if (!active.length) return null;
       const plan = generateMealPlan(p, d);
       const hits: string[] = [];
@@ -526,6 +528,45 @@ describe("invariants across the whole profile space", () => {
         ? `usable ${q.usable_protein_g}g > total ${q.total_protein_g}g`
         : null;
     }, 2);
+    expect(bad, report(bad)).toEqual([]);
+  });
+});
+
+/*
+ * Potassium follows the KIND of kidney disease and the blood result, not the
+ * diagnosis alone. Every stage x blood result combination, across cuisines,
+ * diets and goals: the plan's own limit, its food choices and its advice must
+ * all agree with lib/kidney-potassium.
+ */
+describe("kidney potassium by stage and blood result", () => {
+  const STAGES: (KidneyStage | "")[] = ["", "early", "advanced", "hemodialysis", "peritoneal", "transplant"];
+  const SERUM: (number | null)[] = [null, 3.2, 4.4, 5.3, 5.8, 6.3];
+
+  it("never serves high-potassium food under a limit, never restricts a low or unrestricted stage, and never loosens a high result", () => {
+    const bad: string[] = [];
+    let i = 0;
+    for (const kidney_stage of STAGES)
+      for (const serum_potassium of SERUM)
+        for (const cuisine of CUISINES)
+          for (const protein_pref of DIETS) {
+            const goal_type = GOALS[i % GOALS.length];
+            const p: OnboardingInput = { ...base, ...BODIES[i++ % BODIES.length], cuisine, protein_pref, goal_type,
+              conditions: ["CKD"], kidney_stage, serum_potassium };
+            const tag = `${kidney_stage || "unknown"}/K=${serum_potassium ?? "-"}/${cuisine}/${protein_pref}`;
+            const plan = generateMealPlan(p, i % 3);
+            const k = plan.nutrients.find((n) => n.key === "potassium_mg")!;
+            const kp = potassiumPlan(p);
+            if (serum_potassium !== null && serum_potassium >= 5.5 && kp.limit !== 2000) bad.push(`${tag}: high blood K not at 2000 mg`);
+            if (serum_potassium !== null && serum_potassium < 3.5 && kp.restricted) bad.push(`${tag}: low blood K restricted`);
+            if (!kidney_stage && !(serum_potassium !== null && serum_potassium < 3.5) && (kp.limit ?? Infinity) > 3000) bad.push(`${tag}: unknown stage looser than 3000 mg`);
+            if (kidney_stage === "hemodialysis" && serum_potassium === null && kp.limit !== 2000) bad.push(`${tag}: dialysis loosened without a blood result`);
+            if (k.target !== kp.target || k.isLimit !== kp.restricted) bad.push(`${tag}: nutrient panel disagrees (${k.target}/${k.isLimit})`);
+            const foods = plan.meals.flatMap((m) => [...m.items, ...m.alternatives]);
+            if (kp.restricted && foods.some((f) => f.food.is_high_potassium)) bad.push(`${tag}: high-potassium food under a limit`);
+            const actions = plan.nutrient_actions.filter((a) => a.nutrient === "Potassium");
+            if (kp.alert && !actions.some((a) => a.headline === kp.alert!.headline)) bad.push(`${tag}: blood alert missing`);
+            if (!kp.restricted && actions.some((a) => /renal limit/.test(a.headline))) bad.push(`${tag}: over-limit warning with no limit`);
+          }
     expect(bad, report(bad)).toEqual([]);
   });
 });

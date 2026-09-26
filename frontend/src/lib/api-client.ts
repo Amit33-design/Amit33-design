@@ -6,7 +6,9 @@ import {
   generateWeeklyPlan, generateWorkoutPlan, generateTodayWorkout, generateLifestyle,
   askHealthCopilot,
 } from "./recommendation-engine";
-import { saveProgressEntry, getLocalProgressHistory, getDietPhase, setDietPhase } from "./local-store";
+import { saveProgressEntry, getLocalProgressHistory, getDietPhase, setDietPhase, getLabResults } from "./local-store";
+import { latestByMarker } from "./labs";
+import { SERUM_POTASSIUM_MAX_AGE_DAYS, KidneyStage } from "./kidney-potassium";
 import { computeAdaptiveTdee, paceFeedback, AdaptiveTdee } from "./adaptive-tdee";
 import { assessPhase, phaseForGoal, phaseCalorieShift, DietPhase } from "./diet-phase";
 
@@ -57,6 +59,8 @@ function getOnboardingInput(): OnboardingInput {
         };
       })(),
       conditions: (s.conditions || []).map((c: { condition_code: string }) => c.condition_code).filter(Boolean),
+      kidney_stage: ((s.conditions || []).find((c: { condition_code: string }) => c.condition_code === "CKD")?.stage || "") as KidneyStage | "",
+      serum_potassium: recentSerumPotassium(),
       medications: (s.medications || []).filter(Boolean),
       cuisine: s.diet?.cuisine_type || fallback.cuisine,
       protein_pref: s.diet?.protein_preference || fallback.protein_pref,
@@ -83,6 +87,21 @@ function getOnboardingInput(): OnboardingInput {
     };
   } catch {
     return fallback;
+  }
+}
+
+/**
+ * The latest blood potassium, if it is recent enough to describe the user now.
+ * An old result must not keep a limit switched off (or on) for months.
+ */
+function recentSerumPotassium(): number | null {
+  try {
+    const k = latestByMarker(getLabResults()).potassium;
+    if (!k) return null;
+    const ageDays = (Date.now() - new Date(k.date).getTime()) / 86_400_000;
+    return ageDays <= SERUM_POTASSIUM_MAX_AGE_DAYS ? k.value : null;
+  } catch {
+    return null;
   }
 }
 

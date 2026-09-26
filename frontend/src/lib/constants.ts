@@ -23,7 +23,7 @@ export const CONDITIONS = [
   // condition rather than being folded into "High Cholesterol".
   { code: "HYPERTRIGLYCERIDEMIA", label: "High Triglycerides", icon: "🧪", impact: "Limits sugar and refined carbs, flags alcohol, adds omega-3" },
   { code: "KIDNEY_STONES", label: "Kidney Stones",          icon: "🫁", impact: "Avoids high-oxalate foods, increases hydration" },
-  { code: "CKD",           label: "Chronic Kidney Disease", icon: "🏥", impact: "Caps protein at 0.75g/kg, limits phosphorus & potassium" },
+  { code: "CKD",           label: "Chronic Kidney Disease", icon: "🏥", impact: "Caps protein at 0.75g/kg; potassium set by your stage & blood tests" },
   { code: "HEART_DISEASE", label: "Heart Disease",          icon: "❤️", impact: "Sodium < 1500mg, no trans fats, omega-3 priority" },
   { code: "THYROID",       label: "Thyroid Disorder",       icon: "🦋", impact: "Limits raw cruciferous vegetables, iodine-rich foods" },
 ];

@@ -12,7 +12,7 @@
  * entry form offers the other unit and converts on the way in.
  */
 
-export type LabMarker = "tg" | "hdl" | "ldl" | "total_chol" | "a1c" | "fasting_glucose" | "alt";
+export type LabMarker = "tg" | "hdl" | "ldl" | "total_chol" | "a1c" | "fasting_glucose" | "alt" | "potassium";
 
 export interface LabUnit {
   label: string;
@@ -79,6 +79,13 @@ export const LAB_MARKERS: Record<LabMarker, LabMarkerSpec> = {
     label: "ALT (liver enzyme)", unit: "U/L",
     band: { min: 0, max: 40 }, fastingMatters: false, plausible: { min: 1, max: 2000 },
     note: "Upper limits vary by lab (often 33-40 U/L). Raised ALT is common with fatty liver.",
+  },
+  potassium: {
+    label: "Potassium (blood)", unit: "mmol/L",
+    // mEq/L is numerically identical for potassium
+    altUnits: [{ label: "mEq/L", toCanonical: (v) => v }],
+    band: { min: 3.5, max: 5.0 }, fastingMatters: false, plausible: { min: 1.5, max: 9 },
+    note: "3.5-5.0 is normal. With kidney disease this result sets how much potassium your plan allows.",
   },
 };
 
@@ -194,6 +201,26 @@ export function suggestFromLabs(results: LabResult[], existingConditions: string
     out.push({ condition: "HYPERLIPIDEMIA", confirmWithDoctor: false,
       headline: ldlHigh ? `LDL cholesterol of ${l.ldl!.value} mg/dL` : `Non-HDL cholesterol of ${d.non_hdl} mg/dL`,
       detail: "That's raised. Adding High Cholesterol cuts saturated fat and adds soluble fibre, the dietary changes that lower LDL most." });
+  }
+
+  // Blood potassium. The plan acts on it by itself (see kidney-potassium), so
+  // there is no condition to add — but a dangerous value must be said here
+  // too, where the user has just typed it.
+  if (l.potassium && daysApart(l.potassium.date, new Date().toISOString().slice(0, 10)) <= 90) {
+    const k = l.potassium.value;
+    if (k >= 6.0) {
+      out.push({ condition: null, confirmWithDoctor: true,
+        headline: `Blood potassium of ${k} mmol/L`,
+        detail: "6.0 or above can affect the heart rhythm. Please contact your doctor or kidney unit today; if you have palpitations, weakness or feel faint, seek urgent care." });
+    } else if (k >= 5.5) {
+      out.push({ condition: null, confirmWithDoctor: true,
+        headline: `Blood potassium of ${k} mmol/L`,
+        detail: "That's high. Let your doctor know — they will usually repeat it and review medicines that raise potassium." + (has("CKD") ? " Your meal plan now uses a strict potassium limit." : "") });
+    } else if (k < 3.5) {
+      out.push({ condition: null, confirmWithDoctor: true,
+        headline: `Blood potassium of ${k} mmol/L`,
+        detail: "That's low. Ask your doctor whether you need a supplement — don't start one on your own." + (has("CKD") ? " Your meal plan will not restrict potassium while it is low." : "") });
+    }
   }
 
   if (d.tg_hdl_ratio !== null && d.tg_hdl_ratio > 3.5) {

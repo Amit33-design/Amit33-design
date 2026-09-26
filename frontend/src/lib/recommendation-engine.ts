@@ -18,6 +18,7 @@ import { getMicros, Micros, freeSugars } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
 import { analyseDayProtein } from "./protein-quality";
+import { potassiumPlan, KidneyStage } from "./kidney-potassium";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -83,6 +84,10 @@ export interface OnboardingInput {
   tdee_confidence?: number;
   /** deliberate diet-phase shift (maintenance break, reverse) — not clamped */
   phase_shift?: number;
+  /** which kind of kidney disease — sets the potassium limit (lib/kidney-potassium) */
+  kidney_stage?: KidneyStage | "";
+  /** latest blood potassium in mmol/L, only when recent enough to trust */
+  serum_potassium?: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,7 +287,7 @@ export function isCarbControlled(input: { goal_type?: string; conditions?: strin
     c.includes("HYPERTRIGLYCERIDEMIA");
 }
 
-function isExcluded(food: Food, conditions: string[]): boolean {
+function isExcluded(food: Food, conditions: string[], potassiumRestricted = conditions.includes("CKD")): boolean {
   for (const c of conditions) {
     if ((c === "T2D" || c === "PREDIABETES" || c === "HYPERTRIGLYCERIDEMIA") && food.gi !== undefined && food.gi >= 70) return true;
     // Free sugar is the most direct dietary lever on triglycerides. One date
@@ -292,7 +297,10 @@ function isExcluded(food: Food, conditions: string[]): boolean {
     if ((c === "HTN" || c === "HEART_DISEASE") && food.sodium === "high") return true;
     if (c === "KIDNEY_STONES" && food.oxalate === "high") return true;
     if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE" || c === "HYPERTRIGLYCERIDEMIA") && food.satfat === "high") return true;
-    if (c === "CKD" && food.highK) return true;
+    // Only when this person's potassium is actually restricted: KDOQI 2020
+    // and KDIGO 2024 restrict by blood result and stage, not by diagnosis —
+    // peritoneal dialysis and transplant patients are more often LOW.
+    if (c === "CKD" && potassiumRestricted && food.highK) return true;
     if (c === "THYROID" && food.goitrogen) return true;
   }
   return false;
@@ -661,6 +669,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // CKD (or any explicit protein cap) must not be exceeded by the actual food
   // selection, not just the displayed target. Track protein across the whole day.
   const proteinCap = conditions.includes("CKD");
+  const kPlan = potassiumPlan(input);
   const carbControl = isCarbControlled(input);
   // The carb passes may cost protein — they swap and drop starch-led dishes,
   // and on a plant plan those carry much of the day's protein. Averages hid
@@ -706,7 +715,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       food.slots.includes(slotDef.slot) &&
       dietAllows(input.protein_pref, food) &&
       eggAllowed(input, food) &&
-      !isExcluded(food, conditions) &&
+      !isExcluded(food, conditions, kPlan.restricted) &&
       // isExcluded keys the high-GI rule off a DIAGNOSIS, so someone who
       // chose the diabetes-friendly goal without one could still be served
       // white rice (GI 73). The goal is the user asking for blood-sugar
@@ -1129,9 +1138,8 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
      * and unlike a portion cut it costs no calories, which a renal plan
      * cannot spare.
      */
-    if (conditions.includes("CKD")) {
-      const kLimit =
-        computeMicroTargets(input).find((t) => t.key === "potassium_mg")?.target ?? 2000;
+    if (kPlan.restricted && kPlan.limit !== null) {
+      const kLimit = kPlan.limit;
       // mirror the leaching model used when the day is totalled
       const kOf = (f: Food) => {
         const m = getMicros(f.id, f.group, f.cal);
@@ -1634,7 +1642,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           // 230 g carb target, 77% of its calories, and no grain all day.
           const carbsShort = dayCarb() < macros.carbs_g * 0.85;
           const score = proteinCap
-            ? food.cal / Math.max(food.p, 0.5) - (food.highK ? 40 : 0)
+            ? food.cal / Math.max(food.p, 0.5) - (kPlan.restricted && food.highK ? 40 : 0)
             : carbControl && !carbsShort
               ? food.cal * (1 - carbShareOf(food))
               : food.cal;
@@ -1729,7 +1737,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // Renal plans are built on the assumption that vegetables and pulses are
   // boiled and drained — the plan says so in its potassium guidance, so the
   // total it reports should reflect the same kitchen.
-  const leachedVegetables = conditions.includes("CKD");
+  const leachedVegetables = kPlan.restricted;
   const micros = sumMicros(meals, lowSodiumCooking, leachedVegetables);
   const micro_targets = computeMicroTargets(input);
   const nutrients = analyseMicros(micros, micro_targets);
@@ -1818,10 +1826,11 @@ export function computeMicroTargets(input: OnboardingInput): MicroTarget[] {
   const targets: MicroTarget[] = [
     { key: "sodium_mg", label: "Sodium", unit: "mg", target: sodiumCap, isLimit: true,
       why: sodiumCap === 1500 ? "DASH limit for blood pressure and heart/kidney protection" : "General upper limit for healthy blood pressure" },
-    { key: "potassium_mg", label: "Potassium", unit: "mg",
-      target: conditions.includes("CKD") ? 2000 : female ? 2600 : 3400,
-      isLimit: conditions.includes("CKD"),
-      why: conditions.includes("CKD") ? "Restricted — weakened kidneys clear potassium poorly" : "Counteracts sodium and relaxes blood vessel walls" },
+    // Kidney disease: set by stage and blood result, see lib/kidney-potassium
+    ...(() => {
+      const k = potassiumPlan(input);
+      return [{ key: "potassium_mg" as const, label: "Potassium", unit: "mg", target: k.target, isLimit: k.restricted, why: k.why }];
+    })(),
     { key: "calcium_mg", label: "Calcium", unit: "mg", target: calciumTarget, upper: 2500,
       why: "Bone density, muscle contraction and nerve signalling" },
     { key: "iron_mg", label: "Iron", unit: "mg", target: ironTarget, upper: 45,
@@ -2032,10 +2041,24 @@ function buildNutrientActions(
   // whole-food renal plan still lands well above a 2000 mg restriction —
   // moderate-potassium foods add up. Saying nothing implied the limit was met.
   const potassium = get("potassium_mg");
-  if (input.conditions.includes("CKD") && potassium && potassium.status === "over") {
+  const kPlan = potassiumPlan(input);
+  // A blood result outside the normal range outranks anything the menu says.
+  // It goes FIRST: an abnormal potassium can affect the heart rhythm, and it
+  // was landing below a routine vitamin D tip.
+  if (kPlan.alert) {
+    out.unshift({ nutrient: "Potassium", severity: kPlan.alert.severity,
+      headline: kPlan.alert.headline, detail: kPlan.alert.detail });
+  }
+  if (input.conditions.includes("CKD") && !kPlan.restricted && potassium) {
+    // Stages where current guidance does not restrict potassium. Say so, so
+    // the user does not cut fruit and vegetables on old advice.
+    out.push({ nutrient: "Potassium", severity: "tip",
+      headline: "Your plan does not restrict potassium — here is why",
+      detail: `${kPlan.why} Current kidney guidelines (KDOQI 2020, KDIGO 2024) limit potassium only when a blood test shows it running high, and point to processed foods and salt substitutes — whose added potassium is almost fully absorbed — as the first things to cut, not fruit and vegetables. Add each new blood potassium result under Progress → Lab results: if it comes back high, this plan switches to a limit automatically.` });
+  } else if (input.conditions.includes("CKD") && potassium && potassium.status === "over") {
     out.push({ nutrient: "Potassium", severity: "critical",
       headline: "Potassium runs above your renal limit — here is how to bring it down",
-      detail: `Today's plan comes to about ${potassium.actual} mg against a ${potassium.target} mg restriction, and that figure ALREADY assumes you boil vegetables and pulses in plenty of water and pour the water away — if you cook them any other way the real number is higher. High-potassium foods are excluded too, but dal, vegetables, fruit and curd all carry some, so a whole-food plan still adds up. Keep those portions modest rather than cutting them out, and double the water when you boil. Your own limit depends on your blood results — bring this number to your kidney team rather than treating it as fixed.` });
+      detail: `Today's plan comes to about ${potassium.actual} mg against a ${potassium.target} mg restriction, and that figure ALREADY assumes you boil vegetables and pulses in plenty of water and pour the water away — if you cook them any other way the real number is higher. High-potassium foods are excluded too, but dal, vegetables, fruit and curd all carry some, so a whole-food plan still adds up. Keep those portions modest rather than cutting them out, and double the water when you boil. ${kPlan.basis === "stage_unknown" ? " This 3000 mg limit is a placeholder: add your kidney stage in your profile and your latest blood potassium under Progress → Lab results, and the limit will follow them." : " Your own limit depends on your blood results — bring this number to your kidney team rather than treating it as fixed."}` });
   } else if (input.conditions.includes("CKD") && potassium) {
     // The total is only achievable in a kitchen that leaches, so say so where
     // the user can act on it. Silently banking the reduction would hand them a
@@ -2960,7 +2983,7 @@ const CONDITION_TIPS: Record<string, { condition: string; tip: string }> = {
   HYPERTRIGLYCERIDEMIA: { condition: "High Triglycerides", tip: "Cut sugary drinks, sweets and refined carbs (white rice, white bread, maida) first — they raise triglycerides fastest. Keep alcohol low and have several alcohol-free days a week, eat oily fish or walnuts and flax for omega-3, and walk after meals. Losing even 5% of body weight lowers triglycerides noticeably." },
   HYPERLIPIDEMIA: { condition: "High Cholesterol", tip: "Aim for 10–25 g of soluble fiber daily (oats, beans, flax) and replace saturated fats with olive oil and nuts to lower LDL." },
   KIDNEY_STONES: { condition: "Kidney Stones", tip: "Drink 2.5–3 L of water daily, add citrus (lemon/orange) for citrate, and limit high-oxalate foods like spinach and almonds." },
-  CKD: { condition: "Kidney Disease", tip: "Keep protein moderate (~0.75 g/kg), limit phosphorus and potassium, and monitor fluid intake with your nephrologist." },
+  CKD: { condition: "Kidney Disease", tip: "Keep protein moderate (~0.75 g/kg), cut processed foods (their phosphate and potassium additives are almost fully absorbed), limit potassium only as far as your blood tests call for, and monitor fluid intake with your nephrologist." },
   HEART_DISEASE: { condition: "Heart Disease", tip: "Prioritise omega-3 rich fish, keep sodium < 1500 mg, avoid trans fats and do moderate cardio while avoiding Valsalva straining." },
   THYROID: { condition: "Hypothyroidism", tip: "Take levothyroxine on an empty stomach, ensure adequate selenium and iodine, and lightly cook cruciferous vegetables to reduce goitrogens." },
 };
@@ -3176,7 +3199,7 @@ function explainFoodSafety(term: string, matches: Food[], input: OnboardingInput
       reasons.add("it's **high in oxalates**, which can promote calcium-oxalate kidney stones");
     if ((conditions.includes("HYPERLIPIDEMIA") || conditions.includes("HEART_DISEASE") || conditions.includes("HYPERTRIGLYCERIDEMIA")) && f.satfat === "high")
       reasons.add("its **saturated fat** content works against your cholesterol goals");
-    if (conditions.includes("CKD") && f.highK)
+    if (conditions.includes("CKD") && potassiumPlan(input).restricted && f.highK)
       reasons.add("it's **high in potassium**, which strained kidneys clear poorly");
     if (conditions.includes("THYROID") && f.goitrogen)
       reasons.add("raw cruciferous vegetables contain **goitrogens** that can interfere with thyroid function");

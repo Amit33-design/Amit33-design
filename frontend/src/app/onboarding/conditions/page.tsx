@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
 import { CONDITIONS, MEDICATIONS } from "@/lib/constants";
+import { KIDNEY_STAGES } from "@/lib/kidney-potassium";
 import { cn } from "@/lib/utils";
 
 export default function ConditionsPage() {
@@ -19,6 +20,9 @@ export default function ConditionsPage() {
   };
 
   const selected = new Set(conditions.map((c) => c.condition_code));
+  const kidneyStage = conditions.find((c) => c.condition_code === "CKD")?.stage ?? "";
+  const setKidneyStage = (stage: string) =>
+    setConditions(conditions.map((c) => (c.condition_code === "CKD" ? { ...c, stage } : c)));
 
   const toggleCondition = (code: string) => {
     if (selected.has(code)) {
@@ -87,6 +91,29 @@ export default function ConditionsPage() {
                     {isSelected && <span className="text-white text-sm font-bold">✓</span>}
                   </div>
                 </button>
+                {/* Kidney disease is not one condition for diet purposes: dialysis,
+                    transplant and early CKD need very different potassium limits. */}
+                {cond.code === "CKD" && isSelected && (
+                  <fieldset className="px-5 pb-5 -mt-1 animate-fade-in">
+                    <legend className="text-sm font-semibold text-violet-900 mb-1">Which describes you?</legend>
+                    <p className="text-xs text-gray-700 mb-2">This sets your potassium limit. If you're unsure, ask your kidney team for your stage or eGFR.</p>
+                    <div className="space-y-1.5">
+                      {[...KIDNEY_STAGES, { code: "", label: "Not sure", detail: "We'll use a moderate 3000 mg limit until you know" }].map((st) => (
+                        <label key={st.code || "unsure"} className={cn(
+                          "flex items-start gap-3 p-2.5 rounded-xl border cursor-pointer min-h-[44px]",
+                          kidneyStage === st.code ? "border-violet-500 bg-white" : "border-violet-200 bg-violet-50/50"
+                        )}>
+                          <input type="radio" name="kidney-stage" value={st.code} checked={kidneyStage === st.code}
+                            onChange={() => setKidneyStage(st.code)} className="mt-1 accent-violet-600" />
+                          <span>
+                            <span className="block text-sm font-semibold text-gray-900">{st.label}</span>
+                            <span className="block text-xs text-gray-700">{st.detail}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
               </div>
             );
           })}

@@ -7,7 +7,7 @@ import { useOnboardingStore } from "@/store/onboarding-store";
 import { CONDITIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-const MARKER_ORDER: LabMarker[] = ["tg", "ldl", "hdl", "total_chol", "a1c", "fasting_glucose", "alt"];
+const MARKER_ORDER: LabMarker[] = ["tg", "ldl", "hdl", "total_chol", "a1c", "fasting_glucose", "potassium", "alt"];
 const today = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -159,7 +159,9 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
             {MARKER_ORDER.filter((m) => latest[m]).map((m) => {
               const r = latest[m]!;
               const s = LAB_MARKERS[m];
-              const good = m === "hdl" ? r.value >= s.band.min : r.value <= s.band.max;
+              // potassium is harmful in both directions; HDL is better high
+              const good = m === "potassium" ? r.value >= s.band.min && r.value <= s.band.max
+                : m === "hdl" ? r.value >= s.band.min : r.value <= s.band.max;
               return (
                 <div key={m} className="flex items-center justify-between p-3 rounded-xl border border-gray-100">
                   <div>
@@ -193,7 +195,8 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
             const higherBetter = m === "hdl";
             const edge = higherBetter ? s.band.min : s.band.max;
             const vals = series.map((r) => r.value);
-            const lo = Math.floor(Math.min(...vals, edge) * 0.9);
+            const twoSided = m === "potassium";
+            const lo = Math.floor(Math.min(...vals, twoSided ? s.band.min : edge) * 0.9);
             const hi = Math.ceil(Math.max(...vals, edge) * 1.08);
             return (
               <div key={m} className="p-3 rounded-xl border border-gray-100">
@@ -205,7 +208,7 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#4b5563" }} tickFormatter={(v) => v?.slice(2)} />
                     <YAxis tick={{ fontSize: 10, fill: "#4b5563" }} domain={[lo, hi]} width={36} />
                     <ReferenceLine y={edge} stroke="#047857" strokeDasharray="4 3"
-                      label={{ value: higherBetter ? `healthy above ${edge}` : `healthy under ${edge}`, position: "insideBottomRight", fontSize: 10, fill: "#047857" }} />
+                      label={{ value: twoSided ? `normal ${s.band.min}-${s.band.max}` : higherBetter ? `healthy above ${edge}` : `healthy under ${edge}`, position: "insideBottomRight", fontSize: 10, fill: "#047857" }} />
                     <Tooltip formatter={(v) => [`${v} ${s.unit}`, s.label]} />
                     <Line type="monotone" dataKey="value" stroke="#6d28d9" strokeWidth={2}
                       // non-fasting draws read higher, so they are drawn hollow

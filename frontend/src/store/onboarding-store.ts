@@ -24,6 +24,8 @@ export interface OnboardingGoal {
 export interface OnboardingCondition {
   condition_code: string;
   severity?: string;
+  /** CKD only: which kind of kidney disease (see lib/kidney-potassium) */
+  stage?: string;
 }
 
 export interface OnboardingDiet {
