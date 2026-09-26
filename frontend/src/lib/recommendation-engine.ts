@@ -679,6 +679,8 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const satFatLimit =
     computeMicroTargets(input).find((t) => t.key === "satfat_g")?.target ?? Infinity;
   const sfOf = (f: Food) => getMicros(f.id, f.group, f.cal).satfat_g;
+  const o3Of = (f: Food) => getMicros(f.id, f.group, f.cal).omega3_g;
+  const dayO3Sources = () => selected.reduce((n, sel) => n + sel.picked.filter((f) => o3Of(f) >= 0.5).length, 0);
   const proteinFloorG = proteinCap ? 0 :
     (input.weight_kg || 70) * ((input.age || 40) >= 65 ? 1.1 : 1.0);
   const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
@@ -896,6 +898,39 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   });
 
   /*
+   * ── Omega-3: one real source every day ─────────────────────────────────────
+   *
+   * Only about half of days carried any omega-3-rich food, and plant plans
+   * missed the target on 16-22% of days. Selection never asked for one: flax,
+   * chia and walnuts win a slot only when their preference score happens to
+   * beat a dish. If a day has nothing carrying at least 0.5 g, add the source
+   * that costs the fewest calories — a spoon of ground flax before a handful
+   * of walnuts — to breakfast or a snack, where it belongs. The weekly cap
+   * rotates it across flax, chia and walnuts rather than one of them daily.
+   */
+  if (dayO3Sources() === 0) {
+    let pickO3: { food: Food; slotIdx: number; score: number } | null = null;
+    selected.forEach(({ slotDef, picked, pool }, slotIdx) => {
+      if (!["breakfast", "mid_morning", "evening_snack"].includes(slotDef.slot)) return;
+      for (const f of pool) {
+        if (o3Of(f) < 0.5 || picked.includes(f) || usedIds.has(f.id)) continue;
+        if (weekCount(f.id) >= WEEKLY_AUTO_CAP) continue;
+        if (picked.filter((x) => x.group === f.group).length >= (SLOT_GROUP_CAPS[f.group] ?? 1)) continue;
+        if (f.p >= 8 && dayProtein + f.p > proteinCeiling) continue;
+        const score = o3Of(f) / Math.max(f.cal, 1);
+        if (!pickO3 || score > pickO3.score) pickO3 = { food: f, slotIdx, score };
+      }
+    });
+    if (pickO3) {
+      const { food, slotIdx } = pickO3 as { food: Food; slotIdx: number; score: number };
+      selected[slotIdx].picked.push(food);
+      usedIds.add(food.id);
+      dayUsage.set(food.id, (dayUsage.get(food.id) ?? 0) + 1);
+      dayProtein += food.p;
+    }
+  }
+
+  /*
    * ── Phase 1b: bring the day's SODIUM under its limit, by swapping dishes ──
    *
    * Sodium is the one target you cannot portion your way out of: halving a
@@ -992,6 +1027,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
               if (naOf(to) > naOf(from) + 100) continue;
               // do not buy a sat-fat fix with a carb problem
               if (carbControl && to.c > from.c + 10) continue;
+              if (o3Of(from) >= 0.5 && o3Of(to) < 0.5 && dayO3Sources() <= 1) continue;
               const saving = sfOf(from) - sfOf(to);
               if (saving < 1) continue;
               if (!best || saving > best.saving) best = { slotIdx, from, to, saving };
@@ -1207,12 +1243,17 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // it is filed under protein — palak dal, tofu and spinach, a vegetable kofta.
   // Every drop pass has to respect that, or the plate quietly loses its
   // vegetables after selection has already guaranteed them.
-  const carriesLastVegetable = (e: Entry) => {
+  const carriesLastVegetableOnly = (e: Entry) => {
     const sel = selected[e.slotIdx];
     if (!["lunch", "dinner"].includes(sel.slotDef.slot)) return false;
     if (!(e.food.group === "vegetable" || e.food.hasVeg)) return false;
     return sel.picked.filter((f) => f.group === "vegetable" || f.hasVeg).length <= 1;
   };
+  // Named for its original job; it now also protects the day's only omega-3
+  // source, which every drop pass must leave alone for the same reason — the
+  // guarantee above is pointless if a calorie trim quietly removes it.
+  const carriesLastVegetable = (e: Entry) =>
+    carriesLastVegetableOnly(e) || (o3Of(e.food) >= 0.5 && dayO3Sources() <= 1);
 
   // If still well over target (very low-calorie plans), drop the lowest-priority
   // energy items until we're within reach, then re-steer.
@@ -2047,12 +2088,18 @@ function buildNutrientActions(
   }
 
   const omega3 = get("omega3_g");
-  if (omega3 && omega3.status === "low") {
+  if (omega3 && plantOnly) {
+    // Like B12: meeting the number is not the whole story on a plant diet.
+    // Flax, chia and walnuts supply ALA, and the body turns only a small share
+    // of it into EPA and DHA, the forms the heart and brain use — so this is
+    // worth saying even on days the ALA target is met.
     out.push({ nutrient: "Omega-3", severity: "tip",
-      headline: "Add a daily spoon of flax or chia",
-      detail: plantOnly
-        ? "Ground flaxseed, chia and walnuts supply ALA. Conversion to the active EPA/DHA form is inefficient, so an algal omega-3 supplement is worth considering if you never eat fish."
-        : "Oily fish twice a week (salmon, surmai, sardines) is the most effective source." });
+      headline: omega3.status === "low" ? "Add a daily spoon of ground flax or chia" : "Your omega-3 comes from plants — worth one question for your doctor",
+      detail: `${omega3.status === "low" ? "Today's plan is a little short. " : ""}Ground flaxseed, chia and walnuts supply ALA, a plant omega-3. The body converts only a small share of ALA into EPA and DHA, the forms your heart and brain actually use. Algae-based omega-3 is the plant source of EPA and DHA directly — ask your doctor whether it makes sense for you.` });
+  } else if (omega3 && omega3.status === "low") {
+    out.push({ nutrient: "Omega-3", severity: "tip",
+      headline: "Add oily fish twice a week",
+      detail: "Oily fish twice a week (salmon, surmai, sardines, mackerel) is the most effective source. On other days, a spoon of ground flax or a handful of walnuts helps." });
   }
 
   return out;

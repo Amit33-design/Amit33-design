@@ -407,6 +407,36 @@ describe("invariants across the whole profile space", () => {
     expect(without).toMatch(/150 mg\/dL/);
   });
 
+  // ── Omega-3 ───────────────────────────────────────────────────────────────
+  // Selection never asked for an omega-3 source: flax, chia and walnuts won a
+  // slot only when their score happened to beat a dish, so only about half
+  // of days carried one and plant plans missed the target on 16-22% of days.
+  // The bar is 95%, not the 90% first proposed: the carb work alone had
+  // already lifted plant plans to ~90% (its swaps pull in nuts and seeds), so
+  // a 90% bar could not tell whether the daily guarantee exists. With it: ~99%.
+  it("meets the omega-3 target on plant-based plans at least 95% of the time", () => {
+    let days = 0, met = 0;
+    for (const body of BODIES) for (const cuisine of CUISINES) for (const protein_pref of ["vegetarian", "vegan"])
+      for (const goal_type of GOALS) for (const conditions of CONDITIONS) {
+        if (conditions.includes("CKD")) continue; // renal plans restrict nuts and seeds by design
+        const p = { ...base, ...body, cuisine, protein_pref, goal_type, conditions };
+        const plan = generateMealPlan(p, 0);
+        const o3 = plan.nutrients.find((n) => n.key === "omega3_g")!;
+        days++;
+        if (o3.actual >= o3.target) met++;
+      }
+    expect(met / days, `omega-3 met on only ${Math.round((met / days) * 100)}% of plant-based days`).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it("tells plant eaters that ALA is not EPA/DHA, even when the number is met", () => {
+    // Like B12: a plant diet can hit the ALA target and still carry little of
+    // the EPA/DHA the heart uses. Framed as a question for their doctor.
+    const plan = generateMealPlan({ ...base, protein_pref: "vegan" }, 0);
+    const note = plan.nutrient_actions.find((a) => a.nutrient === "Omega-3");
+    expect(note?.detail).toMatch(/EPA and DHA/);
+    expect(note?.detail).toMatch(/ask your doctor/i);
+  });
+
   it("reports nutrient patterns for every weekly plan", () => {
     const bad: string[] = [];
     for (const p of profiles().filter((_, i) => i % 8 === 0)) {
