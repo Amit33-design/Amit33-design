@@ -1,4 +1,5 @@
 "use client";
+import { LabResults } from "@/components/dashboard/LabResults";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useOnboardingStore } from "@/store/onboarding-store";
@@ -130,6 +131,18 @@ export default function ConditionsPage() {
             })}
           </div>
         </div>
+
+        {/* Optional: labs can suggest conditions the user did not know to pick.
+            Collapsed by default — most people will not have a report to hand,
+            and this step must stay quick to skip. */}
+        <details className="rounded-2xl border border-gray-200 bg-white p-4">
+          <summary className="cursor-pointer min-h-[40px] flex items-center font-semibold text-gray-800">
+            🧪 Have a recent blood test? Add results (optional)
+          </summary>
+          <div className="mt-3">
+            <LabResults compact />
+          </div>
+        </details>
 
         <div className="flex gap-3 pt-2">
           <button onClick={() => router.back()} className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">← Back</button>

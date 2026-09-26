@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MetabolismCard } from "@/components/dashboard/MetabolismCard";
 import { DietPhaseCard } from "@/components/dashboard/DietPhaseCard";
+import { LabResults } from "@/components/dashboard/LabResults";
 
 interface ProgressLog {
   log_date: string;
@@ -144,8 +145,9 @@ export default function ProgressPage() {
             { key: "mood_score",        label: "Mood (1–5)",         placeholder: "4", min: "1", max: "5" },
           ].map((field) => (
             <div key={field.key}>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">{field.label}</label>
+              <label htmlFor={`log-${field.key}`} className="block text-xs font-semibold text-gray-600 mb-1">{field.label}</label>
               <input
+                id={`log-${field.key}`}
                 type="number"
                 placeholder={field.placeholder}
                 step={(field as unknown as Record<string, string>).step}
@@ -172,10 +174,11 @@ export default function ProgressPage() {
             { key: "blood_sugar_post_meal",label: "Sugar Post-Meal (mg/dL)", placeholder: "140", icon: "🩸" },
           ].map((field) => (
             <div key={field.key}>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                {field.icon} {field.label}
+              <label htmlFor={`log-${field.key}`} className="block text-xs font-semibold text-gray-600 mb-1">
+                <span aria-hidden="true">{field.icon}</span> {field.label}
               </label>
               <input
+                id={`log-${field.key}`}
                 type="number"
                 placeholder={field.placeholder}
                 value={(form as Record<string, string>)[field.key]}
@@ -186,8 +189,9 @@ export default function ProgressPage() {
           ))}
         </div>
         <div className="mb-4">
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
+          <label htmlFor="log-notes" className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
           <input
+            id="log-notes"
             type="text"
             placeholder="How are you feeling today?"
             value={form.notes}
@@ -234,6 +238,9 @@ export default function ProgressPage() {
 
       {/* Medication tracker + reminders */}
       <MedicationTracker />
+
+      {/* Optional blood-test results — suggests conditions, never applies them */}
+      <LabResults />
 
       {/* Charts */}
       {chartData.length > 1 && (

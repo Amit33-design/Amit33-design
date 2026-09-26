@@ -1,3 +1,4 @@
+import type { LabResult } from "./labs";
 const PROGRESS_KEY = "health-copilot-progress";
 
 export interface ProgressEntry {
@@ -315,5 +316,35 @@ export function setDietPhase(phase: string): StoredPhase {
   }
   const next: StoredPhase = { phase, started: today(), history: history.slice(-12) };
   writeJson(PHASE_KEY, next);
+  return next;
+}
+
+// ── Lab results ──────────────────────────────────────────────────────────────
+// Optional blood-test values the user records. Kept on this device like every
+// other log; see lib/labs for units, ranges and the (suggest-only) logic.
+const LAB_KEY = "health-copilot-labs";
+
+export function getLabResults(): LabResult[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LAB_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addLabResult(result: Omit<LabResult, "id">): LabResult[] {
+  const all = getLabResults();
+  const entry: LabResult = { ...result, id: `${result.marker}-${result.date}-${Date.now()}` };
+  const next = [...all, entry].sort((a, b) => a.date.localeCompare(b.date));
+  if (typeof window !== "undefined") localStorage.setItem(LAB_KEY, JSON.stringify(next));
+  return next;
+}
+
+export function deleteLabResult(id: string): LabResult[] {
+  const next = getLabResults().filter((r) => r.id !== id);
+  if (typeof window !== "undefined") localStorage.setItem(LAB_KEY, JSON.stringify(next));
   return next;
 }

@@ -187,7 +187,7 @@ export default function LifestylePage() {
                       <input type="number" min={0.5} max={70} step={0.5} inputMode="decimal"
                         value={abvOf(t) ?? ""} placeholder={String(spec.abv)}
                         onChange={(e) => setDrink(t, { abv: e.target.value ? Number(e.target.value) : undefined })}
-                        className="w-20 px-2 py-1.5 rounded-lg border border-gray-300 text-gray-900" aria-label={`Strength of ${spec.label}, percent ABV`} />
+                        className="w-20 min-h-[40px] px-2 rounded-lg border border-gray-300 text-gray-900" aria-label={`Strength of ${spec.label}, percent ABV`} />
                       % ABV
                     </label>
                   )}
