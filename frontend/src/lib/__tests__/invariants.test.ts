@@ -437,6 +437,28 @@ describe("invariants across the whole profile space", () => {
     expect(note?.detail).toMatch(/ask your doctor/i);
   });
 
+  // The external diet-engine analysis's reference profile, kept as a fixture.
+  // Before the carb and saturated-fat work its week ran 214-286 g carbs
+  // (42-56% of calories) against a 197 g target, and 8.5-25.7 g of saturated
+  // fat against a 13 g limit. Checked across 14 start dates because the
+  // engine is date-seeded and one week proves little.
+  it("keeps the reference prediabetes + cholesterol profile within carb and sat-fat limits", () => {
+    const ref: OnboardingInput = {
+      ...base, age: 36, gender: "male", weight_kg: 75, height_cm: 173, activity_level: "light",
+      goal_type: "diabetes_friendly", conditions: ["PREDIABETES", "HYPERLIPIDEMIA"],
+      cuisine: "indian", protein_pref: "vegetarian",
+    };
+    const bad: string[] = [];
+    for (let d = 0; d < 14; d++) {
+      const plan = generateMealPlan(ref, d);
+      const carbRatio = plan.total_carbs_g / plan.macro_targets.carbs_g;
+      const sf = plan.nutrients.find((n) => n.key === "satfat_g")!;
+      if (carbRatio > 1.10) bad.push(`d${d}: carbs ${plan.total_carbs_g} g = ${carbRatio.toFixed(2)}x target`);
+      if (sf.actual > sf.target * 1.10) bad.push(`d${d}: sat fat ${sf.actual} g vs ${sf.target} g`);
+    }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
   it("reports nutrient patterns for every weekly plan", () => {
     const bad: string[] = [];
     for (const p of profiles().filter((_, i) => i % 8 === 0)) {
