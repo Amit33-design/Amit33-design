@@ -258,6 +258,18 @@ const FOODS: Food[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Condition rules  (strictest health rule wins when conditions conflict — hard excludes + soft preferences)
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Plans that must hold carbohydrate to a ceiling. There is ONE definition,
+ * used by the target calculation, the plan builder and the AI Copilot. The
+ * target side used to decide this on its own while the plan builder never
+ * asked at all — which is how a 40% carb ceiling came to be computed,
+ * displayed, quoted to the user by the Copilot, and exceeded on 93% of days.
+ */
+export function isCarbControlled(input: { goal_type?: string; conditions?: string[] }): boolean {
+  const c = input.conditions || [];
+  return input.goal_type === "diabetes_friendly" || c.includes("T2D") || c.includes("PREDIABETES");
+}
+
 function isExcluded(food: Food, conditions: string[]): boolean {
   for (const c of conditions) {
     if ((c === "T2D" || c === "PREDIABETES") && food.gi !== undefined && food.gi >= 70) return true;
@@ -303,6 +315,15 @@ function preferenceScore(
     if ((c === "HTN" || c === "HEART_DISEASE") && food.sodium === "low") s += 2;
     if ((c === "HYPERLIPIDEMIA" || c === "HEART_DISEASE") && food.fiber >= 5) s += 2;
     if (c === "KIDNEY_STONES" && food.oxalate === "low") s += 1;
+  }
+  // Carb-controlled plans: hand the portion pass a set it can actually fit
+  // under the ceiling. Selection used to ignore carb share entirely, so a
+  // diabetes plan could arrive at Phase 2 built from three starch-led dishes
+  // that no amount of portion tuning brings under 40% of calories.
+  if (isCarbControlled({ goal_type: goal, conditions })) {
+    const carbShare = (food.c * 4) / Math.max(food.cal, 1);
+    if (carbShare > 0.65) s -= 2;
+    else if (carbShare < 0.35) s += 1;
   }
   // Medication interactions steer food ranking (soft, not hard excludes):
   // ACE/ARB BP meds raise potassium retention → de-prioritise high-potassium foods;
@@ -472,7 +493,7 @@ export function computeMacros(input: OnboardingInput) {
   // Diabetes / prediabetes: hold carbs to a lower ceiling and route the rest to fat
   let carbsFinal = carbs_g;
   let fatFinal = fat_g;
-  const carbControl = goal === "diabetes_friendly" || input.conditions.includes("T2D") || input.conditions.includes("PREDIABETES");
+  const carbControl = isCarbControlled(input);
   if (carbControl) {
     const carbCeil = Math.round((calories * 0.40) / 4); // ≤40% of calories from carbs
     if (carbsFinal > carbCeil) {
@@ -612,6 +633,19 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // CKD (or any explicit protein cap) must not be exceeded by the actual food
   // selection, not just the displayed target. Track protein across the whole day.
   const proteinCap = conditions.includes("CKD");
+  const carbControl = isCarbControlled(input);
+  // The carb passes may cost protein — they swap and drop starch-led dishes,
+  // and on a plant plan those carry much of the day's protein. Averages hid
+  // it, the tail did not: after the first version, 20 diabetes-plan days fell
+  // under 1.0 g/kg where none had before, most of them a 68-year-old woman,
+  // for whom that is the muscle-loss threshold. PROT-AGE puts older adults at
+  // 1.0-1.2 g/kg, so that is the floor these passes may not cross. Renal plans
+  // are exempt: their protein is deliberately capped BELOW this.
+  // The floor is the clinical one, not a fraction of the target: tying it to
+  // 75% of target put it near 1.2 g/kg for most profiles and blocked carb
+  // swaps that were perfectly safe (204 days over the carb target vs 99).
+  const proteinFloorG = proteinCap ? 0 :
+    (input.weight_kg || 70) * ((input.age || 40) >= 65 ? 1.1 : 1.0);
   const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
   const deficitFocus = atRiskNutrients(input);
   const plantForward = ["vegan", "vegetarian"].includes(input.protein_pref || "");
@@ -635,7 +669,12 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       food.slots.includes(slotDef.slot) &&
       dietAllows(input.protein_pref, food) &&
       eggAllowed(input, food) &&
-      !isExcluded(food, conditions);
+      !isExcluded(food, conditions) &&
+      // isExcluded keys the high-GI rule off a DIAGNOSIS, so someone who
+      // chose the diabetes-friendly goal without one could still be served
+      // white rice (GI 73). The goal is the user asking for blood-sugar
+      // control; honour it the same way.
+      !(carbControl && food.gi !== undefined && food.gi >= 70);
 
     let eligible = FOODS.filter((food) => slotSafe(food) && (food.cuisines.includes(cuisine) || food.cuisines.length === 3));
     // fallback: if the cuisine filter leaves too few, open up to all cuisines
@@ -890,6 +929,79 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
 
     /*
+     * And for CARBOHYDRATE SHARE, carb-controlled plans only.
+     *
+     * Portion tuning can only shrink a dish to its minimum. When the plate is
+     * built from dishes that are carb-heavy as a class — a couscous bowl, a
+     * rice bowl, bean toast — they stay above a 40% ceiling even at their
+     * smallest; measured, 230 of the days still over target after the
+     * portion lever had calories on target but the carb SHARE too high. The
+     * fix a dietitian makes is a swap, not a smaller portion: dal and sabzi
+     * in place of the rice bowl. Unlike the sodium swap this one may cross
+     * food groups — a main meal without a grain is normal, and is what the
+     * diabetes plate method recommends — while keeping the slot's protein
+     * anchor, its vegetables, its group caps and the day's fruit.
+     */
+    if (carbControl) {
+      const shareOf = (f: Food) => (f.c * 4) / Math.max(f.cal, 1);
+      const targetShare = (macros.carbs_g * 4) / Math.max(macros.calories, 1);
+      const daySel = () => {
+        let c = 0, k = 0;
+        for (const sel of selected) for (const f of sel.picked) { c += f.c; k += f.cal; }
+        return { carbs: c, cal: k };
+      };
+      const fruitsToday = () => selected.reduce((n, sel) => n + sel.picked.filter((f) => f.group === "fruit").length, 0);
+      const satRankC = { low: 0, med: 1, high: 2 } as const;
+
+      let cGuard = 0;
+      while (cGuard++ < 10) {
+        const t = daySel();
+        if ((t.carbs * 4) / Math.max(t.cal, 1) <= targetShare + 0.02) break;
+        let best: { slotIdx: number; from: Food; to: Food; gain: number } | null = null;
+        selected.forEach(({ picked, pool }, slotIdx) => {
+          for (const from of picked) {
+            if (from.group === "vegetable") continue;
+            if (shareOf(from) <= targetShare + 0.05) continue;
+            for (const to of pool) {
+              if (picked.includes(to) || usedIds.has(to.id)) continue;
+              if (weekCount(to.id) >= WEEKLY_AUTO_CAP) continue;
+              if (!!to.anchor !== !!from.anchor) continue;
+              if ((from.group === "vegetable" || from.hasVeg) && !(to.group === "vegetable" || to.hasVeg)) continue;
+              if (from.group === "fruit" && to.group !== "fruit" && fruitsToday() <= 1) continue;
+              if (to.group !== from.group) {
+                const cap = SLOT_GROUP_CAPS[to.group] ?? 1;
+                if (picked.filter((f) => f !== from && f.group === to.group).length >= cap) continue;
+              }
+              if (Math.abs(to.cal - from.cal) > from.cal * 0.5) continue;
+              // never trade a carb problem for a saturated-fat or sodium one
+              if (satRankC[to.satfat] > satRankC[from.satfat]) continue;
+              if (naOf(to) > naOf(from) + 100) continue;
+              if (shareOf(to) >= shareOf(from) - 0.08) continue;
+              // portions are not sized yet, so judge the day's protein on the
+              // dishes themselves: a swap may not take it under the floor
+              {
+                let dayP = 0;
+                for (const sel of selected) for (const f of sel.picked) dayP += f.p;
+                if (dayP - from.p + to.p < proteinFloorG) continue;
+              }
+              const gain = from.c - to.c;
+              if (gain < 5) continue;
+              if (!best || gain > best.gain) best = { slotIdx, from, to, gain };
+            }
+          }
+        });
+        if (!best) break;
+        const { slotIdx, from, to } = best as { slotIdx: number; from: Food; to: Food; gain: number };
+        const picked = selected[slotIdx].picked;
+        picked[picked.indexOf(from)] = to;
+        usedIds.delete(from.id);
+        usedIds.add(to.id);
+        dayUsage.set(from.id, Math.max(0, (dayUsage.get(from.id) ?? 1) - 1));
+        dayUsage.set(to.id, (dayUsage.get(to.id) ?? 0) + 1);
+      }
+    }
+
+    /*
      * Same move again for POTASSIUM, renal plans only.
      *
      * Every food flagged high-potassium is already excluded, yet a renal plan
@@ -974,6 +1086,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const dayCal = () => sumBy(entries, (e) => e.food.cal * e.scale);
   const dayProt = () => sumBy(entries, (e) => e.food.p * e.scale);
   const dayFat = () => sumBy(entries, (e) => e.food.f * e.scale);
+  const dayCarb = () => sumBy(entries, (e) => e.food.c * e.scale);
 
   // Grow-only variant, used by the calorie top-up: steering toward the target
   // can SHRINK, which silently undid the item just added and left the plan no
@@ -1005,9 +1118,11 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const proteinTarget = proteinCap ? Math.min(macros.protein_g, proteinCeiling) : macros.protein_g;
   steer(proteinItems, dayProt(), proteinTarget, (e) => e.food.p);
 
+  if (process.env.DBGC) console.log('after-protein-lever'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Calorie lever — fill the remaining calories with the energy foods.
   steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
 
+  if (process.env.DBGC) console.log('after-energy-lever'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // A dish may be the only thing bringing vegetables to a main meal even when
   // it is filed under protein — palak dal, tofu and spinach, a vegetable kofta.
   // Every drop pass has to respect that, or the plate quietly loses its
@@ -1039,6 +1154,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
   }
 
+  if (process.env.DBGC) console.log('after-drop-pass'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Protein overshoot trim: when calories are on target but protein runs well
   // over (common for muscle-gain with many anchor foods), shrink the biggest
   // protein contributors toward the target, then let energy foods refill any
@@ -1086,6 +1202,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     steer(energyItems, dayCal(), macros.calories, (e) => e.food.cal);
   }
 
+  if (process.env.DBGC) console.log('after-overshoot-trim'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Final trim: when a plan is still over on calories (common for protein-dense
   // plant plans on a low target) and protein is already met, shrink the protein
   // portions toward their minimum — but never below the protein target itself.
@@ -1099,6 +1216,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
   }
 
+  if (process.env.DBGC) console.log('after-final-trim'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   // Hard safety (CKD): keep total protein at or under the renal cap. Plant foods
   // carry protein even in "energy" roles, so we trim EVERY protein-bearing item
   // toward its minimum — highest contributor first — and drop protein foods from
@@ -1155,13 +1273,132 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
    * low-protein items from the slot's own safe alternatives, cheapest protein
    * per calorie first, never breaching the cap.
    */
+  /*
+   * ── Carb ceiling ──────────────────────────────────────────────────────────
+   *
+   * computeMacros caps carbohydrate at 40% of calories for carb-controlled
+   * plans and moves the difference to fat. Phase 2 then threw that away: it
+   * has one lever for protein and one for calories, and the calorie lever
+   * refills the day from grains, fruit and starchy dishes — which are mostly
+   * carbohydrate. Measured before this pass: 937 of 1,008 diabetes-friendly
+   * days over the carb target, a mean carb share of 46-52% against a 40%
+   * ceiling, the worst at 64%. The AI Copilot was telling these users their
+   * carbs were capped at 40%.
+   *
+   * So carbs get their own lever: shrink the carb-dense items (largest carb
+   * contributor first, within their portion bounds — vegetables are never
+   * shrunk, the every-main-meal-has-vegetables rule depends on them), then
+   * give the lost energy back through fat-dense and protein items, each held
+   * under its own ceiling.
+   */
+  if (process.env.DBGC) console.log('before-carb-block'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
+  const carbShareOf = (f: Food) => (f.c * 4) / Math.max(f.cal, 1);
+  // "Carb-dense" is relative to the plan's own target share, not a fixed
+  // 55%. What pushes an AVERAGE above 40% is every item above 40%, and in an
+  // Indian vegetarian plan those are mixed dishes at 45-50% — a rice bowl, a
+  // banana smoothie — which a fixed 55% threshold never touched, leaving
+  // plans stuck at 42-43%. The +5 point margin stops the pass churning
+  // dishes that already sit at the target.
+  const targetCarbShare = (macros.carbs_g * 4) / Math.max(macros.calories, 1);
+  // Only plain vegetables are exempt. Composite dishes that CARRY vegetables
+  // (a couscous bowl, stuffed peppers, minestrone) are shrinkable: the
+  // vegetable rule is about a dish being on the plate, and shrinking within
+  // portion bounds never removes one. Exempting them — the first version of
+  // this pass did — protected nearly every Mediterranean main and left the
+  // lever with nothing to act on.
+  const isCarbDense = (e: Entry) =>
+    carbShareOf(e.food) > targetCarbShare + 0.05 && e.food.group !== "vegetable";
+  const isFatDense = (e: Entry) => (e.food.f * 9) / Math.max(e.food.cal, 1) >= 0.5;
+  const carbFatCeiling = macros.fat_g * 1.35;
+
+  if (carbControl && dayCarb() > macros.carbs_g * 1.05) {
+    // 1) shrink carb-dense portions, biggest carb contributor first
+    let over = dayCarb() - macros.carbs_g;
+    // most carb-heavy per calorie first: shrinking those gives up the least
+    // non-carbohydrate energy for each gram of carbohydrate removed
+    for (const e of entries.filter(isCarbDense).sort((a, b) => carbShareOf(b.food) - carbShareOf(a.food))) {
+      if (over <= 0) break;
+      const [lo] = scaleBounds(e.food);
+      let cut = Math.min(e.scale - lo, over / Math.max(e.food.c, 0.1));
+      // never shrink protein below the floor on the way
+      const protRoom = dayProt() - proteinFloorG;
+      if (e.food.p > 0) cut = Math.min(cut, Math.max(0, protRoom / e.food.p));
+      if (cut <= 0.01) continue;
+      e.scale -= cut;
+      over -= cut * e.food.c;
+    }
+
+    // 1b) When the day is over on carbs AND calories, the two constraints
+    //     agree, and the only move left once portions bottom out is to take a
+    //     carb-heavy dish off an over-full plate. The existing drop pass never
+    //     fired here: it only considers energy-role items, and on a vegan plan
+    //     nearly every dish is protein-role. Measured case: a 68-year-old T2D
+    //     woman on 1,200 kcal was served 1,723 kcal and 249 g of carbs.
+    //     Guards: never empty a slot below its minimum, never drop the dish
+    //     carrying a main meal's last vegetable, never drop the day's last
+    //     whole fruit. It costs some protein — acceptable, because the
+    //     protein target at that size is already 1.6 g/kg, above the range
+    //     that matters for older adults.
+    const fruitCount = () => entries.filter((e) => e.food.group === "fruit").length;
+    let carbDropGuard = 0;
+    while (
+      dayCarb() > macros.carbs_g * 1.10 &&
+      dayCal() > macros.calories * 1.05 &&
+      carbDropGuard++ < 6
+    ) {
+      const victim = entries
+        .filter((e) => {
+          if (!isCarbDense(e)) return false;
+          const sel = selected[e.slotIdx];
+          const minItems = sel.slotDef.needsAnchor ? 2 : 1;
+          if (sel.picked.length <= minItems || !sel.picked.includes(e.food)) return false;
+          if (carriesLastVegetable(e)) return false;
+          if (e.food.group === "fruit" && fruitCount() <= 1) return false;
+          if (dayProt() - e.food.p * e.scale < proteinFloorG) return false;
+          return true;
+        })
+        .sort((a, b) => b.food.c * b.scale - a.food.c * a.scale)[0];
+      if (!victim) break;
+      const sp = selected[victim.slotIdx].picked;
+      sp.splice(sp.indexOf(victim.food), 1);
+      entries.splice(entries.indexOf(victim), 1);
+      const pi = proteinItems.indexOf(victim);
+      if (pi >= 0) proteinItems.splice(pi, 1);
+      const ei = energyItems.indexOf(victim);
+      if (ei >= 0) energyItems.splice(ei, 1);
+    }
+
+    // 2) give the energy back without giving the carbs back: grow fat-dense
+    //    items first (least carbohydrate per calorie), then protein items,
+    //    in small steps, stopping at any ceiling
+    const grow = (list: Entry[]) => {
+      for (const e of list) {
+        const [, hi] = scaleBounds(e.food);
+        while (dayCal() < macros.calories * 0.97 && e.scale + 0.1 <= hi) {
+          e.scale += 0.1;
+          const breach =
+            dayFat() > carbFatCeiling ||
+            dayProt() > (proteinCap ? proteinTarget : proteinCeiling) ||
+            dayCarb() > macros.carbs_g * 1.05;
+          if (breach) { e.scale -= 0.1; break; }
+        }
+      }
+    };
+    grow(entries.filter(isFatDense).sort((a, b) => carbShareOf(a.food) - carbShareOf(b.food)));
+    grow(entries.filter((e) => e.role === "protein" && !isCarbDense(e) && e.food.group !== "beverage")
+      .sort((a, b) => carbShareOf(a.food) - carbShareOf(b.food)));
+  }
+
   if (dayCal() < macros.calories * 0.92) {
     // Only near-zero-protein items may be stretched here. Scaling the grains
     // back up would push protein straight back over the renal cap, and
     // correcting THAT by shrinking them again just re-removes the calories —
     // the loop this pass exists to break.
+    // Near-zero-protein includes fruit and white rice, so for a carb-controlled
+    // plan stretching them would simply re-add the carbs the carb pass removed.
     const isLowProteinEnergy = (e: Entry) =>
-      e.food.group !== "beverage" && e.food.p / Math.max(e.food.cal, 1) < 0.02;
+      e.food.group !== "beverage" && e.food.p / Math.max(e.food.cal, 1) < 0.02 &&
+      !(carbControl && isCarbDense(e));
     const stretchable = entries.filter(isLowProteinEnergy);
     // Buying calories per gram of protein, left unbounded, buys oil: a renal
     // plan came out at 235 g fat against a 75 g target, four-fifths of its
@@ -1221,9 +1458,15 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           // per gram of it (and steer away from potassium, which also
           // accumulates). Without a cap the plan is simply short of food, so
           // take the biggest contributor that still fits the plate.
+          // Carb-controlled: never top up past the ceiling, and value a food
+          // by its energy that is NOT carbohydrate — otherwise the biggest
+          // item wins, and the biggest item is usually a grain.
+          if (carbControl && dayCarb() + food.c > macros.carbs_g * 1.05) continue;
           const score = proteinCap
             ? food.cal / Math.max(food.p, 0.5) - (food.highK ? 40 : 0)
-            : food.cal;
+            : carbControl
+              ? food.cal * (1 - carbShareOf(food))
+              : food.cal;
           if (!proteinCap) {
             const cap = SLOT_GROUP_CAPS[food.group] ?? 1;
             const used = picked.filter((f) => f.group === food.group).length;
@@ -1265,6 +1508,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
   }
 
+  if (process.env.DBGC) console.log('end'.padEnd(22), 'cal', Math.round(dayCal()), 'carb', Math.round(dayCarb()), 'prot', Math.round(dayProt()));
   const scaleOf = (food: Food) => entries.find((e) => e.food === food)?.scale ?? 1;
 
   // ── Phase 3: MATERIALISE meals with their tuned portions ───────────────────
@@ -1323,6 +1567,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const nutrient_actions = buildNutrientActions(input, nutrients, lowSodiumCooking, {
     delivered: total_calories,
     target: macros.calories,
+    carbs_g: total_carbs_g,
   });
   const protein_distribution = analyseProteinDistribution(meals, macros.protein_per_meal_g);
   const na_k_ratio = sodiumPotassiumRatio(micros);
@@ -1544,12 +1789,28 @@ function buildNutrientActions(
   input: OnboardingInput,
   nutrients: NutrientStatus[],
   lowSodiumCooking: boolean,
-  energy?: { delivered: number; target: number }
+  energy?: { delivered: number; target: number; carbs_g?: number }
 ): NutrientAction[] {
   const diet = input.protein_pref || "vegetarian";
   const plantOnly = diet === "vegan" || diet === "vegetarian";
   const out: NutrientAction[] = [];
   const get = (k: keyof Micros) => nutrients.find((n) => n.key === k);
+
+  // Carb-controlled plans that still land above the ceiling. The portion and
+  // swap passes get ~93% of days under 44%; what remains is almost all
+  // plant-based, because beans, lentils and chickpeas are 55-65% carbohydrate
+  // and a small plant plan can only get under 40% if soy, nuts and oils carry
+  // the energy. That is worth saying plainly — and it is advice, not blame:
+  // pulses are exactly the right carbs for blood sugar.
+  if (isCarbControlled(input) && energy?.carbs_g && energy.delivered > 0) {
+    const share = (energy.carbs_g * 4) / energy.delivered;
+    if (share > 0.44) {
+      const plant = diet === "vegan" || diet === "vegetarian";
+      out.push({ nutrient: "Carbohydrate", severity: "watch",
+        headline: "Today runs a little high on carbohydrate for blood-sugar control",
+        detail: `About ${Math.round(share * 100)}% of today's calories come from carbohydrate, above the 40% this plan aims for. ${plant ? "Beans, lentils and chickpeas are the right carbs for blood sugar — slow to digest and full of fibre — but they are carb-rich, so on a plant-based plan let tofu, tempeh, soy milk, nuts and seeds carry more of the protein. " : ""}Fill half the plate with non-starchy vegetables, keep rice, roti, bread or pasta to about a quarter, and eat fruit alongside nuts or yogurt rather than on its own.` });
+    }
+  }
 
   // A renal protein cap and a full calorie target can genuinely conflict: at
   // 0.75 g/kg almost all the energy has to come from foods carrying no
@@ -2882,7 +3143,7 @@ export function answerHealthQuestion(input: OnboardingInput, message: string): s
     );
   }
   if (/carb/.test(m)) {
-    const carbControlled = input.goal_type === "diabetes_friendly" || conditions.includes("T2D") || conditions.includes("PREDIABETES");
+    const carbControlled = isCarbControlled(input);
     return (
       `Your carbohydrate target is **${macros.carbs_g}g/day**.\n\n` +
       (carbControlled

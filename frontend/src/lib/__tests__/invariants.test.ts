@@ -248,6 +248,83 @@ describe("invariants across the whole profile space", () => {
     expect(bad, report(bad)).toEqual([]);
   });
 
+  // ── Carb ceiling (diabetes / prediabetes) ─────────────────────────────────
+  // computeMacros capped carbs at 40% of calories, but Phase 2 had no carb
+  // lever and refilled calories from starch, so 788 of 1,008 carb-controlled
+  // days ran above 44% — the worst at 64% — while the AI Copilot told these
+  // users their carbs were "capped at 40%". Measured against the ceiling the
+  // diabetes rule is about, not the arithmetic remainder in carbs_g, which
+  // for a small high-protein plan sits below 40% on its own.
+  const carbProfiles = (): OnboardingInput[] => {
+    const out: OnboardingInput[] = [];
+    for (const body of BODIES) for (const cuisine of CUISINES) for (const protein_pref of DIETS)
+      for (const conditions of [["PREDIABETES"], ["T2D"], ["PREDIABETES", "HYPERLIPIDEMIA"]])
+        out.push({ ...base, ...body, cuisine, protein_pref, goal_type: "diabetes_friendly", conditions });
+    return out;
+  };
+
+  it("holds carb-controlled plans near the 40% carbohydrate ceiling", () => {
+    let days = 0, within = 0;
+    const flagless: string[] = [];
+    for (const p of carbProfiles()) {
+      for (let d = 0; d < 3; d++) {
+        const plan = generateMealPlan(p, d);
+        const share = (plan.total_carbs_g * 4) / plan.total_calories;
+        days++;
+        if (share <= 0.44) { within++; continue; }
+        // anything over must at least tell the user, with what to do about it
+        const flagged = plan.nutrient_actions.some((a) => a.nutrient === "Carbohydrate");
+        if (!flagged) flagless.push(`${p.cuisine}/${p.protein_pref}/${p.age}${p.gender[0]} d${d}: ${Math.round(share * 100)}% carbs, no warning`);
+      }
+    }
+    expect(flagless, report(flagless)).toEqual([]);
+    // HEAD was 22% within 1.10x of the ceiling; now ~93%. Held at 88% so a
+    // date seed cannot flake it, while still failing loudly on a regression.
+    expect(within / days, `only ${Math.round((within / days) * 100)}% of carb-controlled days within 44% carbs`).toBeGreaterThanOrEqual(0.88);
+  });
+
+  it("never serves a meat-inclusive carb-controlled day above 48% carbohydrate", () => {
+    // The residual over-ceiling days are plant-based (pulses are 55-65% carb).
+    // With animal protein available there is no excuse.
+    const bad: string[] = [];
+    for (const p of carbProfiles()) {
+      if (p.protein_pref === "vegan" || p.protein_pref === "vegetarian") continue;
+      for (let d = 0; d < 3; d++) {
+        const plan = generateMealPlan(p, d);
+        const share = (plan.total_carbs_g * 4) / plan.total_calories;
+        if (share > 0.48) bad.push(`${p.cuisine}/${p.protein_pref}/${p.age}${p.gender[0]} d${d}: ${Math.round(share * 100)}%`);
+      }
+    }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
+  it("never serves a high-GI food to a user who chose the diabetes-friendly goal", () => {
+    // The high-GI exclusion keyed off a DIAGNOSIS, so choosing the goal
+    // without one still allowed white rice (GI 73).
+    const bad = sweep((p, d) => {
+      const plan = generateMealPlan({ ...p, goal_type: "diabetes_friendly" }, d);
+      const hits = plan.meals.flatMap((m) => m.items).filter((i) => (i.food.glycemic_index ?? 0) >= 70);
+      return hits.length ? `high-GI: ${hits.map((i) => i.food.name).join(", ")}` : null;
+    }, 1);
+    expect(bad, report(bad)).toEqual([]);
+  });
+
+  it("keeps protein above the clinical floor while cutting carbs", () => {
+    // The carb passes swap and drop starch-led dishes, which on a plant plan
+    // carry much of the protein. The first version pushed 20 days under
+    // 1.0 g/kg, most of them a 68-year-old — the muscle-loss threshold.
+    const bad: string[] = [];
+    for (const p of carbProfiles()) {
+      const floor = p.weight_kg * (p.age >= 65 ? 1.1 : 1.0);
+      for (let d = 0; d < 3; d++) {
+        const plan = generateMealPlan(p, d);
+        if (plan.total_protein_g < floor - 1)
+          bad.push(`${p.protein_pref}/${p.age}${p.gender[0]} d${d}: ${plan.total_protein_g} g protein, floor ${Math.round(floor)} g`);
+      }
+    }
+    expect(bad, report(bad)).toEqual([]);
+  });
+
   it("reports nutrient patterns for every weekly plan", () => {
     const bad: string[] = [];
     for (const p of profiles().filter((_, i) => i % 8 === 0)) {
