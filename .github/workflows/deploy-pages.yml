@@ -34,6 +34,16 @@ jobs:
           NEXT_PUBLIC_DEMO_MODE: "true"
         run: npm run build
 
+      # The gh-pages branch holds only built files, but Vercel's Git
+      # integration builds every pushed branch — and with the project's Root
+      # Directory set to "frontend", which does not exist on gh-pages, every
+      # push produced a failed Vercel deployment (production was unaffected).
+      # A frontend/vercel.json in the published branch tells Vercel to skip it.
+      - name: Tell Vercel not to build the gh-pages branch
+        run: |
+          mkdir -p frontend/out/frontend
+          echo '{"git":{"deploymentEnabled":false}}' > frontend/out/frontend/vercel.json
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
