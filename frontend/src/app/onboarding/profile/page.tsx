@@ -73,13 +73,14 @@ export default function ProfilePage() {
         {/* Gender */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">Gender <span className="text-red-500">*</span></label>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {GENDERS.map((g) => (
               <button
                 key={g.value}
+                aria-pressed={profile.gender === g.value}
                 onClick={() => setProfile({ gender: g.value as "male" | "female" | "other" })}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-3 rounded-xl border-2 font-semibold text-sm transition-all",
+                  "flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl border-2 font-semibold text-sm transition-all",
                   profile.gender === g.value
                     ? "border-sky-500 bg-sky-50 text-sky-700"
                     : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"

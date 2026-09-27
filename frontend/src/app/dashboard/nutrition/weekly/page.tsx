@@ -206,12 +206,12 @@ export default function WeeklyPlanPage() {
                           n.pattern === "consistent" ? "border-orange-200 bg-orange-50/60" : "border-amber-200 bg-amber-50/50"
                         )}
                       >
-                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-2 mb-0.5">
                           <span className="text-sm font-bold text-gray-900">
                             {n.pattern === "consistent" ? "🔴" : "🟡"} {n.label}
                           </span>
                           <span className="text-xs font-bold text-gray-600 tabular-nums whitespace-nowrap">
-                            avg {n.average}{n.unit} vs {n.target}{n.unit}
+                            avg {n.average >= 100 ? Math.round(n.average) : n.average} {n.unit} vs {n.target} {n.unit}
                           </span>
                         </div>
                         <div className="flex gap-1 my-1.5">

@@ -122,9 +122,11 @@ export default function DashboardPage() {
           { label: "Carb Target",     value: macroTargets ? `${Math.round(macroTargets.carbs_g)}g` : "—",          icon: "🌾", color: "text-sky-700" },
           { label: "Goal",            value: summary?.primary_goal ? String(summary.primary_goal).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "—", icon: "🎯", color: "text-emerald-700" },
         ].map((stat) => (
-          <div key={stat.label} className="stat-card">
+          <div key={stat.label} className="stat-card min-w-0">
             <div className="text-2xl mb-2">{stat.icon}</div>
-            <div className={cn("text-xl font-black", stat.color)}>{stat.value}</div>
+            {/* a goal like "Blood Pressure Management" is one long word per
+                line at this size; let it wrap instead of widening the page */}
+            <div className={cn("text-lg sm:text-xl font-black leading-tight break-words", stat.color)}>{stat.value}</div>
             <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
           </div>
         ))}

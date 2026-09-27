@@ -190,7 +190,7 @@ export default function AICopilotPage() {
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
             placeholder="Ask about your nutrition, exercise, or health plan..."
             aria-label="Ask a question about your health plan"
-            className="flex-1 px-5 py-3.5 rounded-2xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none text-sm bg-gray-50 text-gray-900"
+            className="flex-1 min-w-0 px-5 py-3.5 rounded-2xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none text-sm bg-gray-50 text-gray-900"
           />
           <button
             onClick={() => sendMessage(input)}

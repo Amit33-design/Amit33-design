@@ -233,8 +233,8 @@ export default function LifestylePage() {
               return (
                 <div key={i} className="flex gap-3 p-4 bg-violet-50 rounded-xl border border-violet-100">
                   <div className="text-2xl flex-shrink-0">{String(practice.icon)}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
                       <span className="font-semibold text-gray-900 text-sm">{String(practice.name)}</span>
                       <span className="text-xs px-2 py-0.5 bg-violet-200 text-violet-700 rounded-full">{String(practice.duration)}</span>
                       <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{String(practice.level)}</span>

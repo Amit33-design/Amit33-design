@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       {/* Main content */}
-      <main id="main-content" tabIndex={-1} className="flex-1 md:ml-64 pb-20 md:pb-0 min-h-screen">
+      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 md:ml-64 pb-20 md:pb-0 min-h-screen">
         {children}
       </main>
     </div>
