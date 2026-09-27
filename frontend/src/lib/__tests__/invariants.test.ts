@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateMealPlan, generateWeeklyPlan, OnboardingInput } from "../recommendation-engine";
-import { potassiumPlan, KidneyStage } from "../kidney-potassium";
+import { potassiumPlan, renalProtein, KidneyStage } from "../kidney-potassium";
 
 /**
  * Whole-space invariant sweep.
@@ -89,7 +89,7 @@ describe("invariants across the whole profile space", () => {
     const bad = sweep((p, d) => {
       if (!p.conditions.includes("CKD")) return null;
       const plan = generateMealPlan(p, d);
-      const cap = 0.75 * p.weight_kg * 1.15;
+      const cap = renalProtein(p)!.max_g_per_kg * p.weight_kg * 1.15;
       return plan.total_protein_g > cap
         ? `protein ${plan.total_protein_g}g over renal cap ${Math.round(cap)}g`
         : null;
@@ -566,6 +566,38 @@ describe("kidney potassium by stage and blood result", () => {
             const actions = plan.nutrient_actions.filter((a) => a.nutrient === "Potassium");
             if (kp.alert && !actions.some((a) => a.headline === kp.alert!.headline)) bad.push(`${tag}: blood alert missing`);
             if (!kp.restricted && actions.some((a) => /renal limit/.test(a.headline))) bad.push(`${tag}: over-limit warning with no limit`);
+          }
+    expect(bad, report(bad)).toEqual([]);
+  });
+});
+
+/*
+ * Protein by kidney stage. Every CKD plan used to be capped at 0.75 g/kg,
+ * which starved dialysis patients (KDOQI 2020: 1.0-1.2 g/kg on dialysis).
+ */
+describe("kidney protein by stage", () => {
+  it("caps protein before dialysis and transplant, and feeds it on dialysis", () => {
+    const bad: string[] = [];
+    let i = 0;
+    for (const kidney_stage of ["", "early", "advanced", "hemodialysis", "peritoneal", "transplant"] as (KidneyStage | "")[])
+      for (const cuisine of CUISINES)
+        for (const protein_pref of DIETS)
+          for (const goal_type of GOALS) {
+            const p: OnboardingInput = { ...base, ...BODIES[i++ % BODIES.length], cuisine, protein_pref, goal_type,
+              conditions: ["CKD"], kidney_stage };
+            const tag = `${kidney_stage || "unknown"}/${cuisine}/${protein_pref}/${goal_type}`;
+            const plan = generateMealPlan(p, i % 3);
+            const rp = renalProtein(p)!;
+            const perKg = plan.total_protein_g / p.weight_kg;
+            const target = plan.macro_targets.protein_g / p.weight_kg;
+            if (target < rp.min_g_per_kg - 0.01 || target > rp.max_g_per_kg + 0.01) bad.push(`${tag}: target ${target.toFixed(2)} g/kg outside ${rp.min_g_per_kg}-${rp.max_g_per_kg}`);
+            if (rp.capped && perKg > rp.max_g_per_kg * 1.15) bad.push(`${tag}: ${perKg.toFixed(2)} g/kg over the renal cap`);
+            // dialysis: the point of the change. 10% tolerance for portion rounding
+            if (rp.dialysis && perKg < rp.min_g_per_kg * 0.9) bad.push(`${tag}: only ${perKg.toFixed(2)} g/kg on dialysis`);
+            if (rp.dialysis && perKg > rp.max_g_per_kg * 1.25) bad.push(`${tag}: ${perKg.toFixed(2)} g/kg — far past the dialysis range`);
+            const ratio = plan.total_calories / plan.macro_targets.calories;
+            if (ratio < 0.85 && !(plan.nutrient_actions ?? []).some((a) => a.nutrient === "Energy"))
+              bad.push(`${tag}: ${Math.round(ratio * 100)}% of calories with no warning`);
           }
     expect(bad, report(bad)).toEqual([]);
   });

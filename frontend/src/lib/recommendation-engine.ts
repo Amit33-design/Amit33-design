@@ -18,7 +18,7 @@ import { getMicros, Micros, freeSugars } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
 import { analyseDayProtein } from "./protein-quality";
-import { potassiumPlan, KidneyStage } from "./kidney-potassium";
+import { potassiumPlan, renalProtein, KidneyStage } from "./kidney-potassium";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -516,9 +516,10 @@ export function computeMacros(input: OnboardingInput) {
   }
   // Older adults need more protein per kg to overcome anabolic resistance
   if (age >= 65) proteinPerKg = Math.max(proteinPerKg, 1.6);
-  // CKD override: cap protein at 0.75 g/kg regardless of goal
-  const hasCKD = input.conditions.includes("CKD");
-  if (hasCKD) proteinPerKg = Math.min(proteinPerKg, 0.75);
+  // Kidney disease overrides the goal: a ceiling before dialysis, a 1.0-1.2
+  // range ON dialysis (lib/kidney-potassium renalProtein)
+  const renal = renalProtein(input);
+  if (renal) proteinPerKg = Math.min(renal.max_g_per_kg, Math.max(renal.min_g_per_kg, proteinPerKg));
 
   const protein_g = Math.round(proteinPerKg * w);
   const proteinCals = protein_g * 4;
@@ -668,7 +669,9 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
 
   // CKD (or any explicit protein cap) must not be exceeded by the actual food
   // selection, not just the displayed target. Track protein across the whole day.
-  const proteinCap = conditions.includes("CKD");
+  // Only a renal CEILING takes the protein-capped path; dialysis needs more
+  // protein, and is planned like any other profile with a protein floor.
+  const proteinCap = renalProtein(input)?.capped ?? false;
   const kPlan = potassiumPlan(input);
   const carbControl = isCarbControlled(input);
   // The carb passes may cost protein — they swap and drop starch-led dishes,
@@ -692,7 +695,12 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   const dayO3Sources = () => selected.reduce((n, sel) => n + sel.picked.filter((f) => o3Of(f) >= 0.5).length, 0);
   const proteinFloorG = proteinCap ? 0 :
     (input.weight_kg || 70) * ((input.age || 40) >= 65 ? 1.1 : 1.0);
-  const proteinCeiling = macros.protein_g * (proteinCap ? 1.1 : 1.6);
+  // Dialysis has a range (1.0-1.2 g/kg), not a cap, but every extra gram of
+  // protein brings phosphorus a dialysis patient has to bind or restrict — so
+  // the refill passes may not push it far past the range the way they may for
+  // an ordinary plan.
+  const dialysisPlan = renalProtein(input)?.dialysis ?? false;
+  const proteinCeiling = macros.protein_g * (proteinCap || dialysisPlan ? 1.1 : 1.6);
   const deficitFocus = atRiskNutrients(input);
   const plantForward = ["vegan", "vegetarian"].includes(input.protein_pref || "");
   let dayProtein = 0;
@@ -1641,12 +1649,17 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
           // just leaves it short: a triglyceride plan ended at 110 g of a
           // 230 g carb target, 77% of its calories, and no grain all day.
           const carbsShort = dayCarb() < macros.carbs_g * 0.85;
-          const score = proteinCap
+          // A dialysis plan that has reached its protein range is in the same
+          // position as a renal-capped one: the calories still missing have
+          // to come from low-protein energy. Measured: without this, muscle-
+          // gain plans on haemodialysis stalled at 68-84% of their calories.
+          const proteinBound = proteinCap || (dialysisPlan && dayProt() > proteinCeiling * 0.9);
+          const score = proteinBound
             ? food.cal / Math.max(food.p, 0.5) - (kPlan.restricted && food.highK ? 40 : 0)
             : carbControl && !carbsShort
               ? food.cal * (1 - carbShareOf(food))
               : food.cal;
-          if (!proteinCap) {
+          if (!proteinBound) {
             const cap = SLOT_GROUP_CAPS[food.group] ?? 1;
             const used = picked.filter((f) => f.group === food.group).length;
             if (used >= cap) continue; // keep ordinary plates composed sanely
@@ -2001,7 +2014,15 @@ function buildNutrientActions(
   // that happens, say so. Quietly serving a short plan is the worse outcome —
   // under-eating on a low-protein diet makes the body break down muscle,
   // which raises urea and undoes the point of restricting protein.
-  if (input.conditions.includes("CKD") && energy && energy.delivered < energy.target * 0.85) {
+  const renalP = renalProtein(input);
+  if (renalP?.dialysis && energy && energy.delivered < energy.target * 0.85) {
+    // On dialysis, low energy intake is part of protein-energy wasting, one
+    // of the strongest predictors of death on dialysis.
+    const short = Math.round(energy.target - energy.delivered);
+    out.push({ nutrient: "Energy", severity: "critical",
+      headline: "This plan is short on calories — that matters on dialysis",
+      detail: `Today's meals come to about ${Math.round(energy.delivered)} kcal against your ${Math.round(energy.target)} kcal target, roughly ${short} kcal short. On dialysis, eating too little makes the body use its own muscle for fuel, and losing muscle is one of the biggest risks dialysis patients face. Add calories that carry little protein or potassium: a little extra oil or ghee in cooking, white rice, or low-potassium fruit. Ask your renal dietitian about energy supplements if your appetite is poor.` });
+  } else if (renalP?.capped && energy && energy.delivered < energy.target * 0.85) {
     const short = Math.round(energy.target - energy.delivered);
     out.push({ nutrient: "Energy", severity: "critical",
       headline: "This plan is short on calories — that matters more with kidney disease",
@@ -2369,8 +2390,11 @@ function buildSummary(input: OnboardingInput, macros: ReturnType<typeof computeM
     parts.push("Sodium is kept low following the DASH protocol, with potassium-rich whole foods.");
   if (input.conditions.includes("KIDNEY_STONES"))
     parts.push("High-oxalate foods (spinach, beans, nuts) are swapped for low-oxalate alternatives.");
-  if (input.conditions.includes("CKD"))
-    parts.push(`Protein is capped at ${macros.protein_g_per_kg} g/kg to protect kidney function.`);
+  const renal = renalProtein(input);
+  if (renal)
+    parts.push(renal.dialysis
+      ? `Protein is set to ${macros.protein_g_per_kg} g/kg because dialysis removes protein — eat it, don't cut it. Take phosphate binders with meals if prescribed.`
+      : `Protein is capped at ${macros.protein_g_per_kg} g/kg to protect kidney function.`);
   if (input.conditions.includes("HYPERLIPIDEMIA"))
     parts.push("Saturated fat is minimised and soluble fiber elevated to help lower LDL cholesterol.");
   if (input.conditions.includes("HYPERTRIGLYCERIDEMIA"))
@@ -2983,7 +3007,7 @@ const CONDITION_TIPS: Record<string, { condition: string; tip: string }> = {
   HYPERTRIGLYCERIDEMIA: { condition: "High Triglycerides", tip: "Cut sugary drinks, sweets and refined carbs (white rice, white bread, maida) first — they raise triglycerides fastest. Keep alcohol low and have several alcohol-free days a week, eat oily fish or walnuts and flax for omega-3, and walk after meals. Losing even 5% of body weight lowers triglycerides noticeably." },
   HYPERLIPIDEMIA: { condition: "High Cholesterol", tip: "Aim for 10–25 g of soluble fiber daily (oats, beans, flax) and replace saturated fats with olive oil and nuts to lower LDL." },
   KIDNEY_STONES: { condition: "Kidney Stones", tip: "Drink 2.5–3 L of water daily, add citrus (lemon/orange) for citrate, and limit high-oxalate foods like spinach and almonds." },
-  CKD: { condition: "Kidney Disease", tip: "Keep protein moderate (~0.75 g/kg), cut processed foods (their phosphate and potassium additives are almost fully absorbed), limit potassium only as far as your blood tests call for, and monitor fluid intake with your nephrologist." },
+  CKD: { condition: "Kidney Disease", tip: "Keep protein at the level set for your stage (0.8 g/kg before dialysis, 1.0-1.2 on dialysis), cut processed foods (their phosphate and potassium additives are almost fully absorbed), limit potassium only as far as your blood tests call for, and monitor fluid intake with your nephrologist." },
   HEART_DISEASE: { condition: "Heart Disease", tip: "Prioritise omega-3 rich fish, keep sodium < 1500 mg, avoid trans fats and do moderate cardio while avoiding Valsalva straining." },
   THYROID: { condition: "Hypothyroidism", tip: "Take levothyroxine on an empty stomach, ensure adequate selenium and iodine, and lightly cook cruciferous vegetables to reduce goitrogens." },
 };
@@ -3373,11 +3397,11 @@ export function answerHealthQuestion(input: OnboardingInput, message: string): s
 
   // 6) Macro target questions
   if (/protein/.test(m)) {
-    const ckd = conditions.includes("CKD");
+    const renal = renalProtein(input);
     return (
       `Your protein target is **${macros.protein_g}g/day (${macros.protein_g_per_kg} g/kg)**.\n\n` +
-      (ckd
-        ? `Because you selected Chronic Kidney Disease, protein is **capped at 0.75 g/kg** to reduce kidney workload — this overrides your goal's usual target, and the engine trims portions so the day never exceeds it.`
+      (renal
+        ? `${renal.why} This overrides your goal's usual target${renal.capped ? ", and the plan trims portions so the day never goes over it" : ""}.`
         : `That's tuned for your goal of **${goalLabel}** at your weight of ${input.weight_kg} kg — enough to ${input.goal_type === "muscle_gain" ? "maximise muscle protein synthesis (spread across all 5 meals)" : "preserve lean muscle"}.`) +
       disclaimer
     );

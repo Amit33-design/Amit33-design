@@ -96,7 +96,7 @@ export default function ConditionsPage() {
                 {cond.code === "CKD" && isSelected && (
                   <fieldset className="px-5 pb-5 -mt-1 animate-fade-in">
                     <legend className="text-sm font-semibold text-violet-900 mb-1">Which describes you?</legend>
-                    <p className="text-xs text-gray-700 mb-2">This sets your potassium limit. If you're unsure, ask your kidney team for your stage or eGFR.</p>
+                    <p className="text-xs text-gray-700 mb-2">This sets your protein and potassium. If you're unsure, ask your kidney team for your stage or eGFR.</p>
                     <div className="space-y-1.5">
                       {[...KIDNEY_STAGES, { code: "", label: "Not sure", detail: "We'll use a moderate 3000 mg limit until you know" }].map((st) => (
                         <label key={st.code || "unsure"} className={cn(

@@ -182,3 +182,55 @@ export function potassiumPlan(input: PotassiumInput): PotassiumPlan {
     limit, target: limit ?? general, restricted, basis, serum_band: band, why, alert,
   };
 }
+
+/**
+ * Daily protein for kidney disease, by stage.
+ *
+ * Every CKD profile used to be capped at 0.75 g/kg — a number from neither
+ * guideline, and the WRONG DIRECTION for dialysis, where protein and amino
+ * acids are lost into the dialysate and protein-energy wasting is one of the
+ * strongest predictors of death.
+ *
+ *  - Not on dialysis (stage 1-5): KDIGO 2024 — keep protein at 0.8 g/kg/day
+ *    and avoid more than 1.3. KDOQI 2020 goes lower (0.55-0.6, or 0.6-0.8 with
+ *    diabetes) but only for metabolically stable patients under CLOSE
+ *    dietitian supervision, which an app cannot provide — so 0.8 is the
+ *    ceiling here and the copy says a kidney team may prescribe less.
+ *  - Haemodialysis and peritoneal dialysis: KDOQI 2020 — 1.0-1.2 g/kg/day,
+ *    with or without diabetes. A floor, not a ceiling.
+ *  - Transplant: no formal guideline target; long-term practice is
+ *    ~0.8-1.0 g/kg (higher, ~1.3-1.5, for the first weeks after surgery —
+ *    the transplant team sets that).
+ *  - Stage unknown: the non-dialysis 0.8 ceiling, with copy asking dialysis
+ *    patients to say so, because they need more.
+ */
+export interface RenalProtein {
+  /** clamp the goal's g/kg into [min, max] */
+  min_g_per_kg: number;
+  max_g_per_kg: number;
+  /** true when max is a clinical CEILING the plan must not exceed */
+  capped: boolean;
+  dialysis: boolean;
+  /** one sentence for the summary and the Copilot */
+  why: string;
+}
+
+export function renalProtein(input: { conditions: string[]; kidney_stage?: KidneyStage | "" }): RenalProtein | null {
+  if (!input.conditions.includes("CKD")) return null;
+  switch (input.kidney_stage || "") {
+    case "hemodialysis":
+    case "peritoneal":
+      return { min_g_per_kg: 1.0, max_g_per_kg: 1.2, capped: false, dialysis: true,
+        why: "Dialysis removes protein from your blood every session, so you need MORE protein than before dialysis — 1.0-1.2 g per kg a day (KDOQI 2020). Eating too little is one of the biggest risks on dialysis." };
+    case "transplant":
+      return { min_g_per_kg: 0.8, max_g_per_kg: 1.0, capped: true, dialysis: false,
+        why: "With a working transplant, protein is kept moderate at 0.8-1.0 g per kg a day. In the first weeks after surgery you need more — follow your transplant team then." };
+    case "early":
+    case "advanced":
+      return { min_g_per_kg: 0, max_g_per_kg: 0.8, capped: true, dialysis: false,
+        why: "Before dialysis, protein is kept at 0.8 g per kg a day (KDIGO 2024) to ease the load on your kidneys. Your kidney team may prescribe less, but a very-low-protein diet needs a dietitian's supervision." };
+    default:
+      return { min_g_per_kg: 0, max_g_per_kg: 0.8, capped: true, dialysis: false,
+        why: "Protein is kept at 0.8 g per kg a day, the level for kidney disease before dialysis (KDIGO 2024). If you are ON dialysis, add that in your profile — dialysis needs more protein, not less." };
+  }
+}

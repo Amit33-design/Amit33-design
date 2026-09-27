@@ -39,9 +39,18 @@ describe("computeMacros", () => {
     expect(m.calories).toBeGreaterThanOrEqual(1200);
   });
 
-  it("caps protein at 0.75 g/kg for CKD regardless of goal", () => {
+  it("caps protein at 0.8 g/kg for CKD before dialysis regardless of goal (KDIGO 2024)", () => {
     const m = computeMacros({ ...baseInput, goal_type: "muscle_gain", conditions: ["CKD"] });
-    expect(m.protein_g).toBeLessThanOrEqual(Math.ceil(0.75 * baseInput.weight_kg));
+    expect(m.protein_g).toBeLessThanOrEqual(Math.ceil(0.8 * baseInput.weight_kg));
+  });
+
+  it("raises protein to 1.0-1.2 g/kg on dialysis, whatever the goal (KDOQI 2020)", () => {
+    for (const kidney_stage of ["hemodialysis", "peritoneal"] as const)
+      for (const goal_type of ["weight_loss", "maintenance", "muscle_gain", "healthy_aging"]) {
+        const m = computeMacros({ ...baseInput, goal_type, conditions: ["CKD"], kidney_stage });
+        expect(m.protein_g_per_kg, `${kidney_stage}/${goal_type}`).toBeGreaterThanOrEqual(1.0);
+        expect(m.protein_g_per_kg, `${kidney_stage}/${goal_type}`).toBeLessThanOrEqual(1.2);
+      }
   });
 
   it("covers every goal with a real calorie adjustment (no silent default)", () => {
@@ -121,7 +130,7 @@ describe("generateMealPlan — full sweep", () => {
 
             // CKD renal cap is a hard clinical bound (15% tolerance for rounding)
             if (conditions.includes("CKD")) {
-              const cap = 0.75 * input.weight_kg * 1.15;
+              const cap = 0.8 * input.weight_kg * 1.15;
               expect(plan.total_protein_g, `CKD cap ${goal_type}/${cuisine}/${protein_pref}`).toBeLessThanOrEqual(cap);
             }
 
@@ -532,8 +541,12 @@ describe("answerHealthQuestion (plan-aware Q&A)", () => {
 
   it("routes protein questions to the macro answer, not a food match", () => {
     const a = answerHealthQuestion({ ...baseInput, conditions: ["CKD"] }, "why is my protein so low");
-    expect(a).toContain("0.75 g/kg");
-    expect(a).toContain("Chronic Kidney Disease");
+    expect(a).toContain("0.8 g/kg");
+    expect(a).toMatch(/kidney disease before dialysis/);
+    // on dialysis the answer must say MORE protein, never "capped"
+    const d = answerHealthQuestion({ ...baseInput, conditions: ["CKD"], kidney_stage: "hemodialysis" }, "how much protein should I eat?");
+    expect(d).toMatch(/MORE protein/);
+    expect(d).not.toMatch(/capped/);
   });
 
   it("answers slot questions with today's actual items", () => {
