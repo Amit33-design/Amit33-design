@@ -12,7 +12,7 @@
  * entry form offers the other unit and converts on the way in.
  */
 
-export type LabMarker = "tg" | "hdl" | "ldl" | "total_chol" | "a1c" | "fasting_glucose" | "alt" | "potassium";
+export type LabMarker = "tg" | "hdl" | "ldl" | "total_chol" | "a1c" | "fasting_glucose" | "alt" | "potassium" | "phosphate";
 
 export interface LabUnit {
   label: string;
@@ -86,6 +86,12 @@ export const LAB_MARKERS: Record<LabMarker, LabMarkerSpec> = {
     altUnits: [{ label: "mEq/L", toCanonical: (v) => v }],
     band: { min: 3.5, max: 5.0 }, fastingMatters: false, plausible: { min: 1.5, max: 9 },
     note: "3.5-5.0 is normal. With kidney disease this result sets how much potassium your plan allows.",
+  },
+  phosphate: {
+    label: "Phosphate (blood)", unit: "mg/dL",
+    altUnits: [{ label: "mmol/L", toCanonical: (v) => v * 3.097 }],
+    band: { min: 2.5, max: 4.5 }, fastingMatters: false, plausible: { min: 0.5, max: 15 },
+    note: "2.5-4.5 mg/dL is normal. With kidney disease this result sets how much phosphorus your plan allows.",
   },
 };
 
@@ -220,6 +226,19 @@ export function suggestFromLabs(results: LabResult[], existingConditions: string
       out.push({ condition: null, confirmWithDoctor: true,
         headline: `Blood potassium of ${k} mmol/L`,
         detail: "That's low. Ask your doctor whether you need a supplement — don't start one on your own." + (has("CKD") ? " Your meal plan will not restrict potassium while it is low." : "") });
+    }
+  }
+
+  if (l.phosphate && daysApart(l.phosphate.date, new Date().toISOString().slice(0, 10)) <= 90) {
+    const p = l.phosphate.value;
+    if (p > 4.5) {
+      out.push({ condition: null, confirmWithDoctor: true,
+        headline: `Blood phosphate of ${p} mg/dL`,
+        detail: "That's high. Let your doctor or kidney team know." + (has("CKD") ? " Your meal plan now limits phosphorus to 800 mg — cutting packaged foods with phosphate additives matters most." : "") });
+    } else if (p < 2.5) {
+      out.push({ condition: null, confirmWithDoctor: true,
+        headline: `Blood phosphate of ${p} mg/dL`,
+        detail: "That's low. Ask your doctor whether you need more phosphorus in your diet or a supplement." });
     }
   }
 

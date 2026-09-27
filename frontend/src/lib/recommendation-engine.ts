@@ -14,11 +14,11 @@
  */
 
 import { assessAlcohol } from "./alcohol";
-import { getMicros, Micros, freeSugars } from "./nutrition-data";
+import { getMicros, Micros, freeSugars, phosphorusFor } from "./nutrition-data";
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
 import { analyseDayProtein } from "./protein-quality";
-import { potassiumPlan, renalProtein, KidneyStage } from "./kidney-potassium";
+import { potassiumPlan, renalProtein, phosphatePlan, KidneyStage } from "./kidney-potassium";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -88,6 +88,8 @@ export interface OnboardingInput {
   kidney_stage?: KidneyStage | "";
   /** latest blood potassium in mmol/L, only when recent enough to trust */
   serum_potassium?: number | null;
+  /** latest blood phosphate in mg/dL, only when recent enough to trust */
+  serum_phosphate?: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1191,6 +1193,15 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
         dayUsage.set(to.id, (dayUsage.get(to.id) ?? 0) + 1);
       }
     }
+    /*
+     * No phosphorus swap pass, deliberately. One was built (same-group swaps,
+     * then protein-source swaps into egg/fish/meat judged at equal protein)
+     * and measured: at best ~30 mg/day off dialysis plans running ~1,600 mg,
+     * and every version lowered the worst-case dialysis protein (1.02 ->
+     * 0.97 g/kg on peritoneal dialysis). Phosphorus travels with protein, and
+     * KDOQI puts dialysis protein first — so phosphorus is tracked, explained
+     * and tied to the blood result instead (see buildNutrientActions).
+     */
   }
 
   // ── Phase 2: SIZE the portions so day totals converge on the user's targets ─
@@ -1759,6 +1770,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     delivered: total_calories,
     target: macros.calories,
     carbs_g: total_carbs_g,
+    phosphorus_absorbed_mg: micros.phosphorus_absorbed_mg,
   });
   const protein_distribution = analyseProteinDistribution(meals, macros.protein_per_meal_g);
   const na_k_ratio = sodiumPotassiumRatio(micros);
@@ -1844,6 +1856,14 @@ export function computeMicroTargets(input: OnboardingInput): MicroTarget[] {
       const k = potassiumPlan(input);
       return [{ key: "potassium_mg" as const, label: "Potassium", unit: "mg", target: k.target, isLimit: k.restricted, why: k.why }];
     })(),
+    // Phosphorus: kidney disease only — shortfall is almost unknown in
+    // ordinary diets, so for everyone else the row would be noise.
+    ...(() => {
+      const ph = phosphatePlan(input);
+      if (!ph) return [];
+      return [{ key: "phosphorus_mg" as const, label: "Phosphorus (est.)", unit: "mg",
+        target: ph.limit ?? 700, isLimit: ph.restricted, upper: ph.restricted ? undefined : 4000, why: ph.why }];
+    })(),
     { key: "calcium_mg", label: "Calcium", unit: "mg", target: calciumTarget, upper: 2500,
       why: "Bone density, muscle contraction and nerve signalling" },
     { key: "iron_mg", label: "Iron", unit: "mg", target: ironTarget, upper: 45,
@@ -1877,13 +1897,14 @@ export function computeMicroTargets(input: OnboardingInput): MicroTarget[] {
  * teaches the wrong habit.
  */
 function sumMicros(
-  meals: { items: { food: { id: string; food_group: string }; calories: number; serving_scale: number }[] }[],
+  meals: { items: { food: { id: string; food_group: string }; calories: number; serving_scale: number; protein_g?: number }[] }[],
   lowSodiumCooking = false,
   leachedVegetables = false
 ): Micros {
   const total: Micros = {
     sodium_mg: 0, potassium_mg: 0, calcium_mg: 0, iron_mg: 0, b12_ug: 0,
     vitamin_d_ug: 0, magnesium_mg: 0, omega3_g: 0, satfat_g: 0, sugar_g: 0, nova: 0,
+    phosphorus_mg: 0, phosphorus_absorbed_mg: 0,
   };
   let items = 0;
   let novaSum = 0;
@@ -1925,6 +1946,10 @@ function sumMicros(
       // and whole grains counting as added sugar; `freeSugars` knows which
       // dishes actually carry any.
       total.sugar_g += freeSugars(rawId) * scale;
+      // protein_g is already the scaled portion's protein
+      const phos = phosphorusFor(rawId, item.food.food_group, item.protein_g ?? 0);
+      total.phosphorus_mg! += phos.mg;
+      total.phosphorus_absorbed_mg! += phos.absorbed;
       novaSum += m.nova;
       items += 1;
     }
@@ -1937,6 +1962,7 @@ function sumMicros(
     magnesium_mg: round(total.magnesium_mg), omega3_g: round(total.omega3_g, 2),
     satfat_g: round(total.satfat_g, 1), sugar_g: round(total.sugar_g, 1),
     nova: items ? round(novaSum / items, 2) : 0,
+    phosphorus_mg: round(total.phosphorus_mg!), phosphorus_absorbed_mg: round(total.phosphorus_absorbed_mg!),
   };
 }
 
@@ -1985,7 +2011,7 @@ function buildNutrientActions(
   input: OnboardingInput,
   nutrients: NutrientStatus[],
   lowSodiumCooking: boolean,
-  energy?: { delivered: number; target: number; carbs_g?: number }
+  energy?: { delivered: number; target: number; carbs_g?: number; phosphorus_absorbed_mg?: number }
 ): NutrientAction[] {
   const diet = input.protein_pref || "vegetarian";
   const plantOnly = diet === "vegan" || diet === "vegetarian";
@@ -2087,6 +2113,29 @@ function buildNutrientActions(
     out.push({ nutrient: "Potassium", severity: "tip",
       headline: "This plan assumes you boil and drain your vegetables",
       detail: `Your potassium total of about ${potassium.actual} mg depends on a renal kitchen habit: boil vegetables, potato and pulses in a large volume of water and throw the water away. Potassium dissolves into it, and draining removes roughly a third. Steaming, pressure-cooking or frying keeps it in the food, so cook this way or the figure above understates what you actually eat.` });
+  }
+
+  // Phosphorus (kidney disease only — the row does not exist otherwise).
+  const phos = get("phosphorus_mg");
+  const phPlan = phosphatePlan(input);
+  if (phPlan?.alert) {
+    out.unshift({ nutrient: "Phosphorus", severity: phPlan.alert.severity,
+      headline: phPlan.alert.headline, detail: phPlan.alert.detail });
+  }
+  if (phPlan && phos) {
+    const absorbed = energy?.phosphorus_absorbed_mg;
+    const absorbedText = absorbed ? `, of which your body is expected to absorb roughly ${absorbed} mg` : "";
+    if (phPlan.restricted && phos.status === "over") {
+      // Expected on dialysis: phosphorus travels with the protein a dialysis
+      // patient must eat. KDOQI is explicit that protein is not cut to fix it.
+      out.push({ nutrient: "Phosphorus", severity: "watch",
+        headline: "Phosphorus is above your limit — keep the protein, change the source",
+        detail: `Today's plan comes to an estimated ${phos.actual} mg${absorbedText}, against a ${phos.target} mg limit. Phosphorus comes with protein, and ${renalProtein(input)?.dialysis ? "on dialysis you need that protein — do NOT cut it to fix this" : "your protein is already set for your kidneys"}. What works instead: (1) avoid packaged foods with phosphate additives — look for "phos" in the ingredients (colas, processed cheese, many breads, ready meals, some injected meats); that phosphate is ~90% absorbed, against ~40% from pulses and whole grains; (2) favour egg, fish or chicken over a second dairy portion — they carry less phosphorus per gram of protein; (3) if you have phosphate binders, take them WITH meals. Log your blood phosphate under Progress → Lab results: your limit follows it.` });
+    } else if (!phPlan.restricted) {
+      out.push({ nutrient: "Phosphorus", severity: "tip",
+        headline: "Phosphorus: skip the additives, keep the whole foods",
+        detail: `Your plan does not restrict phosphorus (${phPlan.why.charAt(0).toLowerCase() + phPlan.why.slice(1)}). Today's estimate is ${phos.actual} mg${absorbedText}. One habit is worth it at every stage of kidney disease: avoid packaged foods with phosphate additives ("phos" in the ingredients — colas, processed cheese, many breads and ready meals), because that phosphate is almost fully absorbed. Phosphorus in dal, whole grains and nuts is mostly bound up and absorbed far less. Add each blood phosphate result under Progress → Lab results.` });
+    }
   }
 
   const iron = get("iron_mg");
@@ -2336,6 +2385,8 @@ export function generateWeeklyPlan(input: OnboardingInput) {
       return `Low on ${daysOff} of ${r.total} days — expected, not a failure of the plan. Almost no food carries vitamin D, so this is a sunlight-and-supplement question rather than a menu one. Worth asking your doctor for a blood level.`;
     if (key === "b12_ug")
       return `Short on ${daysOff} of ${r.total} days. B12 comes from fortified foods or a supplement, never from plants themselves — changing which vegetables you eat will not move it.`;
+    if (key === "phosphorus_mg" && r.isLimit)
+      return `Above your phosphorus limit on ${daysOff} of ${r.total} days. That is expected with the protein dialysis needs — keep the protein and cut phosphate additives, favour egg or fish over extra dairy, and take any prescribed binders with meals. Your blood phosphate is the real test; log it under Lab results.`;
     if (key === "potassium_mg" && r.isLimit)
       return `Above your renal limit on ${daysOff} of ${r.total} days. Whole foods are potassium-rich, so a plan built from them runs high even with the richest foods excluded. Boiling vegetables and draining the water removes a useful share, and smaller portions of dal, fruit and potato help. Please review this with your kidney team — your own limit depends on your blood results.`;
     return `${r.isLimit ? "Over the limit" : "Short"} on ${daysOff} of ${r.total} days — this is a pattern worth acting on, not a one-off.`;

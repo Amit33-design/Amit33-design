@@ -7,7 +7,7 @@ import { useOnboardingStore } from "@/store/onboarding-store";
 import { CONDITIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-const MARKER_ORDER: LabMarker[] = ["tg", "ldl", "hdl", "total_chol", "a1c", "fasting_glucose", "potassium", "alt"];
+const MARKER_ORDER: LabMarker[] = ["tg", "ldl", "hdl", "total_chol", "a1c", "fasting_glucose", "potassium", "phosphate", "alt"];
 const today = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -160,7 +160,7 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
               const r = latest[m]!;
               const s = LAB_MARKERS[m];
               // potassium is harmful in both directions; HDL is better high
-              const good = m === "potassium" ? r.value >= s.band.min && r.value <= s.band.max
+              const good = m === "potassium" || m === "phosphate" ? r.value >= s.band.min && r.value <= s.band.max
                 : m === "hdl" ? r.value >= s.band.min : r.value <= s.band.max;
               return (
                 <div key={m} className="flex items-center justify-between p-3 rounded-xl border border-gray-100">
@@ -195,7 +195,7 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
             const higherBetter = m === "hdl";
             const edge = higherBetter ? s.band.min : s.band.max;
             const vals = series.map((r) => r.value);
-            const twoSided = m === "potassium";
+            const twoSided = m === "potassium" || m === "phosphate";
             const lo = Math.floor(Math.min(...vals, twoSided ? s.band.min : edge) * 0.9);
             const hi = Math.ceil(Math.max(...vals, edge) * 1.08);
             return (

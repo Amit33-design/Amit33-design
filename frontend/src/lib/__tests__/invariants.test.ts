@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateMealPlan, generateWeeklyPlan, OnboardingInput } from "../recommendation-engine";
-import { potassiumPlan, renalProtein, KidneyStage } from "../kidney-potassium";
+import { potassiumPlan, renalProtein, phosphatePlan, KidneyStage } from "../kidney-potassium";
 
 /**
  * Whole-space invariant sweep.
@@ -599,6 +599,39 @@ describe("kidney protein by stage", () => {
             if (ratio < 0.85 && !(plan.nutrient_actions ?? []).some((a) => a.nutrient === "Energy"))
               bad.push(`${tag}: ${Math.round(ratio * 100)}% of calories with no warning`);
           }
+    expect(bad, report(bad)).toEqual([]);
+  });
+});
+
+describe("kidney phosphorus by stage and blood result", () => {
+  it("shows phosphorus only with kidney disease, follows the blood result, and puts a high result first", () => {
+    const bad: string[] = [];
+    let i = 0;
+    for (const conditions of [[], ["CKD"]] as string[][])
+      for (const kidney_stage of ["", "advanced", "hemodialysis", "peritoneal", "transplant"] as (KidneyStage | "")[])
+        for (const serum_phosphate of [null, 2.1, 3.8, 5.9])
+          for (const cuisine of CUISINES)
+            for (const protein_pref of DIETS) {
+              if (!conditions.length && (kidney_stage || serum_phosphate !== null)) continue;
+              const p: OnboardingInput = { ...base, ...BODIES[i++ % BODIES.length], cuisine, protein_pref,
+                goal_type: GOALS[i % GOALS.length], conditions, kidney_stage, serum_phosphate };
+              const tag = `${conditions.join() || "none"}/${kidney_stage || "-"}/P=${serum_phosphate ?? "-"}/${cuisine}/${protein_pref}`;
+              const plan = generateMealPlan(p, i % 3);
+              const row = plan.nutrients.find((n) => n.key === "phosphorus_mg");
+              const ph = phosphatePlan(p);
+              if (!ph) { if (row) bad.push(`${tag}: phosphorus row without kidney disease`); continue; }
+              if (!row) { bad.push(`${tag}: no phosphorus row`); continue; }
+              if (row.isLimit !== ph.restricted || (ph.limit !== null && row.target !== ph.limit)) bad.push(`${tag}: row disagrees with plan`);
+              if (serum_phosphate !== null && serum_phosphate > 4.5 && ph.limit !== 800) bad.push(`${tag}: high phosphate not at 800 mg`);
+              if (serum_phosphate !== null && serum_phosphate < 2.5 && ph.restricted) bad.push(`${tag}: low phosphate restricted`);
+              if (ph.alert && plan.nutrient_actions[0]?.headline !== ph.alert.headline &&
+                  !(potassiumPlan(p).alert)) bad.push(`${tag}: phosphate alert not first`);
+              const perKg = plan.total_protein_g / p.weight_kg;
+              const rp = renalProtein(p)!;
+              if (rp.dialysis && perKg < rp.min_g_per_kg * 0.9) bad.push(`${tag}: protein ${perKg.toFixed(2)} g/kg cut on dialysis`);
+              const micros = (plan as unknown as { micros: { phosphorus_mg: number; phosphorus_absorbed_mg: number } }).micros;
+              if (!(micros.phosphorus_absorbed_mg < micros.phosphorus_mg)) bad.push(`${tag}: absorbed not below total`);
+            }
     expect(bad, report(bad)).toEqual([]);
   });
 });

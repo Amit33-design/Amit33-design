@@ -36,6 +36,10 @@ export interface Micros {
   satfat_g: number;
   sugar_g: number;
   nova: number;
+  /** estimated from protein (see phosphorusFor); only summed at plan level */
+  phosphorus_mg?: number;
+  /** the share of it the gut is expected to absorb */
+  phosphorus_absorbed_mg?: number;
 }
 
 export const NUTRIENTS: Record<string, NutrientTuple> = {
@@ -297,4 +301,72 @@ export function getMicros(foodId: string, group: string, calories: number): Micr
 /** True when the food has hand-verified data rather than a group estimate. */
 export function hasVerifiedNutrients(foodId: string): boolean {
   return foodId in NUTRIENTS;
+}
+
+/**
+ * Phosphorus, estimated from protein.
+ *
+ * Phosphorus travels with protein, and renal dietetics works with exactly that
+ * relationship — the phosphorus-to-protein ratio (mg P per g protein) — because
+ * it is stable within a food type and lets a low-phosphorus plan keep its
+ * protein. Typical ratios (USDA FoodData Central; Noori et al., CJASN 2010):
+ * meat ~8, fish/seafood ~11, whole egg ~15, soy ~14, cheese/paneer/strained
+ * yogurt ~15, milk/curd ~26, pulses ~18, whole grains ~30, refined grains ~17,
+ * nuts ~23, most seeds 35-50, vegetables ~17, fruit ~20.
+ *
+ * These are ESTIMATES (the per-food table above has no phosphorus column) and
+ * the UI says so. They are good to ~20% at plan level, which is the scale the
+ * limits work at (800-1000 mg/day).
+ *
+ * Absorption differs by source and matters as much as the amount (KDOQI 2020,
+ * KDIGO 2017): animal and dairy phosphorus ~60%, plant phosphorus ~40% because
+ * most of it is bound in phytate, and phosphate ADDITIVES in packaged food
+ * ~90%. No food in this library is ultra-processed, so additives never appear
+ * in a plan — which is why the advice about them is copy, not arithmetic.
+ */
+const P_PER_G_PROTEIN: Record<string, number> = {
+  protein: 10, dairy: 20, legumes: 18, grains: 30, vegetable: 17,
+  fruit: 20, nuts: 23, seeds: 40, beverage: 0, fats: 0,
+};
+const P_OVERRIDE: Record<string, number> = {
+  // meat and poultry
+  chicken: 8, "tandoori-chicken": 8, "turkey-wrap": 10, "chicken-quinoa-bowl": 11,
+  // fish and seafood
+  salmon: 11, surmai: 11, seabass: 11, "fish-curry": 11, "grilled-prawns": 11, "tuna-salad": 11,
+  // eggs
+  "egg-boiled": 15, "egg-bhurji": 15, "egg-omelette": 15, "egg-curry": 15, shakshuka: 15,
+  // soy
+  tofu: 14, "tofu-palak": 14, "tofu-bhurji": 14, "tofu-veg-stirfry": 14, "tofu-oats-bowl": 18,
+  "tofu-scramble-med": 14, "soya-chunks": 13, "soya-keema": 13, "soy-milk": 14, edamame: 15,
+  "chickpea-tofu-salad": 16,
+  // gram-flour dishes behave like pulses
+  "moong-chilla": 18, "besan-chilla": 18,
+  // cheese, paneer and strained yogurt are protein-dense for their phosphorus
+  paneer: 15, "paneer-bhurji": 15, "cottage-cheese": 15, "greek-yogurt": 14, "palak-paneer": 15,
+  "matar-paneer": 15, "paneer-tikka": 15, "paneer-rice-bowl": 16, "yogurt-parfait": 16, "granola-yogurt": 18,
+  // milk, curd and buttermilk carry more phosphorus per gram of protein
+  "turmeric-milk": 26, buttermilk: 26, "low-fat-curd": 26, "curd-rice": 22, kadhi: 24,
+  "fruit-yogurt": 24, "banana-pb-smoothie": 24,
+  // refined grains lose most of the bran, where the phosphorus is
+  "white-rice": 16, idli: 17, poha: 17, "sabudana-khichdi": 12, upma: 20, "pita-hummus": 20,
+  "veg-uttapam": 18, "couscous-chickpea": 20,
+  // seeds vary a lot
+  chia: 50, flax: 35, "pumpkin-seeds": 40, makhana: 20, "dates-nut-laddoo": 25,
+  "green-tea": 0,
+};
+/** Animal and dairy phosphorus absorbs ~60%, plant (phytate-bound) ~40%. */
+const ANIMAL_SOURCES = new Set([
+  "chicken", "tandoori-chicken", "turkey-wrap", "chicken-quinoa-bowl", "salmon", "surmai", "seabass",
+  "fish-curry", "grilled-prawns", "tuna-salad", "egg-boiled", "egg-bhurji", "egg-omelette", "egg-curry", "shakshuka",
+]);
+
+export function phosphorusRatio(foodId: string, group: string): number {
+  return P_OVERRIDE[foodId] ?? P_PER_G_PROTEIN[group] ?? 20;
+}
+
+/** Estimated phosphorus (mg) and the share of it the gut absorbs, for a portion carrying `proteinG`. */
+export function phosphorusFor(foodId: string, group: string, proteinG: number): { mg: number; absorbed: number } {
+  const mg = Math.max(0, proteinG) * phosphorusRatio(foodId, group);
+  const animal = ANIMAL_SOURCES.has(foodId) || group === "dairy";
+  return { mg, absorbed: mg * (animal ? 0.6 : 0.4) };
 }

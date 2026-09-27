@@ -87,3 +87,70 @@ describe("blood potassium in lab results", () => {
     expect(suggestFromLabs(lab(6.4, "2020-01-01"))).toEqual([]);
   });
 });
+
+import { phosphatePlan, renalProtein } from "../kidney-potassium";
+import { phosphorusFor } from "../nutrition-data";
+
+describe("phosphorus by kidney stage and blood phosphate", () => {
+  const ckd = (kidney_stage?: KidneyStage | "", serum_phosphate?: number | null) =>
+    phosphatePlan({ conditions: ["CKD"], kidney_stage, serum_phosphate })!;
+
+  it("has no phosphorus rule without kidney disease", () => {
+    expect(phosphatePlan({ conditions: ["T2D"] })).toBeNull();
+  });
+
+  it("restricts only on dialysis or with a high blood result (KDIGO 2017)", () => {
+    for (const stage of ["", "early", "advanced", "transplant"] as const) expect(ckd(stage).restricted, stage).toBe(false);
+    expect(ckd("hemodialysis").limit).toBe(1000);
+    expect(ckd("peritoneal").limit).toBe(1000);
+  });
+
+  it("a high blood phosphate tightens every stage to 800 mg; a low one lifts any limit", () => {
+    for (const stage of ["", "early", "hemodialysis", "transplant"] as const) {
+      expect(ckd(stage, 5.6).limit, stage).toBe(800);
+      expect(ckd(stage, 5.6).alert?.severity, stage).toBe("critical");
+      expect(ckd(stage, 2.1).restricted, stage).toBe(false);
+    }
+  });
+
+  it("dialysis protein is never traded away for phosphorus", () => {
+    expect(renalProtein({ conditions: ["CKD"], kidney_stage: "hemodialysis" })!.min_g_per_kg).toBe(1.0);
+  });
+});
+
+describe("phosphorus estimates", () => {
+  // USDA FoodData Central reference values for the same portions
+  it("lands within 25% of reference values for staple foods", () => {
+    const cases: [string, string, number, number][] = [
+      ["masoor-dal", "legumes", 18, 360],   // 200 g cooked lentils
+      ["chicken", "protein", 47, 340],      // 150 g cooked breast
+      ["turmeric-milk", "dairy", 7, 190],   // ~200 ml milk
+      ["roti", "grains", 8, 230],           // 2 whole-wheat rotis
+      ["egg-boiled", "protein", 13, 200],   // 2 eggs
+    ];
+    for (const [id, group, protein, ref] of cases) {
+      const mg = phosphorusFor(id, group, protein).mg;
+      expect(Math.abs(mg - ref) / ref, `${id}: ${mg} vs ${ref}`).toBeLessThan(0.25);
+    }
+  });
+
+  it("counts plant phosphorus as less absorbed than animal", () => {
+    const dal = phosphorusFor("masoor-dal", "legumes", 18);
+    const chicken = phosphorusFor("chicken", "protein", 47);
+    expect(dal.absorbed / dal.mg).toBeLessThan(chicken.absorbed / chicken.mg);
+  });
+
+  it("flags a high or low blood phosphate in lab results, and never suggests a condition", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const lab = (value: number) => [{ id: "p", marker: "phosphate" as const, value, date: today, fasting: null }];
+    expect(suggestFromLabs(lab(6.1), ["CKD"])[0].detail).toMatch(/800 mg/);
+    expect(suggestFromLabs(lab(2.0))[0].headline).toMatch(/2/);
+    expect(suggestFromLabs(lab(3.6))).toEqual([]);
+    expect(suggestFromLabs(lab(6.1)).every((x) => x.condition === null)).toBe(true);
+  });
+
+  it("reads blood phosphate in mg/dL or mmol/L", () => {
+    expect(toCanonical("phosphate", 1.45, "mmol/L")).toBeCloseTo(4.5, 1);
+    expect(toCanonical("phosphate", 40)).toBeNull();
+  });
+});

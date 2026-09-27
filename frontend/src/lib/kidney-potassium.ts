@@ -234,3 +234,59 @@ export function renalProtein(input: { conditions: string[]; kidney_stage?: Kidne
         why: "Protein is kept at 0.8 g per kg a day, the level for kidney disease before dialysis (KDIGO 2024). If you are ON dialysis, add that in your profile — dialysis needs more protein, not less." };
   }
 }
+
+/**
+ * Daily phosphorus for kidney disease.
+ *
+ *  - KDIGO 2017 (CKD-MBD, G3a-G5D): limit dietary phosphate to TREAT high
+ *    blood phosphate — not preventively — and consider the source (animal,
+ *    plant, additive).
+ *  - KDOQI 2020: adjust phosphorus to keep blood phosphate in the normal range
+ *    (2.5-4.5 mg/dL, 0.81-1.45 mmol/L); the usual restricted intake is
+ *    800-1000 mg/day; cut phosphate additives, which are ~90% absorbed against
+ *    ~40% for plant (phytate) phosphorus.
+ *
+ * So: on dialysis, where high phosphate is the rule rather than the exception,
+ * 1000 mg (the top of the range, since binders do part of the work). With a
+ * high blood result, 800 mg for anyone. With a low one, never restricted.
+ * Otherwise no limit — but everyone with CKD hears about additives, because
+ * that advice costs nothing and helps at every stage.
+ */
+export interface PhosphatePlan {
+  limit: number | null;
+  restricted: boolean;
+  basis: "stage" | "blood_test" | "none";
+  why: string;
+  alert: { severity: "critical" | "watch"; headline: string; detail: string } | null;
+}
+
+/** mg/dL; 1 mmol/L = 3.097 mg/dL */
+export const PHOSPHATE_NORMAL = { min: 2.5, max: 4.5 };
+
+export function phosphatePlan(input: { conditions: string[]; kidney_stage?: KidneyStage | ""; serum_phosphate?: number | null }): PhosphatePlan | null {
+  if (!input.conditions.includes("CKD")) return null;
+  const dialysis = input.kidney_stage === "hemodialysis" || input.kidney_stage === "peritoneal";
+  const p = input.serum_phosphate != null && input.serum_phosphate > 0 ? input.serum_phosphate : null;
+  if (p !== null && p > PHOSPHATE_NORMAL.max) {
+    return { limit: 800, restricted: true, basis: "blood_test",
+      why: `Limited to 800 mg because of your blood phosphate of ${p} mg/dL`,
+      alert: { severity: "critical", headline: `Blood phosphate of ${p} mg/dL is high`,
+        detail: "Over 4.5 mg/dL is high. Over time it pulls calcium out of bones and into blood vessels. Your plan now uses an 800 mg limit. The biggest single step is avoiding packaged foods with phosphate additives (look for \"phos\" in the ingredients — colas, processed cheese, many breads, ready meals and some meats are injected with it), because that phosphate is almost fully absorbed. If you've been prescribed phosphate binders, take them WITH meals, not after. Please tell your kidney team." } };
+  }
+  if (p !== null && p < PHOSPHATE_NORMAL.min) {
+    return { limit: null, restricted: false, basis: "blood_test",
+      why: `Not restricted — your blood phosphate of ${p} mg/dL is low`,
+      alert: { severity: "watch", headline: `Blood phosphate of ${p} mg/dL is low`,
+        detail: "Under 2.5 mg/dL is low. This can happen after a kidney transplant or with poor appetite. Your plan does not restrict phosphorus; ask your kidney team whether you need more." } };
+  }
+  if (dialysis) {
+    return { limit: 1000, restricted: true, basis: "stage",
+      why: "Dialysis removes little phosphate, so intake is kept to the top of the usual 800-1000 mg range",
+      alert: null };
+  }
+  return { limit: null, restricted: false, basis: p !== null ? "blood_test" : "none",
+    why: p !== null
+      ? `Not restricted — your blood phosphate of ${p} mg/dL is normal`
+      : "Not restricted unless a blood test shows phosphate running high (KDIGO 2017)",
+    alert: null };
+}

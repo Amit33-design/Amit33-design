@@ -61,6 +61,7 @@ function getOnboardingInput(): OnboardingInput {
       conditions: (s.conditions || []).map((c: { condition_code: string }) => c.condition_code).filter(Boolean),
       kidney_stage: ((s.conditions || []).find((c: { condition_code: string }) => c.condition_code === "CKD")?.stage || "") as KidneyStage | "",
       serum_potassium: recentSerumPotassium(),
+      serum_phosphate: recentLab("phosphate"),
       medications: (s.medications || []).filter(Boolean),
       cuisine: s.diet?.cuisine_type || fallback.cuisine,
       protein_pref: s.diet?.protein_preference || fallback.protein_pref,
@@ -95,8 +96,12 @@ function getOnboardingInput(): OnboardingInput {
  * An old result must not keep a limit switched off (or on) for months.
  */
 function recentSerumPotassium(): number | null {
+  return recentLab("potassium");
+}
+
+function recentLab(marker: "potassium" | "phosphate"): number | null {
   try {
-    const k = latestByMarker(getLabResults()).potassium;
+    const k = latestByMarker(getLabResults())[marker];
     if (!k) return null;
     const ageDays = (Date.now() - new Date(k.date).getTime()) / 86_400_000;
     return ageDays <= SERUM_POTASSIUM_MAX_AGE_DAYS ? k.value : null;
