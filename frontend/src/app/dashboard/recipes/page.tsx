@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, resolveUserId } from "@/lib/api-client";
 import { RECIPES, Recipe } from "@/lib/recipes-data";
+import { PACKAGED_SODIUM_SHARE } from "@/lib/nutrition-data";
 import { cn } from "@/lib/utils";
 
 interface MealItem {
@@ -23,6 +24,8 @@ interface MealSlot {
 
 interface MealPlan {
   meals: MealSlot[];
+  /** blood-pressure, heart and kidney plans count half the usual cooking salt */
+  low_sodium_cooking?: boolean;
 }
 
 const SLOT_LABELS: Record<string, { label: string; icon: string; time: string }> = {
@@ -33,7 +36,7 @@ const SLOT_LABELS: Record<string, { label: string; icon: string; time: string }>
   dinner:         { label: "Dinner",         icon: "🌙", time: "7–9 PM"   },
 };
 
-function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags?: string[] }) {
+function RecipeCard({ foodId, name, tags, halfSalt }: { foodId: string; name: string; tags?: string[]; halfSalt?: boolean }) {
   const [open, setOpen] = useState(false);
   // food IDs are stored as "food-moong-chilla" in the plan; strip prefix for recipe lookup
   const recipeKey = foodId.replace(/^food-/, "");
@@ -60,6 +63,7 @@ function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags
     )}>
       {/* Header — always visible */}
       <button
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-start justify-between gap-3 p-4 text-left"
       >
@@ -132,6 +136,18 @@ function RecipeCard({ foodId, name, tags }: { foodId: string; name: string; tags
             </ol>
           </div>
 
+          {/* The plan's sodium figure assumes this — say so where the cooking happens */}
+          {halfSalt && (
+            <div className="flex gap-2.5 p-3 bg-sky-50 border border-sky-100 rounded-xl">
+              <span className="flex-shrink-0 text-lg" aria-hidden="true">🧂</span>
+              <p className="text-xs text-sky-900 leading-relaxed">
+                {(PACKAGED_SODIUM_SHARE[recipeKey] ?? 0) >= 0.6
+                  ? "Most of this dish's salt is in a packaged ingredient (bread, feta, olives, canned fish or beans), not the cooking. Pick low-sodium versions and rinse canned beans — adding less salt at the stove won't change much here."
+                  : "Use about half the salt you normally would. Your plan's sodium total already assumes this, so salting as usual puts you over your blood-pressure limit."}
+              </p>
+            </div>
+          )}
+
           {/* Health tip */}
           {recipe.tip && (
             <div className="flex gap-2.5 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
@@ -192,6 +208,15 @@ export default function RecipesPage() {
           <span><strong className="text-gray-700">{recipesAvailable}</strong> recipes available</span>
         </div>
       </div>
+
+      {plan?.low_sodium_cooking && (
+        <div className="flex gap-3 p-4 bg-sky-50 border border-sky-200 rounded-2xl">
+          <span className="text-xl flex-shrink-0" aria-hidden="true">🧂</span>
+          <p className="text-sm text-sky-900">
+            <strong>Cooking for your blood pressure:</strong> use about half your usual salt in every recipe below — your plan&apos;s sodium figures already assume it. Lemon, black pepper, roasted cumin and fresh herbs fill the gap, and taste buds adjust in about two weeks.
+          </p>
+        </div>
+      )}
 
       {/* Quick nav pills */}
       <div className="flex gap-2 flex-wrap">
@@ -260,6 +285,7 @@ export default function RecipesPage() {
                         foodId={item.food.id}
                         name={item.food.name}
                         tags={item.reason_tags}
+                        halfSalt={!!plan?.low_sodium_cooking}
                       />
                     </div>
                   </div>

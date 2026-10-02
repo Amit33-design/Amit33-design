@@ -14,7 +14,20 @@
  */
 
 import { assessAlcohol } from "./alcohol";
-import { getMicros, Micros, freeSugars, phosphorusFor } from "./nutrition-data";
+import { getMicros, Micros, freeSugars, phosphorusFor, PACKAGED_SODIUM_SHARE, DEFAULT_ADDED_SALT_SHARE } from "./nutrition-data";
+import { RECIPES } from "./recipes-data";
+
+/**
+ * Multiplier on a food's listed sodium when the plan prescribes halving
+ * cooking salt. Only the salt added in the kitchen halves; a food with no
+ * recipe (fruit, nuts, packaged items) keeps all of it, and a dish built on a
+ * packaged ingredient keeps that part (see PACKAGED_SODIUM_SHARE).
+ */
+export function reducedSaltFactor(foodId: string): number {
+  if (!(foodId in RECIPES)) return 1;
+  const added = 1 - (PACKAGED_SODIUM_SHARE[foodId] ?? 1 - DEFAULT_ADDED_SALT_SHARE);
+  return 1 - added * 0.5;
+}
 import { weeklyVolume, cardioZones, stepTarget, musclesFor } from "./training-science";
 import { blendTdee, AdaptiveTdee } from "./adaptive-tdee";
 import { analyseDayProtein } from "./protein-quality";
@@ -973,7 +986,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     // this pass would be optimising a different number than the one reported
     const naOf = (f: Food) => {
       const m = getMicros(f.id, f.group, f.cal);
-      return m.sodium_mg * (lowSodiumCook && m.nova >= 3 ? 0.25 + 0.75 * 0.5 : 1);
+      return m.sodium_mg * (lowSodiumCook ? reducedSaltFactor(f.id) : 1);
     };
     const daySodium = () =>
       selected.reduce((sum, sel) => sum + sel.picked.reduce((a, f) => a + naOf(f), 0), 0);
@@ -1279,8 +1292,15 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
   // Named for its original job; it now also protects the day's only omega-3
   // source, which every drop pass must leave alone for the same reason — the
   // guarantee above is pointless if a calorie trim quietly removes it.
+  //
+  // And the day's only whole fruit: the calorie drop removed it whenever a
+  // low target met a two-item mid-morning (papaya out, soy milk kept), which
+  // only some calendar dates produce — the carb pass guarded fruit itself,
+  // this shared check did not.
+  const dayFruit = () => selected.reduce((n, sel) => n + sel.picked.filter((f) => f.group === "fruit").length, 0);
   const carriesLastVegetable = (e: Entry) =>
-    carriesLastVegetableOnly(e) || (o3Of(e.food) >= 0.5 && dayO3Sources() <= 1);
+    carriesLastVegetableOnly(e) || (o3Of(e.food) >= 0.5 && dayO3Sources() <= 1) ||
+    (e.food.group === "fruit" && dayFruit() <= 1);
 
   // If still well over target (very low-calorie plans), drop the lowest-priority
   // energy items until we're within reach, then re-steer.
@@ -1601,8 +1621,14 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
         over -= cut * e.food.f;
       }
     };
+    // The trim exists to stop THIS pass buying oil, not to undo fat the day
+    // already had: trimming a plate that arrived above the ceiling destroyed
+    // more energy than the pass could add (3,267 -> 2,915 kcal on a
+    // muscle-gain day while six dishes were added). Hold fat at whichever is
+    // higher, the ceiling or where the day started.
+    const fatHold = Math.max(fatCeiling, dayFat());
     steerUp(stretchable, dayCal(), macros.calories, (e) => e.food.cal);
-    trimFatTo(fatCeiling);
+    trimFatTo(fatHold);
 
     let addGuard = 0;
     while (dayCal() < macros.calories * 0.92 && addGuard++ < 16) {
@@ -1669,7 +1695,14 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
             ? food.cal / Math.max(food.p, 0.5) - (kPlan.restricted && food.highK ? 40 : 0)
             : carbControl && !carbsShort
               ? food.cal * (1 - carbShareOf(food))
-              : food.cal;
+              // Fat already near its ceiling: value a dish by the energy that
+              // is NOT fat. Ranking by raw calories picked peanut-butter toast,
+              // laddoos and smoothies, which the fat trim then shrank straight
+              // back — a muscle-gain plan ended with 20 minimum portions, fat
+              // at 150% of target and only 83% of its calories.
+              : dayFat() > fatCeiling * 0.9
+                ? food.cal - 9 * food.f
+                : food.cal;
           if (!proteinBound) {
             const cap = SLOT_GROUP_CAPS[food.group] ?? 1;
             const used = picked.filter((f) => f.group === food.group).length;
@@ -1691,7 +1724,7 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
       if (isLowProteinEnergy(entry)) stretchable.push(entry);
       else energyItems.push(entry);
       steerUp(stretchable, dayCal(), macros.calories, (e) => e.food.cal);
-      trimFatTo(fatCeiling);
+      trimFatTo(fatHold);
     }
 
     // Stretching may cost calories but never the renal cap: white rice is
@@ -1711,11 +1744,142 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     }
   }
 
-  const scaleOf = (food: Food) => entries.find((e) => e.food === food)?.scale ?? 1;
+  /*
+   * Final protein-floor guarantee (every plan without a renal cap).
+   *
+   * Several passes above may each take protein away — the overshoot drop, the
+   * carb lever, the sat-fat shrink, swaps — and each guards its own step, but
+   * nothing checked the day at the END. Date-seeded menus eventually found the
+   * gap: an Indian dialysis plan finished with no protein dish at lunch or
+   * dinner, at 0.89 g/kg against a 1.0 floor (KDOQI: 1.0-1.2 on dialysis).
+   * Runs last so nothing can undo it: first grow the protein dishes already
+   * on the plate within their normal portions, then add the leanest suitable
+   * protein dish a main meal already offers.
+   */
+  if (!proteinCap && proteinFloorG > 0 && dayProt() < proteinFloorG) {
+    const byDensity = entries
+      .filter((e) => e.food.p >= 5 && e.food.group !== "beverage")
+      .sort((a, b) => b.food.p / Math.max(b.food.cal, 1) - a.food.p / Math.max(a.food.cal, 1));
+    for (const e of byDensity) {
+      const [, hi] = scaleBounds(e.food);
+      while (dayProt() < proteinFloorG && e.scale + 0.1 <= hi) e.scale += 0.1;
+      if (dayProt() >= proteinFloorG) break;
+    }
+    let addGuard = 0;
+    while (dayProt() < proteinFloorG && addGuard++ < 2) {
+      let best: { food: Food; slotIdx: number } | null = null;
+      selected.forEach(({ slotDef, picked, pool }, slotIdx) => {
+        if (!slotDef.needsAnchor) return; // main meals only
+        if (picked.some((f) => f.anchor && f.p >= 10)) return; // already has a protein dish
+        for (const food of pool) {
+          if (picked.includes(food) || usedIds.has(food.id) || food.p < 10) continue;
+          if (weekCount(food.id) >= WEEKLY_AUTO_CAP) continue;
+          if (lipidPlan && food.satfat === "high") continue;
+          if (!best || food.p / food.cal > best.food.p / best.food.cal) best = { food, slotIdx };
+        }
+      });
+      if (!best) break;
+      const { food, slotIdx } = best as { food: Food; slotIdx: number };
+      selected[slotIdx].picked.push(food);
+      usedIds.add(food.id);
+      dayUsage.set(food.id, (dayUsage.get(food.id) ?? 0) + 1);
+      const entry: Entry = { food, slotIdx, scale: 1, role: "protein", dropRank: 0 };
+      entries.push(entry);
+      proteinItems.push(entry);
+      // give the calories back from energy foods that carry little protein
+      const lowProt = energyItems.filter((e) => e.food.p / Math.max(e.food.cal, 1) < 0.05);
+      if (dayCal() > macros.calories * 1.05) steer(lowProt, dayCal(), macros.calories, (e) => e.food.cal);
+    }
+  }
+
+  /*
+   * Final ceilings, applied last — the same lesson as the protein floor above:
+   * each pass guards its own step, but a later refill can undo an earlier
+   * cap. The calorie top-up may take an ordinary plan's protein up to 1.6x
+   * target, and the energy stretch can regrow starch. Date-seeded menus found
+   * both: a muscle-gain day at 1.16x protein, a prediabetes + cholesterol day
+   * at 1.12x carbs, and a 3,560 kcal peritoneal-dialysis plan at 1.53 g/kg
+   * (target 1.2) because milk, curd and buttermilk count as energy foods.
+   * Pull the offending foods back, then return the calories through foods
+   * that carry neither protein nor much carbohydrate.
+   */
+  // Transactional: if trimming and regrowing cannot keep the day's calories,
+  // the plan is restored exactly as it was. Every bound tried by hand moved
+  // the failure to another profile; a hard rollback cannot.
+  const tailSnapshot = entries.map((e) => e.scale);
+  const calBeforeTail = dayCal();
+  let tailTrimmed = false;
+  if (!proteinCap && dayProt() > proteinTarget * 1.15) {
+    tailTrimmed = true;
+    const dense = entries
+      .filter((e) => e.food.p > 0 && e.food.group !== "beverage")
+      .sort((a, b) => b.food.p / Math.max(b.food.cal, 1) - a.food.p / Math.max(a.food.cal, 1));
+    for (const e of dense) {
+      // the overshoot pass already allows half portions, so this guard must too
+      const lo = Math.min(scaleBounds(e.food)[0], 0.5);
+      // Stop before it costs the plan its calories or its carb balance: on an
+      // ordinary plan, protein 10-20% over target is harmless, a day at 84% of
+      // its calories is not (measured: three plans fell there without this).
+      while (e.scale - 0.1 >= lo && dayProt() > proteinTarget * 1.1 && dayProt() - e.food.p * 0.1 >= proteinFloorG &&
+             dayCal() - e.food.cal * 0.1 >= macros.calories * (dialysisPlan ? 0.8 : 0.9) &&
+             !(carbControl && (dayCarb() * 4) / Math.max(dayCal() - e.food.cal * 0.1, 1) > 0.44)) e.scale -= 0.1;
+      if (dayProt() <= proteinTarget * 1.1) break;
+    }
+  }
+  if (carbControl && dayCarb() > macros.carbs_g * 1.08) {
+    tailTrimmed = true;
+    const starchy = entries
+      .filter((e) => carbShareOf(e.food) > 0.5 && !(e.food.group === "vegetable") && e.food.group !== "fruit")
+      .sort((a, b) => carbShareOf(b.food) - carbShareOf(a.food));
+    for (const e of starchy) {
+      const lo = Math.min(scaleBounds(e.food)[0], 0.5);
+      while (e.scale - 0.1 >= lo && dayCarb() > macros.carbs_g * 1.05 && dayProt() - e.food.p * 0.1 >= proteinFloorG &&
+             dayCal() - e.food.cal * 0.1 >= macros.calories * 0.9) e.scale -= 0.1;
+      if (dayCarb() <= macros.carbs_g * 1.05) break;
+    }
+  }
+  // Refill only what this guard took away, and never on a renal cap — even
+  // "low-protein" rice pushed capped kidney plans over their ceiling. Grow in
+  // small steps, least protein per calorie first, and undo any step that
+  // breaks a limit: a one-shot stretch either found nothing to grow (plans
+  // left at 83% of their calories) or regrew the very thing just trimmed.
+  if (tailTrimmed && !proteinCap) {
+    const candidates = entries
+      .filter((e) => e.food.group !== "beverage")
+      .sort((a, b) => a.food.p / Math.max(a.food.cal, 1) - b.food.p / Math.max(b.food.cal, 1));
+    const fatCap = macros.fat_g * 1.35;
+    let progress = true;
+    while (dayCal() < macros.calories * 0.97 && progress) {
+      progress = false;
+      for (const e of candidates) {
+        if (dayCal() >= macros.calories * 0.97) break;
+        const [, hi] = scaleBounds(e.food);
+        if (e.scale + 0.1 > hi) continue;
+        e.scale += 0.1;
+        const breach =
+          dayProt() > proteinTarget * 1.12 ||
+          (carbControl && (dayCarb() > macros.carbs_g * 1.05 || (dayCarb() * 4) / Math.max(dayCal(), 1) > 0.44)) ||
+          dayFat() > fatCap ||
+          (lipidPlan && daySatFat() > satFatLimit);
+        if (breach) { e.scale -= 0.1; continue; }
+        progress = true;
+      }
+    }
+  }
+  if (tailTrimmed && dayCal() < Math.min(calBeforeTail, macros.calories * (dialysisPlan ? 0.8 : 0.9))) {
+    entries.forEach((e, i) => { e.scale = tailSnapshot[i]; });
+  }
+
+  // By slot AND food: a dish served in two meals is two entries with their
+  // own portions. Looking up by food alone gave both the first one's size, so
+  // the plan delivered was not the plan the engine had sized (2,937 kcal
+  // sized, 2,748 served on one maintenance day).
+  const scaleOf = (food: Food, slotIdx: number) =>
+    entries.find((e) => e.food === food && e.slotIdx === slotIdx)?.scale ?? 1;
 
   // ── Phase 3: MATERIALISE meals with their tuned portions ───────────────────
-  const meals = selected.map(({ slotDef, picked, altFoods }) => {
-    const items = picked.map((food) => toMealItem(food, slotDef.slot, scaleOf(food)));
+  const meals = selected.map(({ slotDef, picked, altFoods }, slotIdx) => {
+    const items = picked.map((food) => toMealItem(food, slotDef.slot, scaleOf(food, slotIdx)));
     // Alternatives are portioned to the slot's context too: sized toward the
     // average calories of the picked items so a swap keeps the slot balanced.
     const meanItemCal = items.length ? items.reduce((s, i) => s + i.calories, 0) / items.length : 0;
@@ -1771,6 +1935,11 @@ export function generateMealPlan(input: OnboardingInput, dayOffset = 0, weeklyUs
     target: macros.calories,
     carbs_g: total_carbs_g,
     phosphorus_absorbed_mg: micros.phosphorus_absorbed_mg,
+    // the two saltiest dishes as served, for advice that names them
+    saltiest: meals.flatMap((m) => m.items)
+      .map((it) => ({ name: it.food.name, na: getMicros(it.food.id.replace(/^food-/, ""), it.food.food_group, it.calories).sodium_mg
+        * (it.serving_scale || 1) * (lowSodiumCooking ? reducedSaltFactor(it.food.id.replace(/^food-/, "")) : 1) }))
+      .sort((a, b) => b.na - a.na).slice(0, 2).map((x) => x.name),
   });
   const protein_distribution = analyseProteinDistribution(meals, macros.protein_per_meal_g);
   const na_k_ratio = sodiumPotassiumRatio(micros);
@@ -1916,7 +2085,7 @@ function sumMicros(
       // In a cooked dish most sodium is salt added at the stove (~75%), not
       // intrinsic to the ingredients. Halving cooking salt is the single most
       // effective DASH change, so when the plan prescribes it we count it.
-      const saltAdjust = lowSodiumCooking && m.nova >= 3 ? 0.25 + 0.75 * 0.5 : 1;
+      const saltAdjust = lowSodiumCooking ? reducedSaltFactor(rawId) : 1;
       total.sodium_mg += m.sodium_mg * scale * saltAdjust;
       /*
        * Potassium leaching. Boiling vegetables, pulses and potato in a large
@@ -2011,7 +2180,7 @@ function buildNutrientActions(
   input: OnboardingInput,
   nutrients: NutrientStatus[],
   lowSodiumCooking: boolean,
-  energy?: { delivered: number; target: number; carbs_g?: number; phosphorus_absorbed_mg?: number }
+  energy?: { delivered: number; target: number; carbs_g?: number; phosphorus_absorbed_mg?: number; saltiest?: string[] }
 ): NutrientAction[] {
   const diet = input.protein_pref || "vegetarian";
   const plantOnly = diet === "vegan" || diet === "vegetarian";
@@ -2053,6 +2222,17 @@ function buildNutrientActions(
     out.push({ nutrient: "Energy", severity: "critical",
       headline: "This plan is short on calories — that matters more with kidney disease",
       detail: `Today's meals come to about ${Math.round(energy.delivered)} kcal against your ${Math.round(energy.target)} kcal target, roughly ${short} kcal short. Keeping protein at the renal limit leaves very few everyday foods that can carry the rest of the energy. Eating too little on a low-protein diet makes your body break down its own muscle for fuel, which pushes urea UP — the opposite of what the protein limit is for. Close the gap with foods that add calories but almost no protein: an extra drizzle of oil or ghee, white rice or sago in place of whole grains, and stewed low-potassium fruit. Renal dietitians also use low-protein specialty flours and pasta for exactly this. Please go through your energy intake with your kidney team.` });
+  } else if (!renalP && energy && energy.delivered < energy.target * 0.85) {
+    // Any other plan that cannot reach its calories must say so rather than
+    // quietly serve less: several limits at once (carbs, fat, saturated fat)
+    // or a very high target can leave the menu short of real food.
+    const short = Math.round(energy.target - energy.delivered);
+    const carbLimited = isCarbControlled(input);
+    out.push({ nutrient: "Energy", severity: "watch",
+      headline: `This plan is about ${short} kcal short of your target`,
+      detail: `Today's meals come to about ${Math.round(energy.delivered)} kcal against ${Math.round(energy.target)} kcal. ${carbLimited
+        ? "Your carbohydrate and fat limits leave little room to add more, so add energy that respects both: a handful of nuts or seeds, a spoon of olive oil on vegetables, or an extra portion of dal, paneer, egg or fish."
+        : "Add a little more of what you already enjoy: an extra roti or a larger rice portion, a glass of milk or curd, a banana with peanut butter, or a handful of nuts."} Eating well below your target for weeks costs muscle, not just fat.` });
   }
 
   const b12 = get("b12_ug");
@@ -2159,11 +2339,15 @@ function buildNutrientActions(
   if (sodium && sodium.status === "over") {
     out.push({ nutrient: "Sodium", severity: bpCondition ? "critical" : "watch",
       headline: bpCondition ? "Cut cooking salt to reach your blood-pressure target" : "Sodium is above the healthy limit",
-      detail: `Today's plan lands at ${sodium.actual} mg against a ${sodium.target} mg limit. Most of it is salt added while cooking, not the ingredients. Halve the salt in every dish, skip pickles, papad and packaged snacks, and finish dishes with lemon, black pepper, roasted cumin or fresh coriander — they replace the "flat" taste that low salt leaves behind.` });
+      detail: lowSodiumCooking
+        // The figure ALREADY assumes halved cooking salt. Telling the user to
+        // halve it again double-counts the one lever they have been given.
+        ? `Today's plan lands at ${sodium.actual} mg against a ${sodium.target} mg limit — and that already assumes you use about half the usual cooking salt. ${energy?.saltiest?.length ? `The saltiest dishes today are ${energy.saltiest.join(" and ")}: cook ${energy.saltiest.length > 1 ? "them" : "it"} with no added salt at all, or swap one for another option in the same meal. ` : ""}Skip pickles, papad and packaged snacks, and finish with lemon, black pepper, roasted cumin or fresh herbs.`
+        : `Today's plan lands at ${sodium.actual} mg against a ${sodium.target} mg limit. Most of it is salt added while cooking, not the ingredients. Halve the salt in every dish, skip pickles, papad and packaged snacks, and finish dishes with lemon, black pepper, roasted cumin or fresh coriander — they replace the "flat" taste that low salt leaves behind.` });
   } else if (lowSodiumCooking) {
     out.push({ nutrient: "Sodium", severity: "tip",
       headline: "This plan assumes reduced-salt cooking",
-      detail: "Your sodium total is calculated with roughly half the usual cooking salt — the single most effective change for blood pressure. Season with lemon, pepper, cumin and herbs instead; taste buds adjust within about two weeks." });
+      detail: "Your sodium total is calculated with roughly half the usual cooking salt in home-cooked dishes — the single most effective change for blood pressure. Salt already inside bread, cheese, olives and canned food is counted in full. Season with lemon, pepper, cumin and herbs instead; taste buds adjust within about two weeks. The Recipes page marks this on every dish." });
   }
 
   const sugar = get("sugar_g");

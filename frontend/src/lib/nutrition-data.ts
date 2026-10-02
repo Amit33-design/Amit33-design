@@ -370,3 +370,35 @@ export function phosphorusFor(foodId: string, group: string, proteinG: number): 
   const animal = ANIMAL_SOURCES.has(foodId) || group === "dairy";
   return { mg, absorbed: mg * (animal ? 0.6 : 0.4) };
 }
+
+/**
+ * How much of a dish's listed sodium is locked inside a packaged ingredient
+ * (bread, feta, olives, canned fish or beans, deli meat, fortified milk) and
+ * so CANNOT be reduced by salting less at the stove.
+ *
+ * Hypertension, heart and kidney plans assume the user halves the salt they
+ * cook with, and they are told so. That reduction only applies to salt added
+ * in the kitchen. It used to be granted by NOVA class (>= 3), which credited
+ * brined olives and left out home-cooked tofu and quinoa dishes, whose
+ * sodium is almost all cooking salt. Now: dishes cooked from one of this
+ * app's recipes get the reduction on the share that is added salt — 75% by
+ * default (the usual estimate for home-cooked food) — and the dishes below
+ * keep their packaged share. Foods with no recipe get no reduction at all.
+ */
+export const PACKAGED_SODIUM_SHARE: Record<string, number> = {
+  "soy-milk": 1.0,          // fortified, bought ready
+  "cottage-cheese": 0.9,    // the cheese is the salt
+  "olives-nuts": 1.0,       // brined olives
+  "greek-salad": 0.7,       // feta + olives
+  "turkey-wrap": 0.85,      // deli turkey + tortilla
+  "pb-banana-toast": 0.8,   // shop bread
+  "avocado-bean-toast": 0.7,// bread + canned beans
+  "hummus-toast": 0.7,      // bread + hummus
+  "hummus-veg": 0.6,        // hummus may be store-bought
+  "pita-hummus": 0.6,       // pita
+  "tuna-salad": 0.6,        // canned tuna + beans
+  "hummus-falafel-platter": 0.4, // pita, olives
+};
+
+/** Share of listed sodium that is salt added in the kitchen, for a home-cooked dish. */
+export const DEFAULT_ADDED_SALT_SHARE = 0.75;

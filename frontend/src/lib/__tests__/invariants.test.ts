@@ -222,6 +222,14 @@ describe("invariants across the whole profile space", () => {
       // allowed — going quiet about it is not.
       const flagged = (plan.nutrient_actions ?? []).some((a) => a.nutrient === "Energy");
       if (p.conditions.includes("CKD") && flagged) return null;
+      // A carb ceiling together with fat and saturated-fat limits (high
+      // triglycerides; diabetes with high cholesterol) can genuinely leave the
+      // menu short — allowed when the plan says so, and never below 75%.
+      // Ordinary plans get no such excuse: they must deliver.
+      const c = p.conditions;
+      const carbLimited = p.goal_type === "diabetes_friendly" || c.some((x) => ["T2D", "PREDIABETES", "HYPERTRIGLYCERIDEMIA"].includes(x));
+      const fatLimited = c.some((x) => ["HYPERLIPIDEMIA", "HEART_DISEASE", "HYPERTRIGLYCERIDEMIA"].includes(x));
+      if (carbLimited && fatLimited && flagged && ratio >= 0.75) return null;
       return `delivers ${Math.round(plan.total_calories)} of ${plan.macro_targets.calories} kcal (${Math.round(ratio * 100)}%)${flagged ? "" : " with no shortfall warning"}`;
     });
     expect(bad, report(bad)).toEqual([]);
@@ -633,5 +641,50 @@ describe("kidney phosphorus by stage and blood result", () => {
               if (!(micros.phosphorus_absorbed_mg < micros.phosphorus_mg)) bad.push(`${tag}: absorbed not below total`);
             }
     expect(bad, report(bad)).toEqual([]);
+  });
+});
+
+import { reducedSaltFactor } from "../recommendation-engine";
+import { PACKAGED_SODIUM_SHARE, NUTRIENTS } from "../nutrition-data";
+import { RECIPES } from "../recipes-data";
+
+/*
+ * Reduced-salt cooking. Blood-pressure, heart and kidney plans count half the
+ * usual COOKING salt, and say so. It used to be granted by NOVA class, which
+ * credited brined olives and fortified soy milk and left out home-cooked tofu
+ * and quinoa dishes. Only salt added in a kitchen can be halved.
+ */
+describe("reduced-salt cooking", () => {
+  it("credits only home-cooked salt, never salt locked in packaged food", () => {
+    expect(reducedSaltFactor("olives-nuts")).toBe(1);   // no recipe: ready to eat
+    expect(reducedSaltFactor("banana")).toBe(1);
+    expect(reducedSaltFactor("soy-milk")).toBe(1);      // fortified, bought ready
+    expect(reducedSaltFactor("tofu-oats-bowl")).toBeCloseTo(0.625, 3); // home-cooked
+    expect(reducedSaltFactor("greek-salad")).toBeGreaterThan(0.8);     // feta + olives
+    for (const id of Object.keys(PACKAGED_SODIUM_SHARE)) {
+      expect(NUTRIENTS[id], `${id} is not a food`).toBeDefined();
+      expect(reducedSaltFactor(id)).toBeGreaterThanOrEqual(reducedSaltFactor("tofu-oats-bowl"));
+    }
+  });
+
+  it("never tells a reduced-salt plan to halve its salt again, and names real dishes when over", () => {
+    const bad: string[] = [];
+    let named = 0;
+    const sweepBad = sweep((p, d) => {
+      if (!p.conditions.includes("HTN") && !p.conditions.includes("HEART_DISEASE")) return null;
+      const plan = generateMealPlan(p, d);
+      const a = plan.nutrient_actions.find((x) => x.nutrient === "Sodium");
+      if (!a) return "no sodium advice on a blood-pressure plan";
+      if (/Halve the salt in every dish/.test(a.detail)) return "asks to halve salt the total already halves";
+      if (/already assumes/.test(a.detail)) {
+        const names = plan.meals.flatMap((m) => m.items.map((i) => i.food.name));
+        const m = a.detail.match(/saltiest dishes today are (.+?): cook/);
+        if (m) { named++; if (!m[1].split(" and ").every((n) => names.includes(n))) return `names dishes not on the plan: ${m[1]}`; }
+      }
+      return null;
+    });
+    bad.push(...sweepBad);
+    expect(bad, report(bad)).toEqual([]);
+    expect(named, "the over-limit advice never named a dish").toBeGreaterThan(0);
   });
 });
