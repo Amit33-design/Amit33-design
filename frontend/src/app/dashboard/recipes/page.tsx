@@ -5,6 +5,7 @@ import { api, resolveUserId } from "@/lib/api-client";
 import { RECIPES, Recipe } from "@/lib/recipes-data";
 import { PACKAGED_SODIUM_SHARE } from "@/lib/nutrition-data";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 
 interface MealItem {
   id: string;
@@ -227,7 +228,7 @@ export default function RecipesPage() {
               key={slot.slot}
               onClick={() => {
                 setExpandSlot(slot.slot);
-                setTimeout(() => document.getElementById(`slot-${slot.slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                setTimeout(() => document.getElementById(`slot-${slot.slot}`)?.scrollIntoView({ behavior: scrollBehavior(), block: "start" }), 50);
               }}
               className="flex items-center gap-1.5 px-4 py-2.5 min-h-[40px] rounded-full bg-white border border-gray-200 hover:border-violet-300 text-xs font-semibold text-gray-600 transition-all"
             >

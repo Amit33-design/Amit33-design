@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, resolveUserId } from "@/lib/api-client";
 import { MacroRing } from "@/components/dashboard/MacroRing";
 import { MealCard } from "@/components/dashboard/MealCard";
+import { RetestNudge } from "@/components/dashboard/RetestNudge";
 import { CONDITIONS, CONDITION_COLORS } from "@/lib/constants";
 import { cn, formatCalories } from "@/lib/utils";
 
@@ -115,6 +116,8 @@ export default function DashboardPage() {
       )}
 
       {/* Stats row */}
+      <RetestNudge />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Calorie Target",  value: macroTargets ? `${formatCalories(macroTargets.calories)} kcal` : "—", icon: "🔥", color: "text-orange-700" },

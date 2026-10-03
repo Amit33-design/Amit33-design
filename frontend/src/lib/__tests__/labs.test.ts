@@ -72,3 +72,43 @@ describe("condition suggestions", () => {
     expect(suggestFromLabs([r("tg", 110), r("ldl", 90), r("hdl", 55), r("a1c", 5.2)])).toEqual([]);
   });
 });
+
+import { retestReminders } from "../labs";
+
+describe("retest reminders", () => {
+  const r = (marker: string, value: number, date: string) => ({ id: marker + date, marker, value, date, fasting: true }) as never;
+  const today = "2026-10-03";
+
+  it("never nags a healthy person with normal results", () => {
+    const results = [r("tg", 120, "2025-01-01"), r("ldl", 90, "2025-01-01"), r("a1c", 5.2, "2024-01-01"), r("potassium", 4.2, "2025-01-01")];
+    expect(retestReminders(results, { today })).toEqual([]);
+  });
+
+  it("follows ADA timing for HbA1c with diabetes", () => {
+    const off = retestReminders([r("a1c", 7.8, "2026-06-01")], { conditions: ["T2D"], today })[0];
+    expect(off.due_date).toBe("2026-08-30"); // 3 months when above goal
+    expect(off.days_overdue).toBeGreaterThan(0);
+    const on = retestReminders([r("a1c", 6.6, "2026-06-01")], { conditions: ["T2D"], today })[0];
+    expect(on.days_overdue).toBeLessThan(0); // 6 months when at goal: not due yet
+  });
+
+  it("rechecks out-of-range lipids at 12 weeks, on-target lipids yearly only with a lipid condition", () => {
+    expect(retestReminders([r("tg", 220, "2026-06-01")], { today })[0].due_date).toBe("2026-08-24");
+    expect(retestReminders([r("ldl", 95, "2026-06-01")], { today })).toEqual([]);
+    expect(retestReminders([r("ldl", 95, "2026-06-01")], { conditions: ["HYPERLIPIDEMIA"], today })[0].due_date).toBe("2027-06-01");
+  });
+
+  it("follows KDIGO frequency for kidney disease, tightest on dialysis", () => {
+    const at = (stage: string) => retestReminders([r("phosphate", 3.8, "2026-09-01")], { conditions: ["CKD"], kidney_stage: stage, today })[0];
+    expect(at("hemodialysis").due_date).toBe("2026-10-01");
+    expect(at("advanced").due_date).toBe("2026-11-30");
+    expect(at("early").due_date).toBe("2027-02-28");
+    // an abnormal result is repeated within weeks, whatever the stage
+    expect(retestReminders([r("potassium", 5.8, "2026-09-25")], { conditions: ["CKD"], kidney_stage: "early", today })[0].due_date).toBe("2026-10-09");
+  });
+
+  it("lists the most overdue first", () => {
+    const list = retestReminders([r("a1c", 8, "2026-01-01"), r("tg", 300, "2026-07-01")], { conditions: ["T2D"], today });
+    expect(list.map((x) => x.marker)).toEqual(["a1c", "tg"]);
+  });
+});

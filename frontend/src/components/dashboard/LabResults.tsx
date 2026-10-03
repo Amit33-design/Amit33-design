@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useId, useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea, ReferenceLine, CartesianGrid } from "recharts";
-import { LAB_MARKERS, toCanonical, latestByMarker, deriveLabs, suggestFromLabs, type LabMarker, type LabResult } from "@/lib/labs";
+import { LAB_MARKERS, toCanonical, latestByMarker, deriveLabs, suggestFromLabs, retestReminders, type LabMarker, type LabResult } from "@/lib/labs";
 import { getLabResults, addLabResult, deleteLabResult } from "@/lib/local-store";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { CONDITIONS } from "@/lib/constants";
@@ -38,6 +38,10 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
   const suggestions = useMemo(() => suggestFromLabs(results, conditionCodes), [results, conditions]);
   const latest = useMemo(() => latestByMarker(results), [results]);
   const derived = useMemo(() => deriveLabs(results), [results]);
+  const kidneyStage = conditions.find((c) => c.condition_code === "CKD")?.stage;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const retests = useMemo(() => retestReminders(results, { conditions: conditionCodes, kidney_stage: kidneyStage })
+    .filter((r) => r.days_overdue >= -21), [results, conditions]);
 
   const chooseMarker = (m: LabMarker) => {
     setMarker(m);
@@ -131,6 +135,27 @@ export function LabResults({ compact = false }: { compact?: boolean }) {
         {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
         {added && <p className="mt-2 text-sm text-emerald-800">Added {added} — your plan now accounts for it.</p>}
       </div>
+
+      {/* Recheck reminders — due within three weeks, or overdue */}
+      {!compact && retests.length > 0 && (
+        <div className="mt-5 p-4 rounded-2xl border border-sky-200 bg-sky-50">
+          <div className="text-sm font-bold text-sky-900 mb-2">🗓️ Time to recheck</div>
+          <ul className="space-y-2">
+            {retests.map((r) => (
+              <li key={r.marker} className="text-sm text-sky-900">
+                <strong>{r.label}</strong>{" "}
+                {r.days_overdue > 0 ? `— ${r.days_overdue} days overdue` : r.days_overdue === 0 ? "— due today" : `— due in ${-r.days_overdue} days`}
+                <span className="block text-xs text-sky-800">
+                  Last tested {r.last_date}; {r.reason}.
+                  {(r.marker === "potassium" || r.marker === "phosphate") && r.days_overdue > 0 && conditionCodes.includes("CKD")
+                    ? " Your meal plan stops using a result after 90 days, so a new one keeps your limit matched to your blood."
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Suggestions — never applied without the user */}
       {suggestions.length > 0 && (

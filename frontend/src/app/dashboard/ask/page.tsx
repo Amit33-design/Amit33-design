@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { api, resolveUserId } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 
 interface Message {
   id: string;
@@ -38,7 +39,7 @@ export default function AICopilotPage() {
   const userId = resolveUserId();
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: scrollBehavior() });
   }, [messages]);
 
   const sendMessage = async (text: string) => {

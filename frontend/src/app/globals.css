@@ -143,3 +143,19 @@ body {
 .policy-badge-limit   { @apply bg-amber-50 text-amber-700 border-amber-200; }
 .policy-badge-prefer  { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
 .policy-badge-neutral { @apply bg-gray-50 text-gray-600 border-gray-200; }
+
+/*
+ * Reduced motion. This app is built for older adults, and motion (sliding
+ * cards, a gradient that never stops shifting, bouncing dots) can trigger
+ * dizziness and nausea for people with vestibular disorders (WCAG 2.3.3).
+ * When the system asks for less motion, end every animation and transition
+ * at its final frame instead of removing it, so nothing is left half-faded.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

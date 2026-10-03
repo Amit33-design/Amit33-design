@@ -250,3 +250,96 @@ export function suggestFromLabs(results: LabResult[], existingConditions: string
 
   return out;
 }
+
+/**
+ * When each test is due again.
+ *
+ * Intervals follow the guidelines for how often to MONITOR, not a guess:
+ *  - HbA1c (ADA Standards of Care): every 3 months when not at goal or after
+ *    a change in treatment, every 6 months when at goal; yearly in the
+ *    prediabetes range.
+ *  - Lipids (ACC/AHA; ADA): recheck 4-12 weeks after a change, then yearly.
+ *    A raised result is assumed to have prompted a change, so 12 weeks.
+ *  - Phosphate / potassium in CKD (KDIGO 2017 CKD-MBD): every 6-12 months in
+ *    stage 3, 3-6 months in stage 4, 1-3 months in stage 5 and on dialysis —
+ *    the short end of each range is used. An out-of-range result is usually
+ *    repeated within weeks.
+ *
+ * It also matters for the plan itself: a blood potassium or phosphate result
+ * stops steering the meal plan after 90 days, so a stale result silently
+ * hands the limit back to the stage default unless someone says so.
+ *
+ * Markers with a normal result and no condition that calls for monitoring
+ * get no reminder — nagging healthy people to retest is noise.
+ */
+export interface RetestReminder {
+  marker: LabMarker;
+  label: string;
+  last_date: string;
+  due_date: string;
+  /** negative = days until due, positive = days overdue */
+  days_overdue: number;
+  reason: string;
+}
+
+const addDays = (date: string, days: number) => {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+export function retestReminders(
+  results: LabResult[],
+  ctx: { conditions?: string[]; kidney_stage?: string; today?: string } = {},
+): RetestReminder[] {
+  const conditions = ctx.conditions || [];
+  const today = ctx.today || new Date().toISOString().slice(0, 10);
+  const has = (c: string) => conditions.includes(c);
+  const ckd = has("CKD");
+  const stage = ctx.kidney_stage || "";
+  const dialysis = stage === "hemodialysis" || stage === "peritoneal";
+  const renalInterval = dialysis ? 30 : stage === "early" ? 180 : 90;
+  const renalWhy = dialysis ? "on dialysis these are usually checked monthly"
+    : stage === "early" ? "with stage 1-3 kidney disease, every 6-12 months"
+    : "with kidney disease at this stage, every 3 months";
+  const lipidCondition = has("HYPERLIPIDEMIA") || has("HEART_DISEASE") || has("HYPERTRIGLYCERIDEMIA");
+
+  const out: RetestReminder[] = [];
+  const add = (r: LabResult, days: number, reason: string) => {
+    const due = addDays(r.date, days);
+    out.push({ marker: r.marker, label: LAB_MARKERS[r.marker].label, last_date: r.date, due_date: due,
+      days_overdue: Math.round(daysApart(due, today) * (due <= today ? 1 : -1)), reason });
+  };
+
+  for (const r of Object.values(latestByMarker(results)) as LabResult[]) {
+    const v = r.value;
+    switch (r.marker) {
+      case "a1c":
+        if (has("T2D")) add(r, v >= 7 ? 90 : 182, v >= 7 ? "above the usual 7% goal — recheck every 3 months" : "at goal — recheck every 6 months");
+        else if (v >= 5.7 || has("PREDIABETES")) add(r, v >= 6.5 ? 90 : 365, v >= 6.5 ? "in the diabetes range — your doctor will want to confirm it" : "in the prediabetes range — recheck yearly");
+        break;
+      case "fasting_glucose":
+        if (v >= 126) add(r, 90, "in the diabetes range — your doctor will want to confirm it");
+        else if (v >= 100 || has("PREDIABETES")) add(r, 365, "in the prediabetes range — recheck yearly");
+        break;
+      case "tg": case "ldl": case "hdl": case "total_chol": {
+        const spec = LAB_MARKERS[r.marker];
+        const outOfRange = r.marker === "hdl" ? v < 40 : v > spec.band.max;
+        if (outOfRange) add(r, 84, "out of range — recheck 4-12 weeks after changing diet or treatment");
+        else if (lipidCondition) add(r, 365, "on target — recheck yearly");
+        break;
+      }
+      case "potassium": case "phosphate": {
+        const spec = LAB_MARKERS[r.marker];
+        const outOfRange = v < spec.band.min || v > spec.band.max;
+        if (outOfRange) add(r, ckd ? 14 : 30, "out of the normal range — usually repeated within weeks");
+        else if (ckd) add(r, renalInterval, renalWhy);
+        break;
+      }
+      case "alt":
+        if (v > LAB_MARKERS.alt.band.max) add(r, 180, "raised — ask your doctor when to recheck");
+        break;
+    }
+  }
+  return out.sort((a, b) => b.days_overdue - a.days_overdue);
+}
